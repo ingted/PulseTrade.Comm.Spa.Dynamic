@@ -6,10 +6,12 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
-### DYN-VFY-067 無GLOBAL loaded domain修復（2026-10-28；candidate未交付）
+### DYN-VFY-067 無GLOBAL loaded domain修復（2026-10-28；source gates過／consumer待驗）
 
 - Consumer test-only `ca4ec91725c1751c76095e8028ebeb96391724a8`已push；owner報r12精確700 request/ACK/DOM/time-axis/gen皆過、pure oracle6/6。原full首次走到resident-local向右600，仍RED；r11 evidence `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0315-oracle-r11\resident-local-700.json`已程式讀，ui29實際Later1500、final startDelta1500。
-- ui28 ACK無GLOBAL、active1500、segments1500+1491；產品label與gesture/selection取不同domain。D39共用既有coverage helper，DYN-T-745在0.3.15實跑1/0/1 RED（expected2991/actual1500）。Renderer source Release39 warnings/0 errors；Renderer/Interactive0.3.16、Ptcs.Client0.2.4 candidate，fresh package/owner tests/consumer真UI仍待驗，不把build當完成。
+- ui28 ACK無GLOBAL、active1500、segments1500+1491；產品label與gesture/selection取不同domain。D39共用既有coverage helper，DYN-T-745在0.3.15實跑1/0/1 RED（expected2991/actual1500）。Source `0b7e6b12103bb2d448c6343a52c73a0574c912d9`；fresh Renderer/Interactive0.3.16、Ptcs.Client0.2.4 ProductVersion均含該commit，已依`lib-packs.txt`複製SDK10.0.402 feed並核SHA，沒有public NuGet push。
+- exact-package tests：Renderer134/134、Interactive20/20、PtcsTaClient17/17，皆0 ignored/failed/errored；Interactive package verifier PASS/entries4，Ptcs LiveDemo Release1 warning/0 errors。producer Renderer39 warnings/0 errors、Interactive1/0、Ptcs.Client1/0（既有ResidentCoverageChanged incomplete pattern warning），未藉修本bug消除旁支warning。consumer真resident+600及完整formal尚待驗，不將171個unit PASS當真UI完成。
+- SHA-256：Renderer0.3.16=`3733AB9CDE8BA24B745FD046BF95DBA97273F2708EAB515D119BE1E5DDEAAE67`；Interactive0.3.16=`199C9B205775189439356AE82D4D3C306D165A52ABE552F28D3F6174EE4FE29D`；Ptcs.Client0.2.4=`CBE9F6FD05D4BFC5D629EE1D68ECF7D3FCB42A0B8F1135349691A4A916BC4675`。交付exact package paths為各`src/<PackageId>/bin/Release/<PackageId>.<version>.nupkg`；既有PKCS dependency advisory仍不在本次修復範圍。
 
 ### DYN-VFY-066 雙向consumer與最小returned resize（2026-10-28）
 

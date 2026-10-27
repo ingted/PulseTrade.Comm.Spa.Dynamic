@@ -1,6 +1,6 @@
 # PulseTrade.Comm.Spa.Dynamic WBS
 
-DYN-WBS-620 current：0.3.15既有左界/雙向/rapid gates與r12精確700 resize已過；formal走到新尾段仍RED，無GLOBAL label2991/gesture1500分裂使+600被當Later1500。RFC D39已最小修正共同coverage domain，DYN-T-745於0.3.15先重現expected2991/actual1500；Renderer source Release39 warnings/0 errors。Renderer/Interactive0.3.16與Ptcs.Client0.2.4 candidate待fresh exact-package tests、consumer focused與full formal；未發布/未部署/不宣告全過。consumer source50136779及test-only ca4ec917已push，owner保持分工。現有user Chrome仍0.3.15真資料可操作，待新consumer gate後更新。
+DYN-WBS-620 current：0.3.15既有左界/雙向/rapid gates與r12精確700 resize已過；formal新尾段揭無GLOBAL label2991/gesture1500分裂。RFC D39已修，source0b7e6b1；DYN-T-745 RED→GREEN，fresh Renderer/Interactive0.3.16、Ptcs.Client0.2.4 exact tests134/134＋20/20＋17/17，verifier/LiveDemo Release過、SDK copy/hash完成。待daedilus在consumer50136779/test ca4ec917驗真同resident+600及full formal；未公開發布、未部署、不宣告全部真UI過。現有user Chrome仍0.3.15真資料可操作，待新consumer gate後更新。exact hashes見DYN-VFY-067。
 
 Progress 是粗略 implementation checkpoint，不代表正式驗收。
 
