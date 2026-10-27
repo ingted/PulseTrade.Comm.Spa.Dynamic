@@ -253,6 +253,17 @@ module ProjectionCommitGate =
           CoverageRevision = coverageRevision
           QueryGeneration = queryGeneration }
 
+    let sameProjectionKey left right =
+        left.Identity = right.Identity
+        && left.DocumentRevision = right.DocumentRevision
+        && left.DataRevision = right.DataRevision
+        && left.CoverageIdentity = right.CoverageIdentity
+        && left.CoverageRevision = right.CoverageRevision
+        && left.QueryGeneration = right.QueryGeneration
+
+    let sameProjectionState left right =
+        sameProjectionKey (key left) (key right)
+
     let initial =
         { Generation = 0
           Pending = None
@@ -267,7 +278,7 @@ module ProjectionCommitGate =
 
     let pendingGenerationFor (state: RuntimeState) (gate: TaProjectionCommitGateState) =
         match gate.Pending with
-        | Some candidate when key candidate.State = key state -> Some candidate.Generation
+        | Some candidate when sameProjectionState candidate.State state -> Some candidate.Generation
         | _ -> None
 
     let tryCommit
@@ -280,15 +291,15 @@ module ProjectionCommitGate =
         | Some candidate
             when generation = candidate.Generation
                  && generation = gate.Generation
-                 && key candidate.State = key candidateState
-                 && key currentRuntimeState = key candidateState ->
-            let candidateKey = key candidateState
+                 && sameProjectionState candidate.State candidateState
+                 && sameProjectionState currentRuntimeState candidateState ->
+            let currentKey = key currentRuntimeState
             let committed =
-                if gate.LastCommitted = Some candidateKey then None
-                else Some candidateState
+                if gate.LastCommitted |> Option.exists (sameProjectionKey currentKey) then None
+                else Some currentRuntimeState
             { gate with
                 Pending = None
-                LastCommitted = Some candidateKey },
+                LastCommitted = Some currentKey },
             committed
         | _ -> gate, None
 

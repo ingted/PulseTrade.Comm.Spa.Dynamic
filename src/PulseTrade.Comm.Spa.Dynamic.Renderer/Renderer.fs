@@ -3481,7 +3481,7 @@ module TaWorkspaceRenderer =
                             not staleCoverageCandidate
                             && not (runtimeDataChanged candidate current)
                             && sameDocumentPresentation candidate current
-                            && ProjectionCommitGate.key candidate = ProjectionCommitGate.key current
+                            && ProjectionCommitGate.sameProjectionState candidate current
                         then
                             latestPreparedData <- prepared
                             observedChartTopology <- chartTopologySignaturePrepared current prepared
@@ -3530,7 +3530,7 @@ module TaWorkspaceRenderer =
                         not (runtimeDataChanged next current)
                         && (not coverageChanged
                             || (sameDocumentPresentation next current
-                                && ProjectionCommitGate.key next = ProjectionCommitGate.key current))
+                                && ProjectionCommitGate.sameProjectionState next current))
                     if currentMatchesCandidate then
                         match previousCoverageProjection, current.Document, coverageProjection current with
                         | Some previousProjection, Some document, Some currentProjection when coverageChanged ->
@@ -4769,7 +4769,7 @@ module TaWorkspaceRenderer =
                                         draftWindow.Value <- None
                                 | Some direction, Some(_, _, _, projection, snapshotKey)
                                     when RendererModel.requiresNavigatorAdjacentEventRangeMaterialization projection
-                                         && ProjectionCommitGate.key runtimeState.Value = snapshotKey
+                                         && ProjectionCommitGate.sameProjectionKey (ProjectionCommitGate.key runtimeState.Value) snapshotKey
                                          && actionAllowed "visible-range-changed" ->
                                     setDragDiagnostic
                                         "data-drag-outcome"
@@ -4782,7 +4782,7 @@ module TaWorkspaceRenderer =
                                         "Loaded coverage requested."
                                 | Some _, Some(_, _, _, projection, snapshotKey)
                                     when projection.GlobalOverview.IsSome
-                                         && ProjectionCommitGate.key runtimeState.Value = snapshotKey ->
+                                         && ProjectionCommitGate.sameProjectionKey (ProjectionCommitGate.key runtimeState.Value) snapshotKey ->
                                     commitLocalDraft ()
                                 | Some _, Some _ ->
                                     setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"

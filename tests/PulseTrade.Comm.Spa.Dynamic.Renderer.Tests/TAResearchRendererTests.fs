@@ -184,6 +184,44 @@ let tests =
                 committedGate.LastCommitted
                 "deduplication must preserve the committed watermark"
 
+        testCase "DYN-T-734 projection commit survives a heartbeat-only transport advance" <| fun _ ->
+            let identity =
+                { DocumentId = DocumentId "projection-heartbeat"
+                  CanvasInstanceId = CanvasInstanceId "projection-heartbeat-canvas" }
+            let candidate =
+                { RuntimeReducer.initial identity with
+                    DocumentRevision = 7L
+                    DataRevision = 11L
+                    LastTransportSequence = 40L }
+            let heartbeat =
+                { candidate with
+                    LastTransportSequence = 41L }
+            let gate, generation =
+                ProjectionCommitGate.beginCandidate candidate ProjectionCommitGate.initial
+
+            let committedGate, committed =
+                ProjectionCommitGate.tryCommit heartbeat generation candidate gate
+
+            Expect.isTrue
+                (ProjectionCommitGate.sameProjectionState candidate heartbeat)
+                "transport sequence alone must not change projected document/data/coverage identity"
+            Expect.equal
+                committed
+                (Some heartbeat)
+                "a heartbeat-only transport advance must publish the latest equivalent runtime envelope"
+            Expect.isNone committedGate.Pending "the completed candidate must release the pending gate"
+
+            let laterHeartbeat = { heartbeat with LastTransportSequence = 42L }
+            let duplicateGate, duplicateGeneration =
+                ProjectionCommitGate.beginCandidate laterHeartbeat committedGate
+            let _, duplicateCommit =
+                ProjectionCommitGate.tryCommit laterHeartbeat duplicateGeneration laterHeartbeat duplicateGate
+
+            Expect.isNone duplicateCommit "heartbeat-only transport traffic must not publish duplicate projections"
+            Expect.isFalse
+                (ProjectionCommitGate.sameProjectionState candidate { heartbeat with DataRevision = 12L })
+                "a data revision change must still invalidate the old projected state"
+
         testCase "DYN-T-687 point hit selection uses rendered x/y geometry and stable trace identity" <| fun _ ->
             let candidate traceId dataRef eventTime traceKind component x minimumY maximumY =
                 { RowId = "row-main"
@@ -4766,7 +4804,7 @@ let tests =
             Expect.stringContains preparationBody "preparationPending.Value <- true" "Preparation must expose a pending overlay state."
             Expect.stringContains preparationBody "initialGlobalPhase.Value" "Fresh mounting must retain an explicit GLOBAL-first phase."
             Expect.stringContains preparationBody "not staleCoverageCandidate" "A stale coverage candidate must not replace the committed frame."
-            Expect.stringContains preparationBody "ProjectionCommitGate.key candidate = ProjectionCommitGate.key current" "Atomic publication must match document/data/coverage/query generation."
+            Expect.stringContains preparationBody "ProjectionCommitGate.sameProjectionState candidate current" "Atomic publication must match document/data/coverage/query generation while tolerating heartbeat-only transport advances."
             Expect.stringContains source "data-global-phase\" \"phase-1" "Phase one must expose a stable GLOBAL loading marker."
             Expect.stringContains source "if isInitialGlobalPhase then" "Resident/detail publication must be gated by the GLOBAL-first phase."
             Expect.stringContains source "data-renderer-body-to-pending-ms" "Renderer telemetry must measure receive-to-pending latency."
