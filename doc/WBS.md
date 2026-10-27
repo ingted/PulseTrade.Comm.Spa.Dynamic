@@ -1,6 +1,6 @@
 # PulseTrade.Comm.Spa.Dynamic WBS
 
-DYN-WBS-620 current：0.3.15 owner133/133＋20/20、fresh Ptcs.Client0.2.3 17/17與Release/verifier過；真79根雙向邊界1/1、rapid1003frames/0regression、最小returned2991→694 1/1均PASS（DYN-VFY-064～066）。Consumer50136779、focused資產d32d16fc已push。剩餘僅原full長序列ui27的歷史RED未有終點trace，owner做一次必要prefix採樣；不把最小PASS當原序列根因已解，不先改碼/出新版。user重開Chrome已更新至最新host並載入真資料。
+DYN-WBS-620 current：0.3.15既有左界/雙向/rapid gates與r12精確700 resize已過；formal走到新尾段仍RED，無GLOBAL label2991/gesture1500分裂使+600被當Later1500。RFC D39已最小修正共同coverage domain，DYN-T-745於0.3.15先重現expected2991/actual1500；Renderer source Release39 warnings/0 errors。Renderer/Interactive0.3.16與Ptcs.Client0.2.4 candidate待fresh exact-package tests、consumer focused與full formal；未發布/未部署/不宣告全過。consumer source50136779及test-only ca4ec917已push，owner保持分工。現有user Chrome仍0.3.15真資料可操作，待新consumer gate後更新。
 
 Progress 是粗略 implementation checkpoint，不代表正式驗收。
 

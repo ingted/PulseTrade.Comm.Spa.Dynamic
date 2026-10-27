@@ -1,16 +1,21 @@
 ---
 status: active
-updated: 2026-10-27
+updated: 2026-10-28
 scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 ---
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
+### DYN-VFY-067 無GLOBAL loaded domain修復（2026-10-28；candidate未交付）
+
+- Consumer test-only `ca4ec91725c1751c76095e8028ebeb96391724a8`已push；owner報r12精確700 request/ACK/DOM/time-axis/gen皆過、pure oracle6/6。原full首次走到resident-local向右600，仍RED；r11 evidence `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0315-oracle-r11\resident-local-700.json`已程式讀，ui29實際Later1500、final startDelta1500。
+- ui28 ACK無GLOBAL、active1500、segments1500+1491；產品label與gesture/selection取不同domain。D39共用既有coverage helper，DYN-T-745在0.3.15實跑1/0/1 RED（expected2991/actual1500）。Renderer source Release39 warnings/0 errors；Renderer/Interactive0.3.16、Ptcs.Client0.2.4 candidate，fresh package/owner tests/consumer真UI仍待驗，不把build當完成。
+
 ### DYN-VFY-066 雙向consumer與最小returned resize（2026-10-28）
 
 - Research consumer source `50136779af6b4f9534a3476be618fe07e6d01719`已push；Later contract限定no-ordinal/Later/ExplicitBounds/NavigatorWindow，沿active-axis接點處理。owner focused11/11（修前10/1 RED）、clean Release127 warnings/0 errors，R7雙向真案例1/1 PASS。已程式讀取 `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0315-laterfix-r7\later-4500-80.json`：rev8、loaded4500/visible79、local start3277、resident start1388055、ready=true/pending=false、無action/browser errors。DYN-VFY-065所列Later缺口已關閉。
 - 最小returned2991→694驗收腳本source `d32d16fc1d6ba269d2fe0d2416e3c80f00bc79a4`已push，1/1 PASS（35.29s）。已讀r5 JSON：ACK protocol sdui-runtime.v2、BaseDataRevision4→5、transport7；final Viewing798-1491/local797/count694、coverage rev4/gen2、settlement selected-applied、pending空、request與visible first皆2026-05-08T08:00+08。evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\returned2991-left-resize694-r5\returned2991-left-resize694.json`與`resize-ack-frame.json`。
-- 此PASS不覆蓋原full ui27缺失終點的RED。r5腳本直接query2026-05-01..07-15，未包含原full的2018/global/rapid歷史。只請owner再做一次有最後ACK/DOM採樣的必要原prefix，定位序列差異；暫不改產品或重新pack。續作plan/hypothesis見`log/20261028/20261028001000.returned_resize_sequence.log`及同timestamp issue檔。
+- r8補齊原full ui27的ACK/終點後，已證明此歷史RED是verifier幾何/oracle不一致：request694/gen25，ACK與final皆rev28/gen25、Viewing798-1491/count694、pending空/ready=true，visible首時間與request精確一致；但formal硬編碼700±5。formal以left handle中心推pointer-up，Renderer ResizeLeft卻以logical selection-left edge為canonical anchor，故兩種流程均發出694。owner僅修測試座標原點與獨立oracle，不放寬容差、不改產品anchor或重新pack；修後完整formal及原未到達尾段仍待實跑。r8 evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0315-prefix-terminal-r8\formal-prefix-left-resize-terminal.json`及`formal-prefix-left-resize-ack-frame.json`；已程式投影確認。原RED保留，plan/hypothesis見`log/20261028/20261028001000.returned_resize_sequence.log`及同timestamp issue檔。
 - Chrome page4已在consumer50136779部署後重新load/Run，00:14觀察Loaded4500/Viewing3001-4500、nav count4500、console error0；URL仍http://localhost:18884/。
 
 ### DYN-VFY-065 左界雙步與rapid真UI（已驗範圍PASS，完整formal仍RED）

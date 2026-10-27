@@ -31,6 +31,69 @@ let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc avai
 
 let tests =
     testList "TA renderer model" [
+        testCase "DYN-T-745 non-GLOBAL loaded segments share label selection gesture and queued authority" <| fun _ ->
+            let segment id start count first last =
+                { SegmentId = id
+                  StartObservationOrdinal = start
+                  ObservationCount = count
+                  StartEventTimeUtc = first
+                  EndEventTimeExclusiveUtc = last }
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:native-30k-two-pages"
+                  CoverageRevision = 29L
+                  QueryGeneration = 26L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = None
+                  Segments =
+                    [| segment "earlier" 0L 1500L "2026-04-15T00:31:00Z" "2026-05-29T02:31:00Z"
+                       segment "returned" 1500L 1491L "2026-05-29T02:31:00Z" "2026-07-14T04:01:00Z" |]
+                  OverviewAxisRef = "overview:native-30k"
+                  OverviewAnchors = [||]
+                  ActiveDetail = { BaseAxisRef = "axis.30k"; StartObservationOrdinal = 0L; ObservationCount = 1500 }
+                  GlobalOverview = None }
+            let visible = { StartIndex = 797; Count = 694 }
+            let domain = RendererModel.resolveNavigatorGestureDomain 40 1500 1500 visible None projection
+            Expect.equal domain.DomainCount 2991 "Loaded 2991 must not silently become a 1500-slot drag domain."
+            Expect.equal domain.CommittedWindow visible "The first page retains its native loaded offset."
+            Expect.isTrue domain.UsesResidentAuthority "A bounded native loaded domain is usable without a GLOBAL overview."
+            Expect.equal
+                (RendererModel.navigatorSelectionRatiosForRender None (Some projection) (Array.create 1500 "2026-05-08T00:00:00Z") visible None)
+                (797.0 / 2991.0, 1491.0 / 2991.0)
+                "The displayed selection and label must use the same loaded coordinate domain."
+            let delta = RendererModel.navigatorGestureDeltaForDomain domain.DomainCount (600.0 / 2991.0)
+            let moved = RendererModel.previewWindowBounds 40 1500 domain.DomainCount domain.CommittedWindow TaWindowDrag.Move delta
+            Expect.equal moved { StartIndex = 1397; Count = 694 } "A +600 move crosses the active page but stays inside the loaded domain."
+            Expect.isNone (RendererModel.navigatorBoundaryDirection domain.DomainCount visible TaWindowDrag.Move delta) "An active-page boundary is not a loaded-data boundary."
+            let intent = RendererModel.tryNavigatorGestureCoverageIntent domain projection moved |> Option.defaultWith (fun () -> failtest "Native loaded move must produce an intent.")
+            Expect.equal intent.StartObservationOrdinal (Some 1397L) "Use the native loaded ordinal, never a GLOBAL 1K ordinal."
+            Expect.equal intent.ObservationCount 694 "Materialization must preserve the visible width."
+            Expect.isNone intent.Direction "An interior materialization must not request Later 1500."
+            Expect.equal intent.ExpectedCoverageRevision (Some 29L) "The intent is fenced by its loaded projection."
+            Expect.equal intent.QueryGeneration 27L "The materialization advances generation once."
+            for drag,delta,expected in
+                [ TaWindowDrag.ResizeLeft, -200, { StartIndex = 597; Count = 894 }
+                  TaWindowDrag.ResizeRight, 100, { StartIndex = 797; Count = 794 } ] do
+                Expect.equal
+                    (RendererModel.previewWindowBounds 40 1500 domain.DomainCount visible drag delta)
+                    expected
+                    "Both handles use the same loaded coordinate domain."
+            let newer =
+                { projection with
+                    CoverageRevision = 30L
+                    QueryGeneration = 27L
+                    ActiveDetail = { projection.ActiveDetail with StartObservationOrdinal = 1500L; ObservationCount = 1491 } }
+            let rebased = RendererModel.resolveNavigatorGestureDomain 40 1500 1491 { StartIndex = 100; Count = 100 } None newer
+            Expect.equal rebased.CommittedWindow { StartIndex = 1600; Count = 100 } "Queued gestures retain the active page offset in loaded coordinates."
+            Expect.isTrue (RendererModel.residentGestureScopeMatches projection newer) "A newer ACK may move active detail within unchanged loaded segments."
+            for invalid in
+                [ { newer with CoverageIdentity = "other" }
+                  { newer with CoverageRevision = 28L }
+                  { newer with QueryGeneration = 25L }
+                  { newer with OverviewAxisRef = "other-axis" }
+                  { newer with ActiveDetail = { newer.ActiveDetail with BaseAxisRef = "axis.1k" } }
+                  { newer with Segments = [| newer.Segments[0] |] } ] do
+                Expect.isFalse (RendererModel.residentGestureScopeMatches projection invalid) "A queued native gesture cannot cross a changed identity, axis, segment domain or stale generation."
+
         testCase "DYN-T-602 projection commit gate rejects stale superseded and duplicate candidates" <| fun _ ->
             let identity =
                 { DocumentId = DocumentId "projection-commit"
@@ -2235,7 +2298,7 @@ let tests =
                 "when projection.GlobalOverview.IsSome"
                 "the live global-backed branch must remain on the local event-time commit route"
 
-        testCase "resident navigator drag remains local and requests coverage only after explicit overscroll" <| fun _ ->
+        testCase "non-GLOBAL selection uses loaded coordinates while active-only window math stays bounded" <| fun _ ->
             let projection : TaLoadedCoverageProjection =
                 { CoverageIdentity = "coverage:global-drag"
                   CoverageRevision = 17L
@@ -2263,7 +2326,7 @@ let tests =
             let moved = RendererModel.previewWindowBounds 12 4000 localTotal committed TaWindowDrag.Move -26
             let resizedToHead = RendererModel.previewWindowBounds 12 4000 localTotal committed TaWindowDrag.ResizeLeft -40
 
-            Expect.equal renderedRatios (0.2, 0.6) "The resident navigator renders against its 200-point local reference, not the 900-point coverage domain."
+            Expect.equal renderedRatios (740.0 / 900.0, 820.0 / 900.0) "D39: the selection includes ActiveDetail.Start and matches the 900-point loaded label."
             Expect.equal moved { StartIndex = 14; Count = 80 } "A local move remains in resident-relative indexes."
             Expect.equal resizedToHead { StartIndex = 0; Count = 120 } "Reaching the resident head is still a local resize."
             Expect.isNone
@@ -4550,7 +4613,6 @@ let tests =
                   "Attr.Create \"data-window-drag-mode\" TaWindowDrag.Move"
                   "Attr.Dynamic \"x\" selectionX; svgAttr \"y\" \"0\"; Attr.Dynamic \"width\" selectionWidth"
                   "let residentNavigatorAuthority = Var.Create<TaResidentNavigatorAuthority option> None"
-                  "RendererModel.tryResidentNavigatorWindowWithAuthority"
                   "RendererModel.coverageNavigatorWindowWithAuthority"
                   "RendererModel.navigatorSelectionRatiosForRenderWithAuthority"
                   "if finishNavigatorDrag.IsSome then"
@@ -4558,6 +4620,12 @@ let tests =
                   "JS.Document.AddEventListener(\"pointerup\", upHandler)"
                   "JS.Document.AddEventListener(\"pointercancel\", cancelHandler)" ] do
                 Expect.stringContains source required ("missing navigator lifetime contract: " + required)
+
+            let rebaseStart = source.IndexOf("dispatchResidentGesture <-", StringComparison.Ordinal)
+            let rebaseEnd = source.IndexOf("let withLoadedCoverage", rebaseStart, StringComparison.Ordinal)
+            let rebaseSource = source.Substring(rebaseStart, rebaseEnd - rebaseStart)
+            Expect.stringContains rebaseSource "RendererModel.coverageNavigatorWindowWithAuthority" "D39 queued gestures use the same loaded domain as pointerdown and selection."
+            Expect.stringContains rebaseSource "RendererModel.tryNavigatorGestureCoverageIntent" "D39 queued gestures retain native versus GLOBAL intent mapping."
 
             let moveHitIndex = source.IndexOf("Attr.Create \"data-testid\" \"ta-overview-move-hit\"", StringComparison.Ordinal)
             let leftHandleIndex = source.IndexOf("Attr.Create \"data-testid\" \"ta-overview-left-handle\"", StringComparison.Ordinal)

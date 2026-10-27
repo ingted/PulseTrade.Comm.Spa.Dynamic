@@ -4316,9 +4316,9 @@ module TaWorkspaceRenderer =
                 let timeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
                 let currentWindow = resolvedWindow uiState.Value
                 match RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
-                | Some projection when projection.GlobalOverview.IsSome ->
+                | Some projection ->
                     match
-                        RendererModel.tryResidentNavigatorWindowWithAuthority
+                        RendererModel.coverageNavigatorWindowWithAuthority
                             timeline.Length
                             currentWindow
                             residentNavigatorAuthority.Value
@@ -4340,6 +4340,9 @@ module TaWorkspaceRenderer =
                             chartStackElement.SetAttribute("data-drag-rebased-domain-count", string total)
                             chartStackElement.SetAttribute("data-drag-rebased-delta", string rebasedDelta)
                         match RendererModel.navigatorBoundaryDirection total committed drag rebasedDelta with
+                        | Some direction when projection.GlobalOverview.IsNone && actionAllowed "visible-range-changed" ->
+                            recordViewportDispatch "rebased-loaded-adjacent" None (Some committed.Count) (Some deltaRatio)
+                            dispatchNavigatorAdjacentCoverage direction rebasedDelta committed.Count successText
                         | Some direction when actionAllowed "visible-range-changed" ->
                             match
                                 RendererModel.tryResidentAdjacentCoverageIntent
@@ -4359,7 +4362,12 @@ module TaWorkspaceRenderer =
                             | None -> rejectNavigatorDraft "Rebased resident coverage is unavailable."
                         | Some _ -> rejectNavigatorDraft "Rebased resident action is disabled."
                         | None ->
-                            match RendererModel.tryResidentCoverageWindowIntent projection rebasedDraft with
+                            match
+                                RendererModel.tryNavigatorGestureCoverageIntent
+                                    { DomainCount = total; CommittedWindow = committed; UsesResidentAuthority = true }
+                                    projection
+                                    rebasedDraft
+                            with
                             | Some intent ->
                                 match intent.StartObservationOrdinal with
                                 | Some targetStart ->
@@ -4638,12 +4646,13 @@ module TaWorkspaceRenderer =
                                 finishNavigatorDrag <- None
                                 activeNavigatorDragMode <- None
                                 activeNavigatorCursor <- None
-                                let hasGlobalResidentTrack =
-                                    loadedCoverageSnapshot
-                                    |> Option.exists (fun (_, _, _, projection, _) -> projection.GlobalOverview.IsSome)
+                                let hasResidentTrack =
+                                    gestureDomain.UsesResidentAuthority
+                                    || (loadedCoverageSnapshot
+                                        |> Option.exists (fun (_, _, _, projection, _) -> projection.GlobalOverview.IsSome))
                                 let boundaryDirection =
                                     RendererModel.navigatorGestureBoundaryDirection
-                                        hasGlobalResidentTrack
+                                        hasResidentTrack
                                         total
                                         committed
                                         drag
@@ -4727,7 +4736,8 @@ module TaWorkspaceRenderer =
                                             settleVisibleRangeDraft ()
 
                                 match boundaryDirection, loadedCoverageSnapshot with
-                                | Some direction, Some(_, _, _, projection, snapshotKey) when gestureDomain.UsesResidentAuthority ->
+                                | Some direction, Some(_, _, _, projection, snapshotKey)
+                                    when gestureDomain.UsesResidentAuthority && projection.GlobalOverview.IsSome ->
                                     if residentSnapshotCurrent snapshotKey projection && actionAllowed "visible-range-changed" then
                                         match RendererModel.tryResidentAdjacentCoverageIntent direction (maximumVisibleBarsNow ()) committed projection with
                                         | Some intent ->

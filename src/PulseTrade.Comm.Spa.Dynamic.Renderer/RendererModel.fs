@@ -2717,30 +2717,6 @@ module RendererModel =
         (projection: TaLoadedCoverageProjection) =
         tryResidentNavigatorWindow activeReferenceLength activeWindow projection
 
-    let resolveNavigatorGestureDomain
-        minimumCount
-        maximumCount
-        activeReferenceLength
-        activeWindow
-        authority
-        projection =
-        match
-            tryResidentNavigatorWindowWithAuthority
-                activeReferenceLength
-                activeWindow
-                authority
-                projection
-        with
-        | Some(_, total, committed) ->
-            { DomainCount = total
-              CommittedWindow = committed
-              UsesResidentAuthority = true }
-        | None ->
-            let total = max 0 activeReferenceLength
-            { DomainCount = total
-              CommittedWindow = clampWindow minimumCount maximumCount total activeWindow
-              UsesResidentAuthority = false }
-
     let globalResidentSelectionRatios (overview: TaGlobalCoverageOverview) window =
         if overview.TotalObservationCount <= 0L || window.ObservationCount <= 0 then
             0.0, 0.0
@@ -2919,6 +2895,30 @@ module RendererModel =
         tryLoadedCoverage defaultView
         |> Option.bind (coverageNavigatorWindow activeReferenceLength activeWindow)
 
+    let resolveNavigatorGestureDomain
+        minimumCount
+        maximumCount
+        activeReferenceLength
+        activeWindow
+        authority
+        projection =
+        match
+            coverageNavigatorWindowWithAuthority
+                activeReferenceLength
+                activeWindow
+                authority
+                projection
+        with
+        | Some(_, total, committed) ->
+            { DomainCount = total
+              CommittedWindow = committed
+              UsesResidentAuthority = true }
+        | None ->
+            let total = max 0 activeReferenceLength
+            { DomainCount = total
+              CommittedWindow = clampWindow minimumCount maximumCount total activeWindow
+              UsesResidentAuthority = false }
+
     let tryCoverageNavigatorWindowResolved activeReferenceLength activeWindow defaultView data =
         tryLoadedCoverageResolved defaultView data
         |> Option.bind (coverageNavigatorWindow activeReferenceLength activeWindow)
@@ -2994,7 +2994,9 @@ module RendererModel =
 
     let tryNavigatorGestureCoverageIntent domain projection window =
         if domain.UsesResidentAuthority then
-            tryResidentCoverageWindowIntent projection window
+            match projection.GlobalOverview with
+            | Some _ -> tryResidentCoverageWindowIntent projection window
+            | None -> tryLoadedCoverageWindowIntent projection window
         else
             None
 
@@ -3006,6 +3008,11 @@ module RendererModel =
            | Some before, Some after ->
                before.ResidentStartObservationOrdinal = after.ResidentStartObservationOrdinal
                && before.ResidentObservationCount = after.ResidentObservationCount
+           | None, None ->
+               snapshot.ActiveDetail.BaseAxisRef = current.ActiveDetail.BaseAxisRef
+               && snapshot.OverviewAxisRef = current.OverviewAxisRef
+               && snapshot.Segments = current.Segments
+               && snapshot.TotalObservationCount = current.TotalObservationCount
            | _ -> false
 
     let tryAdjacentCoverageIntent (direction: TaCoverageDirection) maximumVisibleBars activeReferenceLength activeWindow projection =
@@ -3385,14 +3392,14 @@ module RendererModel =
         (activeReferenceTimeline: string array)
         activeWindow
         localDraft
-        _authority
+        authority
         =
         match activeGestureOverride with
         | Some ratios -> ratios
         | None ->
             match projection with
-            | Some current when current.GlobalOverview.IsSome ->
-                match tryResidentNavigatorWindow activeReferenceTimeline.Length activeWindow current with
+            | Some current ->
+                match coverageNavigatorWindowWithAuthority activeReferenceTimeline.Length activeWindow authority current with
                 | Some(_, total, committed) ->
                     localDraft
                     |> Option.defaultValue committed

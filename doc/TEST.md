@@ -1,8 +1,12 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## Current gate：DYN-T-743/744 queue authority（0.3.15）
+## Current gate：DYN-T-745 native loaded domain（RFC D39 / 0.3.16 candidate）
 
-2026-10-28補驗：consumer50136779 Later focused11/11、真79根雙向1/1 PASS；returned2991→694最小真流程1/1 PASS、ACK/final generation及時間錨點一致。原full長序列歷史RED仍保留，只補一次必要prefix終點trace，不調oracle/timeout。最新scope及exact證據以DYN-VFY-066為準。
+2991 loaded/1500 active、797/694向右600須1397/694且Direction=None；同驗selection分母/active offset/兩側resize、同scope較新ACK及不同identity/axis/segments/stale rev/gen拒絕，queued wiring須共用coverage helper。先在0.3.15重現1 executed/0 passed/1 failed（expected2991/actual1500）；source已編譯，candidate exact-package及consumer真路徑未驗。舊無GLOBAL local-only selection斷言依D39改為ActiveDetail.Start+local在loaded domain的比例；GLOBAL跨axis保護不改。
+
+## Prior gate：DYN-T-743/744 queue authority（0.3.15）
+
+2026-10-28補驗：consumer50136779 Later focused11/11、真79根雙向1/1 PASS；returned2991→694最小真流程1/1 PASS、ACK/final generation及時間錨點一致。r8原prefix也證明694/gen25/時間錨點正確；歷史RED源於test handle中心與logical selection-left edge座標原點不一致，再被700±5 oracle拒絕。owner修測試幾何與獨立wrong count/anchor/stale generation反例，禁止擴容差換綠；完整formal含尾段仍待重驗，產品維持0.3.15。最新scope及exact證據以DYN-VFY-066為準。
 
 DYN-T-743於0.3.14 source wiring重現1 failed：shared dispatch gate漏pending event-range；DYN-T-744驗同coverage identity刷新revision/generation但保留UTC/count/purpose，以及跨identity、ordinal、direction、provider-open、typed無projection拒絕和legacy不變。0.3.15 exact-package133/133＋20/20、fresh Ptcs.Client0.2.3 17/17，0 ignored/failed/errored；verifier/LiveDemo Release過。0.3.14真79根左界touch＋第二pointer overflow保寬/接點accepted，0.3.15 rapid6 drops/2actions、1003frames/0regression PASS。完整formal仍在後續returned2991 left-resize694處RED，Later consumer另有拒絕；各gate分開記DYN-VFY-065，hash/provenance見DYN-VFY-064。
 

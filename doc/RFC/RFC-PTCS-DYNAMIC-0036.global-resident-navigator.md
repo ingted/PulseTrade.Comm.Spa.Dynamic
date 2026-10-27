@@ -1,5 +1,9 @@
 # RFC-PTCS-DYNAMIC-0036 Global Resident Navigator
 
+## D39 — 無GLOBAL loaded segments的共同導航座標（2026-10-28；既有bug修復範圍）
+
+r11真實3000級載入後，coverage含1500+1491兩segment、ActiveDetail僅1500、GlobalOverview=None；label走`coverageNavigatorWindow`顯示2991，selection/gesture卻退回1500。正常向右600被變成active尾端續載1500。決策：無GLOBAL時採既有loaded coverage原生ordinal（非GLOBAL 1K ordinal），標示、selection、gesture、queued rebase共用`coverageNavigatorWindowWithAuthority`；僅active detail仍是bounded payload。GLOBAL同axis仍resident offset，GLOBAL跨axis仍event-time/local安全分流，不重新解釋GLOBAL ordinal。覆蓋scope/revision/generation、segment更動拒絕及左右外界續載；不調provider/timeout、不放寬formal oracle。改後需producer RED→GREEN、consumer真同resident平移與原左界/rapid/full regression；過往無GLOBAL local-only selection測試須按新的共同座標不變量核對，不再把label/gesture矛盾當相容性契約。
+
 ## D36 — 2026-10-27 左界觸及即續載（user accepted；0.3.13）
 
 ### D38 — accepted event-range 的 queue authority（0.3.15）

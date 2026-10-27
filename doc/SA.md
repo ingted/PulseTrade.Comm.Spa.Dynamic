@@ -1,5 +1,9 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## Current：無GLOBAL loaded navigator共同authority（RFC-0036 D39）
+
+r11真資料coverage有2991個loaded ordinals，但ActiveDetail僅1500。label取loaded coverage、gesture/selection取active payload，最早偏離在`resolveNavigatorGestureDomain`與selection分流。共用既有`coverageNavigatorWindowWithAuthority`；無GLOBAL ordinal屬active axis的loaded segments，不是GLOBAL跨axis ordinal。保留bounded active payload與跨axis安全分流，scope需拒絕coverage identity/axis/segments更動。不是修600 oracle或把Later結果重標成local move。
+
 ## Current：ACK/prepared 之間的 queued authority（0.3.15 / RFC-0036 D38）
 
 真rapid證據的最早偏離是ui5 accepted後ui6/7仍帶expected revision5。runtime及committed都還是舊key時，相等不代表上一筆coverage已settle；LocalRange又保存舊action authority。修共同gate等待pending event-range，queue保留scope並在同scope發送前刷新revision/generation；不改UTC意圖，不放寬consumer驗證。0.3.14已過初始Earlier/resize，user約80根左界focused與rapid regression仍待真驗收。

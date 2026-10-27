@@ -1,5 +1,9 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## Current：無GLOBAL loaded navigator共同座標（RFC-0036 D39）
+
+`resolveNavigatorGestureDomain`及selection以`coverageNavigatorWindowWithAuthority`取得同一domain/window；無GLOBAL的intent復用`tryLoadedCoverageWindowIntent`，GLOBAL仍用resident offset。`residentGestureScopeMatches`對無GLOBAL比較native axis與segments，允許同scope較新revision/generation，不讓舊gesture跨域。queued rebase使用相同coverage window/intent；無GLOBAL外界沿既有event-time adjacent seam。DYN-T-745以2991 loaded/1500 active、797/694向右600先重現，再驗1397/694/no-direction；resize、active offset、metadata-only ACK與scope拒絕同驗。真formal由daedilus依修後共用domain重新量測，不能硬鎖舊錯誤domain的694結果。
+
 ## Current：queued event-range dispatch（0.3.15 / RFC-0036 D38）
 
 `committedCoverageReady`同時要求`pendingEventRangeSettlement.IsNone`，所有send/queue/drain沿同一gate。`LocalRange`帶captured coverage identity；`tryRefreshQueuedEventRangeAction`只在identity相同時保留原time/count/purpose並刷新explicit無ordinal/方向intent的revision與generation，跨scope或錯路徑拒絕；legacy無intent保持。Renderer/Interactive0.3.15、Ptcs.Client0.2.3同步全部active direct tests/LiveDemo；DYN-T-743/744、真rapid及左界focused為gate。Ptcs.Client設GeneratePackageOnBuild，release須先build產fresh DLL/package並驗ProductVersion，再交consumer；單獨pack不得視為已build。
