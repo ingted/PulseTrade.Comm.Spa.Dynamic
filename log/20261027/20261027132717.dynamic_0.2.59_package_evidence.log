@@ -1,0 +1,23 @@
+# Dynamic Renderer / Interactive.Client 0.2.59 package evidence
+
+## Pre-work plan
+
+- 背景：prepared-projection authority 修正與 DYN-T-725 已在 source commit `c843988feffdc4a5e3460cb2db0f1c94adf65408` push；正式 pack 起初受單一 orphan WebSharper compiler-service hidden handle 阻擋，已精確排除。
+- 目標：固化 immutable 0.2.59 package metadata/hash、package-backed tests、verifier、package-only BrowserDemo、文件/checker/evidence commit，並以 exact reply 交給 Daedilus 執行不變的真實 B acceptance。
+- 假設：source commit已固定且0.2.59 exact package chain可由SDK library-packs fresh restore；只要immutable metadata與package-backed gates一致，即可交付consumer owner，不需再改consumer或wire contract。
+- 範圍：Renderer／Interactive.Client final nupkg與local feed readback、兩個direct test projects、package verifier、package-only BrowserDemo、DYN-WBS-611／DYN-T-725／DevLog／logs、checker、evidence commit與COMM handoff。
+- Source of truth：兩個 final nupkg、SDK 10.0.402 `FSharp/library-packs` readback、fresh restore assets、Expecto summary、package verifier、BrowserDemo assets、DYN-WBS-611／DYN-T-725。
+- 不變事項：Contracts 維持 0.1.41；wire schema/purpose 不變；consumer source、count heuristic、A/D/highlight/Tagging 與獨立 2018 tail query-page mapping 均不修改。
+- 驗收：RepositoryCommit/ProductVersion exact source commit；Interactive exact Renderer `[0.2.59]`；feed hash parity；Renderer 113/113、Interactive 20/20、verifier PASS、BrowserDemo 0 errors；checker無本輪 FAIL；evidence commit/push與 COMM handoff 完成。
+- 風險／停止條件：若 immutable metadata、exact dependency 或 package-backed gate任一失敗即不 handoff；Daedilus real B 未到 local0 前不宣告 consumer完成。
+
+## Operations
+
+- 2026-10-27 13:23 +08:00：以 kernel file-handle enumeration 確認 orphan `wsfscservice.exe` PID 38440 持有 Renderer `websharper.log`，雖其 command line 僅列 Contracts log；parent PID 31788 已不存在。只停止精確 PID，generated log隨即消失，未改 ACL、未廣泛終止 compiler services。
+- 2026-10-27 13:24 +08:00：Renderer 0.2.59 formal Release Rebuild 成功（39既有 warnings／0 errors）；pack metadata `RepositoryCommit=c843988feffdc4a5e3460cb2db0f1c94adf65408`、`ProductVersion=0.2.59+c843988...`、Contracts=`[0.1.41]`，SHA-256=`018CEA4BB87C302DBC43C674DAE240CF3300373097B53FD940D71544C5A825D1`。SDK library-packs readback hash一致。
+- 2026-10-27 13:24 +08:00：Interactive.Client 0.2.59 restore／Release Rebuild 成功（1 warning／0 errors）；metadata RepositoryCommit/ProductVersion exact、Renderer=`[0.2.59]`、Contracts=`[0.1.41]`，SHA-256=`4E618702CB310C76E69798A99BA6353254059F3B8C369F6565DAA6B7131FDAC2`。SDK library-packs readback hash一致。
+- 2026-10-27 13:25 +08:00：fresh exact-package Renderer tests 113/113、Interactive.Client tests 20/20 PASS；`verify-interactive-client-package.fsx` PASS entries=4，回報SHA與final package一致。
+- 2026-10-27 13:26 +08:00：全新 package-only BrowserDemo staging解析 Contracts0.1.41／Renderer0.2.59／Interactive.Client0.2.59／FSharp.Core10.1.402／WebSharper680；Release build 1個既有 WS9002／0 errors，產生7個JS assets、2,756,854 bytes。未把 staging/temp 納入Git。
+- 2026-10-27 13:27 +08:00：package gates全綠；下一步只做current文件結果、sensitive/encoding/checker、evidence commit/push與 exact COMM handoff。真實 B acceptance仍由Daedilus consumer owner執行。
+- 2026-10-27 13:29 +08:00：owned 5 text paths sensitive scan `high=0 medium=0`，strict UTF-8/no BOM/no NUL/no U+FFFD皆PASS，tracked diff-check PASS。fresh checker session `agent.asteer-dyn0259-evidence-202610271328`為PASS30/WARN2/FAIL0；WARN僅shared repo dirty與既有全庫RFC traceability coverage，無本輪衝突。外部dirty `lib-packs.txt`、Ptcs test `Program.fs`、`.pcsl/**`、`temp/**`均未納入。
+- 2026-10-27 13:31 +08:00：第一次同session重跑因new evidence log成為latest而揭露plan缺少literal `假設`／`範圍`欄位；補齊後以fresh session `agent.asteer-dyn0259-final-202610271331`重驗為PASS30/WARN2/FAIL0，兩個WARN仍只有shared dirty與既有全庫RFC coverage。此為checker contract修正，未弱化gate。

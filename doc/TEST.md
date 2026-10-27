@@ -1,10 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-725（0.2.59 owner source / package pending）
+## 2026-10-27 DYN-T-725（0.2.59 owner package / consumer pending）
 
 - 契約：pointerdown coverage projection與timeline都來自同一`chartCommittedFrame` prepared data；runtime state只提供document/revision/key。禁止以`dragState.Data`解析失敗後送bare navigator action，也禁止改讀current/latest state。
 - RED：部署0.2.58 ProductVersion與bundle symbol正確，但真B仍無CoverageIntent/local1122；source-contract加入prepared authority後，0.2.58 package-backed Renderer 113 tests得到112 passed/1 failed，唯一失敗為pointerdown仍使用runtime envelope。
 - GREEN gate：production expression改為`dragPreparedData.RawData`，保留0.2.58 unconditional navigator purpose及全部main/resident/queue契約；fresh Renderer/Interactive/verifier/BrowserDemo及metadata/hash需通過。真B必須同序列action帶NavigatorWindow並settle local0，A/D/highlight/Tagging維持GREEN。
+- Owner GREEN：source `c843988feffdc4a5e3460cb2db0f1c94adf65408`；Renderer／Interactive.Client 0.2.59 SHA=`018CEA4BB87C302DBC43C674DAE240CF3300373097B53FD940D71544C5A825D1`／`4E618702CB310C76E69798A99BA6353254059F3B8C369F6565DAA6B7131FDAC2`，RepositoryCommit／DLL ProductVersion exact、Interactive Renderer=`[0.2.59]`、Contracts=`[0.1.41]`、SDK10.0.402 parity。Package-backed Renderer113/113、Interactive20/20、package verifier PASS；BrowserDemo exact chain 1個既有WS9002／0 errors、7 JS assets。Daedilus真B local0仍是最後acceptance，不以owner package gate代替。
 
 ## 2026-10-27 DYN-T-724（0.2.58 owner package / consumer pending）
 
