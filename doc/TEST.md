@@ -1,5 +1,12 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-733／733B（accepted query authoritative settlement）
+
+- RED：0.3.6 package-backed test新增settlement contract後只剩FS0039 8處／exit1，不改consumer expected。真實evidence為DataRevision25/queryGeneration19/activeDetail1450，但accepted callback以舊frame得NoIntersection後DOM保留Viewing1-1028。
+- Pure gate：baseline24/18對current24/18為Await；僅DataRevision25前進仍Await；25/19才Settled Selected；local latest20對intent19為Stale。
+- Production wiring：accepted path保留baseline且只讀`chartCommittedFrame`，不直接呼叫`queryViewportSelection`；incremental/full prepared-frame paths均必須settle。Focused 2/2、Renderer full124/124、Interactive.Client20/20、package verifierPASS。
+- 真Gate pending：Daedilus以原consumer/oracle/host重跑`formal-overview-edge-drag-0306-tail-settle` return-2026；要求Loaded1450且Viewing對requested 2026-06-01..07-15、browser/action errors空，同時post-drag、0.3.6 edge與formal stress不回歸。
+
 ## 2026-10-27 DYN-T-732（rendered selection right-edge snap）
 
 - RED fixture：total4500/count79、raw draft local4418；track1436、frozen move target local x1/width25.174667、pointer start13.587333、release1423.4127。0.3.5 package-backed compile因新pure seam FS0039 3處RED。

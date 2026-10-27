@@ -425,6 +425,11 @@ type TaQueryViewportSelection =
     | Invalid of string
     | Stale
 
+[<RequireQualifiedAccess>]
+type TaAcceptedQueryViewportSettlement =
+    | AwaitAuthoritativeFrame
+    | Settled of TaQueryViewportSelection
+
 [<JavaScript; RequireQualifiedAccess>]
 module TaWindowDrag =
     [<Literal>]
@@ -2070,6 +2075,24 @@ module RendererModel =
                     TaQueryViewportSelection.Invalid "query-range-invalid: FromUtc and ToUtcExclusive must be valid UTC timestamps."
             | _ ->
                 TaQueryViewportSelection.Invalid "query-range-invalid: FromUtc and ToUtcExclusive must be supplied together."
+
+    let acceptedQueryViewportSettlement
+        latestGeneration
+        intentGeneration
+        baselineDataRevision
+        baselineQueryGeneration
+        currentDataRevision
+        currentQueryGeneration
+        query
+        document
+        data =
+        if intentGeneration <> latestGeneration then
+            TaAcceptedQueryViewportSettlement.Settled TaQueryViewportSelection.Stale
+        elif currentDataRevision <= baselineDataRevision || currentQueryGeneration <= baselineQueryGeneration then
+            TaAcceptedQueryViewportSettlement.AwaitAuthoritativeFrame
+        else
+            queryViewportSelection latestGeneration intentGeneration query document data
+            |> TaAcceptedQueryViewportSettlement.Settled
 
     let tryBaseRow (document: TaWorkspaceDocument) : (string * TaRowSpec) option =
         document.BaseRowId

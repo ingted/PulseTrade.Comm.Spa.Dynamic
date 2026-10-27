@@ -176,6 +176,10 @@ D24把prepared欄位選對但把frame authority認錯：實際inner navigator由
 
 0.3.3真B證明source-level atomic frame reasoning仍不足以區分`projection=None`的publication來源。在改變行為前，Renderer必須以bounded document-root telemetry將publication與pointerdown對齊到renderer instance/publication sequence，並分別記錄state.Data、prepared.RawData與resolved projection。Trace只保留last-12 events，不含raw bars、不改wire/action/consumer。該instrumented package只是根因觀測gate，不能因owner tests綠就宣稱功能修復；必須由原封不動的真Gate B capture指出最早分歧，再實作永久修復。
 
+### D30. 2026-10-27 accepted query viewport waits for its authoritative prepared frame
+
+`ChangeTaQuery` action result與Renderer prepared-frame commit是不同authority。Client可先合併raw RuntimeFrame並完成accepted callback，但Renderer仍可持有舊prepared timeline；此時對requested range的`NoIntersection`不得成為最終結果。Dispatch必須凍結baseline DataRevision與loaded-coverage QueryGeneration，accepted只留generation-scoped pending intent；同identity且兩個revision皆前進的prepared frame才可單次套用temporal viewport。Newer local query、rejection或identity replacement取消舊intent。禁止timer/retry、重送action、直接對runtimeState求viewport或改consumer expected；wire與0.3.6 edge behavior不變。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

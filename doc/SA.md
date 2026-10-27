@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 accepted query / prepared-frame authority（DYN-WBS-619）
+
+Daedilus將獨立2018 return-tail縮成同一response內的authority時序：action requested 2026-06-01..07-15，response帶24 snapshot chunks，DataRevision25、coverageRevision24、queryGeneration19、activeDetail start0/count1450，但DOM是Loaded1450/Viewing1-1028。最早偏離是accepted callback在Renderer prepared frame仍為2018 timeline時直接消耗query viewport intent；`NoIntersection`成為最終結果，後續matching frame又無pending intent可套用。
+
+不變量是「accepted不等於presentation frame已commit」。Viewport intent必須鎖dispatch當下DataRevision/queryGeneration，只在同identity且兩者皆前進的authoritative prepared frame上單次消耗；newer local generation、rejected action或identity replacement不得回寫舊viewport。0.3.6 physical-edge close、consumer/oracle/host、wire與cache authority不變。
+
 ## 2026-10-27 rendered move-target right edge（DYN-WBS-618）
 
 0.3.5真consumer已證左視覺邊緣local0與真正Earlier coverage都GREEN，但右視覺邊緣action雖有NavigatorWindow intent，仍settle local4418而非maxStart4421。Exact geometry是track width1436、move target初始local x1/width25.174667、pointer start local13.587333、release local1423.4127；move target右緣已到1436，但pointer-center delta換算只得4418。最早偏離是draft geometry只看pointer center，沒有保留實際rendered move target的grab offset／visual edge。

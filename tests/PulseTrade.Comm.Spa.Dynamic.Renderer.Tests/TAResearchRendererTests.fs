@@ -1095,6 +1095,85 @@ let tests =
                 (TaQueryViewportSelection.Selected { StartIndex = 2; Count = 1 })
                 "the same query selects after the bounded patch is merged"
 
+        testCase "DYN-T-733 accepted query waits for its authoritative frame before selecting the viewport" <| fun _ ->
+            let row =
+                { RowId = "base"
+                  Kind = TaRowKind.Sma
+                  DataRef = "base"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = [||] }
+            let document =
+                { WorkspaceId = "query-return"
+                  Title = "Query return viewport"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "base"
+                  Rows = [| row |]
+                  EditorSchemas = [||]
+                  AllowedActions = [| "change-query" |]
+                  DefaultView = Map.empty }
+            let point minute =
+                let startUtc = sprintf "2026-09-22T00:%02d:00Z" minute
+                let endUtc = sprintf "2026-09-22T00:%02d:00Z" (minute + 1)
+                temporalPoint
+                    ("return:" + string minute)
+                    "1K"
+                    startUtc
+                    endUtc
+                    endUtc
+                    (Some endUtc)
+                    PointFinality.Final
+                    TemporalProjection.CandleSpan
+                    (Some "complete")
+                    (Some(SduiValue.Object(Map [ "v", SduiValue.Number(float minute) ])))
+            let dataFor minutes =
+                Map [ "base", SduiValue.Array(minutes |> Array.map point) ]
+            let query : TaQueryChange =
+                { SourceId = None
+                  Instrument = None
+                  IntervalMinutes = None
+                  FromUtc = Some "2026-09-22T00:04:00Z"
+                  ToUtcExclusive = Some "2026-09-22T00:05:00Z"
+                  IncludePartial = Some true }
+
+            Expect.equal
+                (RendererModel.acceptedQueryViewportSettlement 19 19 24L 18L 24L 18L query document (dataFor [| 0; 1 |]))
+                TaAcceptedQueryViewportSettlement.AwaitAuthoritativeFrame
+                "the accepted callback must not turn the old frame's NoIntersection into a final viewport result"
+            Expect.equal
+                (RendererModel.acceptedQueryViewportSettlement 19 19 24L 18L 25L 18L query document (dataFor [| 0; 1; 4 |]))
+                TaAcceptedQueryViewportSettlement.AwaitAuthoritativeFrame
+                "a data revision without the corresponding query generation is not the accepted query frame"
+            Expect.equal
+                (RendererModel.acceptedQueryViewportSettlement 19 19 24L 18L 25L 19L query document (dataFor [| 0; 1; 4 |]))
+                (TaAcceptedQueryViewportSettlement.Settled(TaQueryViewportSelection.Selected { StartIndex = 2; Count = 1 }))
+                "the viewport is selected only after both authoritative revisions advance"
+            Expect.equal
+                (RendererModel.acceptedQueryViewportSettlement 20 19 24L 18L 25L 19L query document (dataFor [| 0; 1; 4 |]))
+                (TaAcceptedQueryViewportSettlement.Settled TaQueryViewportSelection.Stale)
+                "a newer local query generation supersedes the pending selection"
+
+        testCase "DYN-T-733B production settles the accepted query only from committed prepared frames" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let submitStart = source.IndexOf("        let rec submitQuery", StringComparison.Ordinal)
+            let submitEnd = source.IndexOf("        let applyQuery", submitStart, StringComparison.Ordinal)
+            Expect.isGreaterThanOrEqual submitStart 0 "The production query submission path must exist."
+            Expect.isGreaterThan submitEnd submitStart "The production query submission body must be bounded."
+            let submitBody = source.Substring(submitStart, submitEnd - submitStart)
+            Expect.stringContains submitBody "BaselineDataRevision = baselineDataRevision" "The accepted intent must retain its dispatch-time data authority."
+            Expect.stringContains submitBody "BaselineQueryGeneration = baselineQueryGeneration" "The accepted intent must retain its dispatch-time query authority."
+            Expect.stringContains submitBody "chartCommittedFrame.Value" "The accepted callback may inspect only the last committed prepared frame."
+            Expect.isFalse
+                (submitBody.Contains("RendererModel.queryViewportSelection", StringComparison.Ordinal))
+                "The accepted callback must not consume the viewport intent directly against runtimeState."
+            Expect.stringContains source "settlePendingQueryViewportFor next nextPreparedData" "Incremental prepared-frame acceptance must settle the pending query."
+            Expect.stringContains source "settlePendingQueryViewportFor current prepared" "Full prepared-frame acceptance must settle the pending query."
+
         testCase "visible window handles short series" <| fun _ ->
             let actual =
                 RendererModel.clampWindow 12 160 5 { StartIndex = 20; Count = 48 }

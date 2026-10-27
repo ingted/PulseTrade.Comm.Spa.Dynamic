@@ -49,6 +49,12 @@ type TaPendingEventRangeSettlement =
       ObservationCount: int
       QueryGeneration: int64 }
 
+type TaPendingQueryViewportSettlement =
+    { Query: TaQueryChange
+      IntentGeneration: int
+      BaselineDataRevision: int64
+      BaselineQueryGeneration: int64 }
+
 [<RequireQualifiedAccess>]
 type TaQueuedViewportIntent =
     | LocalRange of SduiAction
@@ -2838,6 +2844,7 @@ module TaWorkspaceRenderer =
         let mutable queuedQuery: (TaQueryChange * int) option = None
         let mutable pendingBoundaryPan: TaPendingBoundaryPan option = None
         let mutable pendingEventRangeSettlement: TaPendingEventRangeSettlement option = None
+        let mutable pendingQueryViewportSettlement: TaPendingQueryViewportSettlement option = None
         let residentNavigatorAuthority = Var.Create<TaResidentNavigatorAuthority option> None
         let mutable queuedViewportIntent: TaQueuedViewportIntent option = None
         let mutable flushQueuedViewportIntent = ignore
@@ -3130,6 +3137,62 @@ module TaWorkspaceRenderer =
             let committedState, committedPreparedData = chartCommittedFrame.Value
             settlePendingEventRangeProjectionFor committedState committedPreparedData
 
+        let settlePendingQueryViewportFor (next: RuntimeState) nextPreparedData =
+            match pendingQueryViewportSettlement with
+            | None -> None
+            | Some pending when pending.IntentGeneration <> querySelectionGeneration ->
+                pendingQueryViewportSettlement <- None
+                Some(Some "A newer query superseded this response; the current viewport was preserved.")
+            | Some pending ->
+                match next.Document, coverageProjection next with
+                | Some document, Some projection ->
+                    match
+                        RendererModel.acceptedQueryViewportSettlement
+                            querySelectionGeneration
+                            pending.IntentGeneration
+                            pending.BaselineDataRevision
+                            pending.BaselineQueryGeneration
+                            next.DataRevision
+                            projection.QueryGeneration
+                            pending.Query
+                            document
+                            next.Data
+                    with
+                    | TaAcceptedQueryViewportSettlement.AwaitAuthoritativeFrame -> None
+                    | TaAcceptedQueryViewportSettlement.Settled selection ->
+                        pendingQueryViewportSettlement <- None
+                        match selection with
+                        | TaQueryViewportSelection.NotRequested -> Some None
+                        | TaQueryViewportSelection.Selected window ->
+                            let total = RendererModel.referenceTimelineForDocumentPrepared document nextPreparedData |> Array.length
+                            let bounded =
+                                RendererModel.resolveWindow
+                                    options.MinimumVisibleBars
+                                    (maximumVisibleBarsFor document)
+                                    total
+                                    false
+                                    window
+                            setUiState
+                                { uiState.Value with
+                                    Window = bounded
+                                    FollowLatest = false
+                                    CursorIndex = None }
+                            cursorIndex.Value <- None
+                            defaultViewportAppliedToCanvas <- Some(viewportScopeKey next document)
+                            Some None
+                        | TaQueryViewportSelection.NoIntersection ->
+                            Some(Some "Query accepted, but the requested range has no loaded observations; the current viewport was preserved.")
+                        | TaQueryViewportSelection.Invalid reason -> Some(Some reason)
+                        | TaQueryViewportSelection.Stale ->
+                            Some(Some "A newer query superseded this response; the current viewport was preserved.")
+                | _ -> None
+
+        let publishPendingQueryViewportFeedback result =
+            result
+            |> Option.bind id
+            |> Option.iter (fun feedback ->
+                setUiState { uiState.Value with Feedback = feedback })
+
         let acceptPreparedDataCore refreshRows (next: RuntimeState) nextPreparedData =
             let committedState, _ = chartCommittedFrame.Value
             let nextChartTopology = chartTopologySignaturePrepared next nextPreparedData
@@ -3275,6 +3338,8 @@ module TaWorkspaceRenderer =
                 scheduleRowDataRefresh projectionCandidateGeneration next nextPreparedData
             latestPreparedData <- nextPreparedData
             observedDataState <- next
+            settlePendingQueryViewportFor next nextPreparedData
+            |> publishPendingQueryViewportFeedback
 
         let acceptPreparedData refreshRows (next: RuntimeState) nextPreparedData =
             let staleCoverageCandidate =
@@ -3329,6 +3394,8 @@ module TaWorkspaceRenderer =
                             beginProjection current |> ignore
                             chartCommittedFrame.Value <- current, prepared
                             shellPreparedFrame.Value <- current, prepared
+                            settlePendingQueryViewportFor current prepared
+                            |> publishPendingQueryViewportFeedback
                             viewportDataReady.Value <- true
                             preparationPending.Value <- false
                             scheduleNextFrame (fun () ->
@@ -3452,6 +3519,7 @@ module TaWorkspaceRenderer =
                 globalResidentDraft.Value <- None
                 pendingBoundaryPan <- None
                 pendingEventRangeSettlement <- None
+                pendingQueryViewportSettlement <- None
                 residentNavigatorAuthority.Value <- None
                 queuedViewportIntent <- None
                 draftWindow.Value <- None
@@ -5326,27 +5394,21 @@ module TaWorkspaceRenderer =
 
         let rec submitQuery query intentGeneration =
             queryInFlight <- true
+            let baselineDataRevision = runtimeState.Value.DataRevision
+            let baselineQueryGeneration =
+                coverageProjection runtimeState.Value
+                |> Option.map _.QueryGeneration
+                |> Option.defaultValue -1L
             let applyAcceptedQuery () =
-                match runtimeState.Value.Document with
-                | None -> Some "query-viewport-unavailable: the workspace document is not loaded."
-                | Some currentDocument ->
-                    match
-                        RendererModel.queryViewportSelection
-                            querySelectionGeneration
-                            intentGeneration
-                            query
-                            currentDocument
-                            runtimeState.Value.Data
-                    with
-                    | TaQueryViewportSelection.NotRequested -> None
-                    | TaQueryViewportSelection.Selected window ->
-                        commitLocalWindow false window |> ignore
-                        None
-                    | TaQueryViewportSelection.NoIntersection ->
-                        Some "Query accepted, but the requested range has no loaded observations; the current viewport was preserved."
-                    | TaQueryViewportSelection.Invalid reason -> Some reason
-                    | TaQueryViewportSelection.Stale ->
-                        Some "A newer query superseded this response; the current viewport was preserved."
+                pendingQueryViewportSettlement <-
+                    Some
+                        { Query = query
+                          IntentGeneration = intentGeneration
+                          BaselineDataRevision = baselineDataRevision
+                          BaselineQueryGeneration = baselineQueryGeneration }
+                let committedState, committedPreparedData = chartCommittedFrame.Value
+                settlePendingQueryViewportFor committedState committedPreparedData
+                |> Option.bind id
             let dispatchLatestQueuedQuery () =
                 queryInFlight <- false
                 match queuedQuery with
@@ -5378,6 +5440,7 @@ module TaWorkspaceRenderer =
 
             if not (remoteDisabled runtimeState.Value.Poll) then
                 querySelectionGeneration <- querySelectionGeneration + 1
+                pendingQueryViewportSettlement <- None
                 let intentGeneration = querySelectionGeneration
                 if queryInFlight then
                     queuedQuery <- Some(query, intentGeneration)

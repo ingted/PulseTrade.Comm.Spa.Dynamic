@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 generation-scoped query viewport settlement（DYN-WBS-619）
+
+`submitQuery`在dispatch前記錄baseline DataRevision與loaded-coverage QueryGeneration。Accepted callback只建立`TaPendingQueryViewportSettlement`，並最多檢查`chartCommittedFrame`；不再對`runtimeState.Value`直接呼叫`queryViewportSelection`。`acceptedQueryViewportSettlement`是pure gate：local intent generation已舊時回Stale；DataRevision或QueryGeneration任一未前進時回Await；只有matching frame才以新document/data求temporal selection。
+
+Incremental與full preparation的既有commit path共用`settlePendingQueryViewportFor`。Selected結果經`resolveWindow`依新prepared timeline/cap夾制，更新local viewport並標記該scope已套用；NoIntersection/Invalid/Stale只在matching frame或明確supersession後才消耗與回饋。Identity replacement與new Apply清除舊pending。無timer、retry、poll、wire或第二套viewport authority。
+
 ## 2026-10-27 frozen rendered selection edge snap（DYN-WBS-618）
 
 Pointerdown若命中semantic Move target，production凍結其`GetBoundingClientRect()`相對track的left/width；geometry fallback才由ratios推導。`snapNavigatorMoveDraftToPhysicalEdges`用currentPointerX-startPointerX平移該frozen bounds：pointer仍在`0..trackWidth`且translated left/right進入0.001px edge tolerance時，將既有draft clamp到0/maxStart；pointer越界、Resize或interior move原樣返回。Boundary classifier與NavigatorWindow intent construction不變，所以outside Later仍走coverage branch。

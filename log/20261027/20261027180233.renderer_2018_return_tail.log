@@ -1,0 +1,24 @@
+# Renderer 2018 return-tail authoritative settlement
+
+- 時間：2026-10-27 18:02:33 +08:00
+- 背景：Daedilus已將獨立2018 return-tail RED縮至Renderer accepted-query callback與authoritative frame commit時序；0.3.6 edge close保持已結案。
+- 目標：讓accepted query viewport intent只在同query的authoritative prepared frame上套用，發行immutable Renderer/Interactive.Client 0.3.7並由Daedilus原consumer驗收。
+- 已證實事實：ChangeTaQuery response帶24 frames；activeDetail為start0/count1450、coverageRev24/queryGen19，但DOM為Loaded1450/Viewing1-1028。Accepted callback立即以與2018 timeline對應的`runtimeState.Value`執行query viewport selection，回NoIntersection而保留1028；frames後到時coverage identity/canvas scope未變，default viewport沒有重套。
+- 預期不變量：accepted query的requested viewport只能在同query generation的authoritative frames已commit後套用；stale/rejected query不得改viewport；0.3.6 navigator physical-edge、coverage intents、wire contract與consumer/oracle/host不變。
+- Source of truth：production `Renderer.fs` submitQuery/applyAcceptedQuery/runtime frame settlement；Daedilus evidence `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0306-tail-settle\return-2026.json`。
+- 候選根因：accepted callback在authoritative frame commit前消耗query viewport intent，且沒有generation-scoped pending settlement seam；非frame解析、coverage response或post-drag settle本身錯誤。
+- 假設：dispatch當下DataRevision/queryGeneration可作為對應frame的最小單調gate；兩者皆前進後再求viewport可消除舊2018 timeline的premature NoIntersection，且不讓queued/stale query回寫。
+- Canonical mechanism：保留accepted query viewport intent為generation-scoped pending state，只在對應authoritative frame commit後以新runtime data套用；stale guard成功後即消耗。
+- 範圍：Renderer source/tests/version、Interactive.Client exact dependency、current SA/SD/WBS/TEST/Verification/DevLog、immutable packages。不改Daedilus consumer/oracle/host/test expectation，不重開0.3.6 edge close。
+- 步驟：evidence/source audit → baseline build → RED回歸 → minimal pending-settlement implementation → focused/full/Interactive/verifier/BrowserDemo → source/final package commits → Daedilus原序列真consumer gate。
+- 驗收：return後Loaded1450且requested 2026-06-01..07-15 viewport以新timeline決定；query generation/stale/rejected guards、navigator邊界與相鄰owner tests全綠；consumer browser/action errors空。
+- 風險：如以任意frame arrival重套viewport會造成stale query回寫或使用者gesture被覆蓋；必須鎖generation、accepted intent與single-consumption。
+- 停止條件：若authoritative commit事件無法對應query generation，先停在設計與最小觀測證據，不以delay/retry workaround取代。
+
+## Operations
+
+- 18:00–18:02 +08:00：收到Daedilus direct `msg-fsi-e59f8132c91f4dacaf3279f4fe84843e`，exact replyTo receipt=`msg-fsi-068155cbe7c641c1ad897dbb73f9c157`；接手獨立patch並明示保留0.3.6 close boundary。當前branch `20260915_033.ptcs_group_support`，HEAD/upstream皆`13d1b31063483ac3021f7c01b6525a3b418b591d`；外部dirty僅既有`lib-packs.txt`、Ptcs test WIP、`.pcsl/**`與`temp/**`，本任務不碰。
+- 18:02–18:12 +08:00：唯讀驗Daedilus `return-2026.json`：action requested 2026-06-01..07-15，resulting/document revision均2，response為24 snapshot-chunk frames，DataRevision25、coverageRevision24、queryGeneration19、activeDetail start0/count1450。Renderer 0.3.6 baseline Release build PASS、39個既有warning／0 error。DYN-T-733先只加test，0.3.6 package-backed build最後只剩new API/type FS0039 8處／exit1，RED成立。
+- 18:12–18:15 +08:00：新增generation-scoped pending query viewport settlement；以dispatch當下baseline DataRevision/queryGeneration鎖對應authoritative frame，舊或只data revision前進的frame只Await，matching prepared frame才套用temporal selection，newer local generation取消舊pending。Renderer source Release build PASS，39個既有warning／0 error。
+- 18:12–18:16 +08:00：首次Renderer 0.3.7 pack因`websharper.log` UnauthorizedAccessException令`wsfsc.exe -532462766`；Application Event 1026與command line鎖定dead-parent exact owner PID1392/PPID19792，只停該process後同source pack通過。Candidate Renderer SHA=`0B23E89A6003273F9A26F070F8C758A3AFD1CC9FCC95C4EC3B36FA8D4E35BD87`；Interactive.Client SHA=`270B35158FBF89155D1010D25A0528253121EF2257F0570A1B07C82A92E40498`，皆copy到SDK10.0.402 library-packs且hash parity。
+- 18:14–18:17 +08:00：DYN-T-733/733B 2/2、Renderer full124/124、Interactive.Client20/20、package verifierPASS。Fresh package-only BrowserDemo解果Contracts0.1.41、Renderer/Interactive0.3.7、FSharp.Core10.1.402、WebSharper.FSharp10.1.7.680、UI10.1.6.680；Release僅既有WS9002／0 errors，generated JS含baseline/settlement seam。Candidate DLL ProductVersion對應pre-source-commit HEAD，僅作owner gate，待source commit後重建final immutable packages。

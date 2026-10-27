@@ -17,7 +17,7 @@ Browser 送出：
       Action = action } }
 ```
 
-Host 必須回傳同一個 `RequestId` 的 `DynamicActionServerFrame`，其 result 為 `Accepted`、`Rejected` 或 `RevisionConflict`。`Accepted` 不可直接修改document/data；真正的 mutation仍必須由host發布`RuntimeFrame`。Renderer唯一的presentation例外是accepted `ChangeTaQuery`：在callback已合併同批frames後，依current temporal axis選local viewport，不改authoritative state。
+Host 必須回傳同一個 `RequestId` 的 `DynamicActionServerFrame`，其 result 為 `Accepted`、`Rejected` 或 `RevisionConflict`。`Accepted` 不可直接修改document/data；真正的 mutation仍必須由host發布`RuntimeFrame`。Renderer唯一的presentation例外是accepted `ChangeTaQuery`：callback只建立pending viewport intent，必須等同query的authoritative prepared frame以更新DataRevision/QueryGeneration後才依temporal axis套用，不改authoritative state。
 
 Client 同時間只保留一個 pending request。socket 未開啟、30 秒 timeout、disconnect、send failure 或 correlation mismatch 都會回傳 `DynamicHostError` 並 fail closed。既有 `RuntimeClientFrame` 的 mounted/unmounted/resync path 保持相容。
 

@@ -2,7 +2,11 @@
 
 This project is a dynamic SDUI (Server-Driven UI) and Actor extension for `PulseTrade.Comm.Spa`, built with WebSharper.
 
-## Current 0.3.6 navigator right-edge release
+## Current 0.3.7 accepted-query authoritative settlement
+
+Daedilus在0.3.6邊界結案後把獨立2018 return-tail縮成Renderer時序：`ChangeTaQuery` accepted callback於對應authoritative frames完成prepared commit前求viewport，舊2018 timeline回`NoIntersection`並保留Viewing1-1028；稍後DataRevision25/queryGeneration19的1450-bar frame又因scope未變而不會重套。`0.3.7`以dispatch當下DataRevision/queryGeneration建立generation-scoped pending intent，只在兩個authority皆前進的prepared frame上消耗；newer local query可取消舊intent，無timer/retry/wire變更。DYN-T-733/733B 2/2、Renderer124/124、Interactive.Client20/20與package verifier已GREEN；source commit、final immutable provenance、package-only BrowserDemo與Daedilus原真return gate尚待完成，故目前是owner candidate而非consumer close。
+
+## 0.3.6 navigator right-edge release
 
 Renderer／Interactive.Client `0.3.5` fixed the cross-axis resident-track left edge and passed Daedilus `left-edge-80` plus true Earlier coverage. The same exact consumer then exposed the symmetric right visual edge: the rendered move target reaches the track edge, but preserving its 1px grab inset rounds the bar delta three bars short (`local4418` instead of maxStart `4421`) even though the action already carries the correct `NavigatorWindow` intent. The `0.3.6` release freezes the actual rendered move-target bounds at pointerdown and snaps only an inside-track selection whose translated visual edge reaches the physical track edge; a pointer outside the track remains Later coverage. Source `e0575622b5efcf78619d37a68f91e353af417d6a` is pushed. Final Renderer／Interactive.Client SHA-256 are `36593858F26EA84270C0956818B404304C8FB0A17667A129EA9721A4ED8ABB48` and `4B76912C398F740EB2A7477130332DEB9C7F33BC5BE44BEC95EBD211C184E2D6`; provenance and SDK 10.0.402 hashes match. Final owner gates are Renderer 122/122, Interactive.Client 20/20, package verifier PASS, and fresh exact-package BrowserDemo Release with the existing WS9002 warning and zero errors. Daedilus exact real Gate B is GREEN for resize, middle, left edge, Earlier overscroll, right edge (`local4421`), and Later overscroll with zero browser/action errors. Adjacent A/D, highlight, Tagging, FirstPaint, No1K, and formal-core stress are also GREEN. The pre-existing independent 2018 return-tail case remains a separate pending issue and was not changed by this release.
 

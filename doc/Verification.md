@@ -6,6 +6,11 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
+### DYN-VFY-058 0.3.7 accepted-query prepared-frame settlement（owner candidate / consumer pending）
+
+- Consumer RED：0.3.6 exact return-2026 response含24 frames，DataRevision25、coverageRevision24、queryGeneration19、activeDetail start0/count1450，但DOM Loaded1450/Viewing1-1028。Accepted callback在matching prepared frame前以舊2018 timeline回NoIntersection。Evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0306-tail-settle\return-2026.json`。
+- Owner candidate：0.3.7保留dispatch baseline DataRevision/queryGeneration，matching prepared frame才單次settle，newer local generation取消舊pending。DYN-T-733/733B 2/2、Renderer124/124、Interactive.Client20/20、package verifierPASS。Final source/provenance、package-only BrowserDemo與Daedilus原return gate pending，不宣稱consumer close。
+
 ### DYN-VFY-057 0.3.6 rendered right-edge snap（owner final / consumer pending）
 
 - Consumer RED：0.3.5 exact ProductVersion在left-edge-80與Earlier coverage GREEN；right-edge-80 action亦有NavigatorWindow intent/ExpectedRev6/QueryGen6/count79，但實際rendered selection右緣到track右緣時，move anchor 1px inset使draft/final local4418，expected maxStart4421，errors空。
