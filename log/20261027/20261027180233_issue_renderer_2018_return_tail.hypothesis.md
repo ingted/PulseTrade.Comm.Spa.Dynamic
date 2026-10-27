@@ -40,3 +40,8 @@ Production非型別宣告預計15–35行，tests預計30–60行。若productio
 
 - Source `b9a3628249785bb0a734e86bee9c3e3721022dab`與final 0.3.7 immutable packages已證實鎖定dispatch baseline、prepared-frame settle與newer-generation cancellation；owner tests與package-only BrowserDemo全綠。
 - 根因假設在owner範圍已收旂；仍需Daedilus以原consumer/oracle/host重跑2018 return sequence，只有真return顯示requested 2026 viewport才consumer close。
+
+## Correction / 0.3.8 owner resolution
+
+- 上述0.3.7 owner resolution已被真consumer反證：exact0.3.7在ActiveDetail/Loaded1491後仍Viewing1-1028，且preparationPending=false、maxVisible1500，因此cap與未完成preparation皆非根因。
+- 最早共同原因是Accepted callback選錯prepared-frame holder：render shell canonical authority為`shellPreparedFrame`，而`chartCommittedFrame`可在row-refresh path落後。0.3.8改用前者並加bounded telemetry；source `7a9a8432748156347e9108d3028feffed80c7dc8`、final SHA=`D04497...E9EE / 959B35...5500`及owner gates完成。仍須Daedilus原18884真return顯示`selected-applied`、pending=false、selection/applied1491且Viewing=ActiveDetail才consumer close。

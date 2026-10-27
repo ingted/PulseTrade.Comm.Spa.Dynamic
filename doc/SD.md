@@ -6,6 +6,8 @@
 
 `TaQueryViewportSettlementDiagnostics`只在renderer instance內保留一份bounded last outcome，chart root發佈pending、intent/latest generation、baseline/current data/query revision、selection/applied start/count與outcome。不存放axis/bars/payload，不成為render或settlement authority。Rejected、superseded、identity reset與Await都有明確outcome。
 
+Final 0.3.8 Renderer／Interactive.Client SHA-256=`D04497AFE6DF96BB5A7BC98D60B1021AC6076B710B5A447C88D7595EF7DCE9EE / 959B3589E800B3DA09A0AB86FF199DBE39045FC7485142AD21CF2FC590C65500`，RepositoryCommit與ProductVersion皆exact source `7a9a8432748156347e9108d3028feffed80c7dc8`，Interactive exact Renderer dependency=`[0.3.8]`。
+
 ## 2026-10-27 generation-scoped query viewport settlement（DYN-WBS-619）
 
 `submitQuery`在dispatch前記錄baseline DataRevision與loaded-coverage QueryGeneration。Accepted callback只建立`TaPendingQueryViewportSettlement`，並最多檢查`chartCommittedFrame`；不再對`runtimeState.Value`直接呼叫`queryViewportSelection`。`acceptedQueryViewportSettlement`是pure gate：local intent generation已舊時回Stale；DataRevision或QueryGeneration任一未前進時回Await；只有matching frame才以新document/data求temporal selection。

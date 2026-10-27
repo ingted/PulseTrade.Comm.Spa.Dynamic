@@ -8,6 +8,8 @@ Daedilus以exact 0.3.7重跑原18884 return gate：response與rendered data已�
 
 不變量：dispatch baseline與revision/generation gate保留；Accepted callback改讀latest shell-prepared authority，並以bounded DOM attributes公開pending/outcome/revisions/selection/applied window。不改wire、consumer expected、host/oracle、0.3.6 edge behavior或raw bars。
 
+Owner source `7a9a8432748156347e9108d3028feffed80c7dc8`已push；final 0.3.8 Renderer／Interactive.Client SHA-256=`D04497AFE6DF96BB5A7BC98D60B1021AC6076B710B5A447C88D7595EF7DCE9EE / 959B3589E800B3DA09A0AB86FF199DBE39045FC7485142AD21CF2FC590C65500`。Owner source、package與package-only browser gates已完成；Daedilus原18884 consumer gate仍是唯一未完成驗收。
+
 ## 2026-10-27 accepted query / prepared-frame authority（DYN-WBS-619）
 
 Daedilus將獨立2018 return-tail縮成同一response內的authority時序：action requested 2026-06-01..07-15，response帶24 snapshot chunks，DataRevision25、coverageRevision24、queryGeneration19、activeDetail start0/count1450，但DOM是Loaded1450/Viewing1-1028。最早偏離是accepted callback在Renderer prepared frame仍為2018 timeline時直接消耗query viewport intent；`NoIntersection`成為最終結果，後續matching frame又無pending intent可套用。
