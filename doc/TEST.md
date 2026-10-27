@@ -1,15 +1,15 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-721（0.2.55 owner candidate / consumer pending）
+## 2026-10-27 DYN-T-721（0.2.55 owner package / consumer pending）
 
 - 契約：cross-axis global/active domain需要server materialize exact UTC range，與range是否由overview anchors substitution無關。one-to-one overview不可用時使用exact active prepared timeline，但仍附`ExplicitBounds`、StartOrdinal/Direction none；same-axis不附。
-- RED/GREEN：以0.2.54 helper與真host形狀（Global axis1K、ActiveDetail axis30K、overview substitution不可用）執行112 tests得到111 passed/1 failed，intent為None；0.2.55拆開timeline selector與materialization predicate後Renderer112/112、Interactive20/20、verifier、BrowserDemo 0 warnings/0 errors。candidate Renderer/Interactive SHA=`DF753B17...60F4`／`F5A2ACB6...0551`。
+- RED/GREEN：以0.2.54 helper與真host形狀（Global axis1K、ActiveDetail axis30K、overview substitution不可用）執行112 tests得到111 passed/1 failed，intent為None；0.2.55拆開timeline selector與materialization predicate。final source `8515d42f7f7bbca03a47cb614740c89c65f2038c`、Renderer/Interactive SHA=`B657A064...3C64`／`A8109ADB...5A76`，RepositoryCommit/ProductVersion exact、Client Renderer `[0.2.55]`、SDK parity。fresh Renderer112/112、Interactive20/20、verifier、BrowserDemo 0 warnings/0 errors。
 - 真E2E：Gate B wire必須帶no-ordinal `CoverageIntent ExplicitBounds`，left-edge settle local0且後續overscroll可再取更早資料。
 
-## 2026-10-27 DYN-T-720（0.2.55 owner candidate / consumer pending）
+## 2026-10-27 DYN-T-720（0.2.55 owner package / consumer pending）
 
 - 契約：action completion settlement只能使用同一`chartCommittedFrame`的runtime state與prepared timeline；禁止新query projection配舊prepared timeline。accepted preparation則用同次`next + nextPreparedData`。
-- RED/GREEN：以exact0.2.54 source/package執行111 tests得到110 passed/1 failed，callback仍含`runtimeState.Value + latestPreparedData`；0.2.55改用coherent committed pair後與DYN-T-721合併驗Renderer112/112、Interactive20/20、verifier、BrowserDemo全綠。
+- RED/GREEN：以exact0.2.54 source/package執行111 tests得到110 passed/1 failed，callback仍含`runtimeState.Value + latestPreparedData`；0.2.55改用coherent committed pair。final source/package metadata與hash同DYN-T-721；fresh Renderer112/112、Interactive20/20、verifier、BrowserDemo全綠，Contracts authority SHA=`D55F53CD...9642`。
 - 真E2E：Gate A server relocation後main local維持1645；formal accepted event-time commit在10s gate內可見，不能只在timeout後settle。
 
 ## 2026-10-27 DYN-T-719（0.2.54 owner package / consumer RED）

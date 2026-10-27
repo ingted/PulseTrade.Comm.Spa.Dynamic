@@ -1,0 +1,21 @@
+# Dynamic 0.2.55 post-commit package evidence
+
+## Pre-work plan
+
+- 背景：DYN-WBS-606/607 source/docs/tests commit `8515d42f7f7bbca03a47cb614740c89c65f2038c`已push；candidate gates全綠，但metadata仍指前一commit。
+- 目標：建立immutable Renderer／Interactive.Client 0.2.55 packages，驗exact metadata/dependency、fresh tests/verifier/BrowserDemo與SDK parity，再交Daedilus A/B/formal/D重驗。
+- 假設：post-commit fresh package應保留candidate功能結果，只改RepositoryCommit／ProductVersion與deterministic package hash。
+- Source of truth：Git HEAD/upstream `8515d42...`、兩個fsproj exact refs、fresh restore caches、SDK10.0.402 readback hash。
+- 範圍：pack/test/copy evidence與WBS/Test/DevLog closeout；consumer唯讀、不發public NuGet。
+- 不變事項：Contracts0.1.40、WebSharper versions、wire shape與server logic不變；外部dirty `lib-packs.txt`、Ptcs.Tests、`.pcsl/`不碰。
+- 步驟：清obsolete本agent 0.2.54 task cache → fresh final packs → metadata/hash → Renderer112/112 → Interactive20/20 → verifier → BrowserDemo0/0 → SDK copy/readback → docs/checker → evidence commit/push → COMM handoff。
+- 驗收：RepositoryCommit/ProductVersion exact、Interactive Renderer `[0.2.55]`、Contracts authority SHA、local/SDK hashes一致、owner gates全綠；consumer A/B/formal/D另驗。
+- 風險：同版NuGet cache stale、WebSharper orphan lock、SDK readback mismatch；每個consumer用fresh cache並以signed handle診斷。
+- 停止條件：evidence push與Daedilus exact handoff完成；真gate有RED即續修、不宣告全修完。
+
+## Operations
+
+- 10:15：C: free4.35GB；obsolete本agent `dynamic-0254` task cache4.05GB已由Git evidence、SDK0.2.54與0.2.55取代。resolved target在repo `temp/agent.asteer`、descendant reparse=0；signed handle定位兩個parent已退出且exe/handle全在該cache的WebSharper compiler-service PID36048/44216，精確停止後只清該不可回復但可重建cache，C: free8.41GB。
+- 10:17：fresh final Renderer pack完成；RepositoryCommit/ProductVersion=`8515d42f7f7bbca03a47cb614740c89c65f2038c`／`0.2.55+8515d42...`，package-cache `websharper.log` pre/post皆0；Renderer Expecto112/112。
+- 10:19：fresh Interactive pack/test完成：20/20；package verifier PASS（entries=4）；package-only BrowserDemo build 0 warnings/0 errors。Interactive package-cache `websharper.log` pre/post皆0。
+- 10:20：metadata：Renderer/Interactive dependencies exact，Interactive Renderer `[0.2.55]`；fresh Contracts SHA-256=`D55F53CDCA80BA240BC010B80DF361A47F895BC193ABBE6747AB45E7C0CC9642`。Final Renderer/Interactive SHA-256=`B657A06453456105D7ED08D4075760D4618B5696A2FB74C370F49723B8353C64`／`A8109ADB7761D62B5A2E98A5E858A1354F59BBA85DDD2F1C865FC6B321E75A76`；精確複製至SDK10.0.402 `FSharp/library-packs`後parity皆true。未push public NuGet。
