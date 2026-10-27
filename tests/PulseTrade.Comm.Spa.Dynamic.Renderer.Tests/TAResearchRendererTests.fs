@@ -2157,6 +2157,9 @@ let tests =
                     projection
                 |> Option.get
 
+            Expect.isTrue
+                (RendererModel.requiresNavigatorAdjacentEventRangeMaterialization projection)
+                "a returned no-global active-local projection requires the directional event-range seam"
             Expect.isNone intent.StartObservationOrdinal "a returned query-relative ordinal zero cannot locate earlier bars"
             Expect.equal
                 intent.Direction
@@ -2172,6 +2175,43 @@ let tests =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
             Expect.stringContains source "TaQueuedViewportIntent.NavigatorAdjacentCoverage" "an active-local overscroll must survive an already-pending action"
             Expect.stringContains source "sendOrQueueNavigatorAdjacentCoverage" "the live drop path must use the queue-aware directional event-range seam"
+
+        testCase "DYN-T-737 initial global-backed active-local overscroll keeps the local event-time route" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:initial-global-backed"
+                  CoverageRevision = 1L
+                  QueryGeneration = 0L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.active.30k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 99_189L
+                      ObservationCount = 1500
+                      BaseAxisRef = "axis.active.30k" }
+                  GlobalOverview =
+                    Some
+                        { TotalObservationCount = 2_996_994L
+                          AxisRef = "axis.global.1k"
+                          Anchors = [||]
+                          ResidentStartObservationOrdinal = 1_387_905L
+                          ResidentObservationCount = 134_906 } }
+
+            Expect.isFalse
+                (RendererModel.requiresNavigatorAdjacentEventRangeMaterialization projection)
+                "a global-backed initial projection must clamp the local draft and materialize its exact event range"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains
+                source
+                "when RendererModel.requiresNavigatorAdjacentEventRangeMaterialization projection"
+                "the live adjacent dispatcher must be gated by projection authority"
+            Expect.stringContains
+                source
+                "when projection.GlobalOverview.IsSome"
+                "the live global-backed branch must remain on the local event-time commit route"
 
         testCase "resident navigator drag remains local and requests coverage only after explicit overscroll" <| fun _ ->
             let projection : TaLoadedCoverageProjection =

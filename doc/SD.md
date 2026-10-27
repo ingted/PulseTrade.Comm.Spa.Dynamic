@@ -1,6 +1,6 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 active-local adjacent navigator dispatch（DYN-WBS-620 / 0.3.10）
+## 2026-10-27 active-local adjacent navigator dispatch（DYN-WBS-620 / 0.3.10-0.3.11）
 
 `tryNavigatorAdjacentEventRangeIntent`只建立directional event-range materialization contract：ExpectedCoverageRevision=current、QueryGeneration+1、StartObservationOrdinal=None、ObservationCount=current visible width、RangeAuthority=ExplicitBounds、Purpose=NavigatorWindow。它不讀GLOBAL total，也不把active ordinal0轉成whole-series ordinal。
 
@@ -9,6 +9,10 @@
 Active-local pointerup先驗snapshot commit key，再走`sendOrQueueNavigatorAdjacentCoverage`；pending action／boundary、未committed coverage或remote-disabled時只保存direction/delta/count，ready後由既有single-slot queue重建current action。Resident-authority branch仍用GLOBAL ordinal intent；snapshot mismatch仍走stale reject，不由queue掩蓋。
 
 Final 0.3.10 Renderer／Interactive.Client的RepositoryCommit與ProductVersion皆為`4ce7e49915726f627f58f213e32085b888506ea2`，Interactive exact Renderer dependency=`[0.3.10]`；source與package wire shape未新增欄位。
+
+0.3.11新增pure `requiresNavigatorAdjacentEventRangeMaterialization`作boundary dispatch discriminator：`GlobalOverview=None`才代表returned/no-global active-local，允許進0.3.10 adjacent dispatcher；`GlobalOverview=Some`且resident mapping不可用時仍是initial global-backed local domain，snapshot key相同後呼叫既有`commitLocalDraft`，再由`setNavigatorWindowFromPrepared`以prepared timeline產生exact visible range。這條路不讀default query epoch bound，也不建立相鄰query intent。
+
+兩路共用pointerdown frozen projection與commit-key stale gate。Global-backed branch只在同snapshot key時local commit；no-global branch仍要求action allowlist並保留single-slot queue。Resident-authority GLOBAL ordinal path、returned no-ordinal Direction intent、pending settlement、wire shape、consumer/oracle/host皆不變。
 
 ## 2026-10-27 evidence-sensitive query settlement（DYN-WBS-619 / 0.3.9）
 

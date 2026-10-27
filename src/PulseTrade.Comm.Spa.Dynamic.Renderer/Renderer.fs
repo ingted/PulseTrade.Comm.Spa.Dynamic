@@ -4709,8 +4709,9 @@ module TaWorkspaceRenderer =
                                     else
                                         setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
                                         draftWindow.Value <- None
-                                | Some direction, Some(_, _, _, _, snapshotKey)
-                                    when ProjectionCommitGate.key runtimeState.Value = snapshotKey
+                                | Some direction, Some(_, _, _, projection, snapshotKey)
+                                    when RendererModel.requiresNavigatorAdjacentEventRangeMaterialization projection
+                                         && ProjectionCommitGate.key runtimeState.Value = snapshotKey
                                          && actionAllowed "visible-range-changed" ->
                                     setDragDiagnostic
                                         "data-drag-outcome"
@@ -4721,6 +4722,10 @@ module TaWorkspaceRenderer =
                                         latestRawDelta
                                         committed.Count
                                         "Loaded coverage requested."
+                                | Some _, Some(_, _, _, projection, snapshotKey)
+                                    when projection.GlobalOverview.IsSome
+                                         && ProjectionCommitGate.key runtimeState.Value = snapshotKey ->
+                                    commitLocalDraft ()
                                 | Some _, Some _ ->
                                     setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
                                     draftWindow.Value <- None

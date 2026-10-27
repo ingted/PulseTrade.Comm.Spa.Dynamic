@@ -1,12 +1,16 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 returned-query left overscroll authority（0.3.9 falsification / 0.3.10）
+## 2026-10-27 returned-query left overscroll authority（0.3.9 / 0.3.10 falsification / 0.3.11）
 
 0.3.9真formal已證query settlement本身GREEN：pending=false、selected-applied、ActiveDetail／Loaded／Viewing皆1491。其後returned-2026左overscroll的pointerdown frozen projection為Some，state/prepared coverage皆`ref-present/some:25:20:0:1491`，且前一action已在pointerdown前1177ms完成；pointerup同毫秒新增的ui:30卻仍是當前`2026-05-29..07-14` bare range、CoverageIntent=None、frameCount1，Loaded/Viewing不變。這排除stale frame與pending競態。
 
 最早錯誤是active-local boundary共用了ordinal coverage window：query-relative `ActiveDetail.StartObservationOrdinal=0`的Earlier target被clamp回0，`applyLoadedCoverageIntent`便判為in-active local window，將同一range重送。正確不變量是跨axis或query-relative active-local未載入相鄰頁只能由exact event-time range定位；Direction是materialization/eviction hint，不得猜GLOBAL ordinal。Fetcher cap1500與visible count1491亦是兩個獨立量。
 
 0.3.10以directional no-ordinal NavigatorWindow intent修正，並讓同一boundary intent在action pending時進既有viewport queue；snapshot key mismatch仍fail closed。Source `4ce7e49915726f627f58f213e32085b888506ea2`已push；final DYN-T-736 1/1、Renderer126/126、Interactive20/20、package verifier與fresh exact-package BrowserDemo build皆通過。Renderer／Interactive SHA=`78D8484A35222215820450D0FDB95FCC3DB8CE51CEA56EFBBC71076D3205C151 / F30E63E9C5858B8448EECFE409711AAC51D7E76CE2D4E5AA88A31FF2B82FA243`；consumer/oracle/host不改，真formal return-Earlier gate仍待驗收。
+
+0.3.10原formal在最早initial gate反證上述dispatch scope過寬：初始`Loaded4500 / Viewing3001-4500`、QueryGeneration0、ActiveDetail99189/1500仍有cross-axis `GlobalOverview`，左overscroll卻被導向adjacent query range，將default query的1970 sentinel送成實際起點；host依durable-window contract拒絕，未進returned gate。最早共同原因不是host validator，而是production只用`UsesResidentAuthority=false`，混合「global-backed但ordinal跨axis」與「returned後no-global且ordinal query-relative」兩種authority。
+
+0.3.11以projection authority分流：只有`GlobalOverview=None`的returned active-local才走directional adjacent event range；`GlobalOverview=Some`但無resident ordinal mapping的initial cross-axis狀態，改回clamped local draft並由prepared timeline exact event range materialize。GLOBAL ordinal仍不猜、snapshot key仍先驗。DYN-T-737修前package-backed FS0039 RED；修後DYN-T-736/737各1/1、Renderer127/127、Interactive20/20、package verifier與fresh package-only BrowserDemo皆GREEN。Candidate Renderer／Interactive SHA=`D7D7AF39AACE1E3C24D19C7EE5D8751F6E0011349F540821125AF41A56F67C76 / 5ED321459E948774FE8D497F2E6D51157944413E1CFFDC87CBA65C9FB03B7E83`；source-commit provenance與Daedilus原formal重驗pending。
 
 ## 2026-10-27 coverage generation scope correction（0.3.8 falsification / 0.3.9）
 

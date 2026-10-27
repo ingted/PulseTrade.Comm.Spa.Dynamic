@@ -1,5 +1,13 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-737（initial global-backed active-local overscroll routing）
+
+- Real RED：Daedilus以exact 0.3.10 source/package/deploy provenance重跑原formal；最早initial `Loaded4500 / Viewing3001-4500`左overscroll送出Direction=Earlier、StartOrdinal=None、ExplicitBounds/NavigatorWindow，但range=`1970-01-01T00:00:00Z..2026-02-24T06:30:00Z`，host以`SPAA-RESEARCH-DURABLE-WINDOW`拒絕，coverage revision/query generation與viewport皆不變。Evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0310\evidence.json`。
+- Source RED：0.3.10 boundary branch未分`GlobalOverview`，所有non-resident-authority projection皆走adjacent dispatcher。0.3.11 package-backed DYN-T-737先引用authority predicate，build為FS0039兩處。
+- Contract：returned/no-global active-local才可走no-ordinal directional adjacent range；initial cross-axis global-backed projection不得讀default query epoch bound，須clamp local draft並由prepared timeline exact event range materialize。兩路皆先驗snapshot key，GLOBAL ordinal不可猜。
+- Candidate GREEN：DYN-T-736/737各1/1、Renderer127/127、Interactive20/20、package verifierPASS。Candidate Renderer／Interactive SHA=`D7D7AF39AACE1E3C24D19C7EE5D8751F6E0011349F540821125AF41A56F67C76 / 5ED321459E948774FE8D497F2E6D51157944413E1CFFDC87CBA65C9FB03B7E83`且SDK10.0.402 library-packs parity。Fresh isolated package-only BrowserDemo解析Contracts0.1.41、Renderer/Interactive0.3.11、FSharp.Core10.1.402、WebSharper.FSharp10.1.7.680、UI10.1.6.680，僅既有WS9002 x1／0 errors；generated JS含authority discriminator，full/min SHA=`723BC326C1007D8D61DAA280EDE287FFFD6BD8ED19D3FB5842862C3AA29D2147 / ACC8477D310440682C32C25FDB0D137F33FC1F484A423DA312FEA1685298DD84`。
+- 真Gate：同一formal先要求initial action accepted且settle `Loaded4500 / Viewing1501-3000`、不得出現1970 bound；其後原returned-2026 gate仍須Direction Earlier／StartOrdinal空／NavigatorWindow，最後Loaded2991／Viewing1-1491，browser/action errors空。
+
 ## 2026-10-27 DYN-T-736（returned active-local Earlier overscroll）
 
 - Real RED：0.3.9 query settlement先GREEN；clean failure-drop的ui:30在pointerup同毫秒送出，但仍是當前range、MaximumBasePoints1500、CoverageIntent=None，frameCount1，Loaded1491/Viewing1-1491不變。Pointerdown projection=Some、state/prepared=`ref-present/some:25:20:0:1491`，前一response早1177ms，排除publication/pending假設。Evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0309-failure-drop\returned-earlier-drop.json`。

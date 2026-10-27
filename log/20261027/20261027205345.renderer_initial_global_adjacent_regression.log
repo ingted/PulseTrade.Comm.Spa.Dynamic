@@ -1,0 +1,32 @@
+# Renderer initial global-backed adjacent regression
+
+## Pre-work plan
+
+- 時間：2026-10-27 20:53:45 +08:00
+- Repo：`C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic`
+- Branch：`20260915_033.ptcs_group_support`
+- 起點：`3e66ee915f59a59c8d4cea969cd710d8742eccda`
+- 背景：Daedilus 以 0.3.10 exact packages 執行原 formal；package provenance GREEN，但初始 `Loaded 4500 / Viewing 3001-4500` 左側 overscroll 誤送 `1970-01-01 .. 2026-02-24`，consumer 以 `SPAA-RESEARCH-DURABLE-WINDOW` 拒絕。
+- 目標：恢復initial global-backed的local prepared event-range route，同時保留returned no-global active-local的directional adjacent route。
+- 假設：最早偏離是0.3.10 non-resident boundary routing未以GlobalOverview presence區分兩種projection authority。
+- 步驟：建DYN-T-737 RED；加入pure discriminator並重排live branch；跑focused/full/package-only gates；同步current docs；commit/push後重建final immutable packages並交Daedilus原formal。
+- 風險：錯誤分流可能再次猜GLOBAL ordinal、重送1970 sentinel，或讓returned ordinal0回到bare local reapply；以雙情境test、snapshot gate與真formal驗收。
+- 已證實事實：初始 projection 為 query generation 0、active detail 99189/1500、local 3000/1500；0.3.9 同一初始 slice 的 canonical local relocation 使用實際 event range `2026-04-10 .. 2026-05-27`，settle 至 local 1500/1500。returned explicit-query slice 則為 query-relative active detail 0/1491，必須保留 0.3.10 的 no-ordinal directional event-range materialization。
+- 不變量：GLOBAL/cross-axis ordinal 不可猜；`1970` sentinel 不可成為實際 navigator request bound；初始 global-backed active-local overscroll須走 clamped local event range；returned no-global active-local overscroll須走 directional explicit range；snapshot/current gate、queue、ACK/settlement語意保持。
+- Source of truth：Daedilus `formal-overview-edge-drag-0310/evidence.json`、`formal-overview-edge-drag-0309/evidence.json`、Renderer projection/gesture routing，以及 RFC/SA/SD/Test current 文件。
+- 最早偏離：0.3.10 將所有非 resident-authority loaded snapshots導向 `sendOrQueueNavigatorAdjacentCoverage`，未保留 `GlobalOverview.IsSome` 的 initial global-backed local-commit route。
+- 範圍：Renderer model/routing、Renderer focused tests、受影響版本與 current docs；不修改 Daedilus consumer/oracle/host；不碰既有 dirty `lib-packs.txt`、Ptcs.Tests `Program.fs`、`.pcsl/`、`temp/`。
+- 驗收：新增 initial global-backed routing RED/GREEN；DYN-T-736 returned path持續 GREEN；Renderer/Interactive focused + package verifier；fresh package-only BrowserDemo；final package provenance/hash；Daedilus重跑原 formal。
+
+## Operations
+
+- 20:50 收到 Daedilus RED，精確 drain 並以原 message id reply receipt。
+- 20:51 驗 `formal-overview-edge-drag-0310/evidence.json`：第二 action 為 case 8，Direction Earlier、StartObservationOrdinal None、ExplicitBounds/NavigatorWindow，但 bounds 為 epoch sentinel至 loaded first；result rejected，coverage/viewport不變。
+- 20:52 對照 0.3.9 evidence：初始 slice由實際 local event range移至 `Viewing 1501-3000`；對照 returned failure-drop：query-relative active-local 0/1491 仍需 0.3.10 no-ordinal directional path。
+- 20:52 兩次合併搜尋/snippet超過 public stdout guard（47,552 bytes、20,596 bytes），均未讀 raw，已改 exact file/range；一次 `jq` 不存在、一次 PowerShell pipeline語法、一次 coreutils `date` 參數不相容，皆無工作樹副作用。
+- 20:58 建DYN-T-737 package-backed RED：0.3.10缺projection-authority predicate，FS0039兩處；DYN-T-736保持獨立returned contract。
+- 20:59–21:00 實作0.3.11最小分流：`GlobalOverview=None`才走adjacent dispatcher；同snapshot的global-backed projection走既有`commitLocalDraft`。Candidate DYN-T-736/737各1/1、Renderer127/127、Interactive20/20、package verifierPASS。
+- 21:01 Candidate package SHA-256 Renderer／Interactive=`D7D7AF39AACE1E3C24D19C7EE5D8751F6E0011349F540821125AF41A56F67C76 / 5ED321459E948774FE8D497F2E6D51157944413E1CFFDC87CBA65C9FB03B7E83`，SDK10.0.402 library-packs parity exact。
+- 21:02 Fresh isolated package-only BrowserDemo解析Contracts0.1.41、Renderer/Interactive0.3.11、FSharp.Core10.1.402、WebSharper.FSharp10.1.7.680、UI10.1.6.680；build僅既有WS9002 x1／0 errors，generated markers存在，full/min SHA=`723BC326C1007D8D61DAA280EDE287FFFD6BD8ED19D3FB5842862C3AA29D2147 / ACC8477D310440682C32C25FDB0D137F33FC1F484A423DA312FEA1685298DD84`。
+- 21:03 收到並drain Daedilus補充proof：0.3.10 deployed DLL hashes/ProductVersion與owner package exact；formal確實停在initial RED，returned acceptance未執行。同步RFC D34、SA/SD/WBS/TEST/Verification/DevLog；consumer/oracle/host未改。
+

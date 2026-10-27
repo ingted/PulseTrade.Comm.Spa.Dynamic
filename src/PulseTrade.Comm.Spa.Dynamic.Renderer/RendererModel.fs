@@ -3617,6 +3617,9 @@ module RendererModel =
             None
             observationCount
 
+    let requiresNavigatorAdjacentEventRangeMaterialization (projection: TaLoadedCoverageProjection) =
+        projection.GlobalOverview.IsNone
+
     let requiresCrossAxisNavigatorEventRangeMaterialization projection =
         projection.GlobalOverview
         |> Option.exists (fun overview -> overview.AxisRef <> projection.ActiveDetail.BaseAxisRef)

@@ -194,6 +194,12 @@ D24把prepared欄位選對但把frame authority認錯：實際inner navigator由
 
 Active-local boundary不得用query-relative ordinal表示未載入的相鄰頁。它改以`tryAdjacentCoverageRange`產生exact event-time半開range作位置authority，另附`Direction=Earlier/Later`、`StartObservationOrdinal=None`、next QueryGeneration、current visible count與`Purpose=NavigatorWindow`的ExplicitBounds intent；`MaximumBasePoints`仍獨立使用fetch cap。Matching settlement沿既有TargetStart=None timeline-extension/reanchor seam。若drop時已有action、boundary settlement或projection尚未committed，保存direction/delta/count進既有viewport queue；只有同snapshot key才可排送，真正stale snapshot仍拒絕。Same-axis resident ordinal、GLOBAL relocation、main plot、wire shape、consumer/oracle/host均不變。
 
+### D34. 2026-10-27 adjacent event-range dispatch is limited to no-global active-local projections
+
+0.3.10原formal在returned gate前反證D33的live適用範圍過寬：initial4500-bars state仍有cross-axis GlobalOverview，只因不能使用resident GLOBAL ordinal便被當成returned active-local；`tryAdjacentCoverageRange`遂把default query的1970 sentinel送成真正StartEventTimeUtc，host正確拒絕。這不是validator或query bound問題，而是兩種authority在pointerup routing合流。
+
+決策是以frozen projection的GlobalOverview presence分流。`GlobalOverview=None`表示returned/no-global active-local，維持D33 directional no-ordinal adjacent materialization；`GlobalOverview=Some`但resident mapping不可用表示global-backed local domain，snapshot key相同後clamp local draft並以prepared timeline exact event range materialize，不讀query sentinel、不猜GLOBAL ordinal。真正resident-authority仍用原GLOBAL intent，stale snapshot仍拒絕。D34限縮D33 live dispatch scope，不改D33 contract、wire、queue、settlement、consumer/oracle/host。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

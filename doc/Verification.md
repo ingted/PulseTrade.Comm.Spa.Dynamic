@@ -6,12 +6,14 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
-### DYN-VFY-061 0.3.10 returned active-local Earlier authority（owner candidate / consumer pending）
+### DYN-VFY-061 0.3.11 scoped active-local Earlier authority（owner candidate / consumer pending）
 
 - 0.3.9真RED：query settlement已GREEN；failure-drop pointerdown projection=Some、coverage25/20/start0/count1491、前一action已settled。Pointerup新增ui:30卻是bare current range，frame1，Loaded/Viewing仍1491，決定性排除stale/pending並定位ordinal0 local reapply。
 - 0.3.10 candidate：Earlier active-local改用exact adjacent event range＋directional no-ordinal NavigatorWindow intent，fetch cap與visible count分離；blocked action進既有viewport queue，snapshot mismatch仍reject。DYN-T-7361/1、Renderer126/126、Interactive20/20、verifierPASS。
 - Candidate packages：Renderer／Interactive SHA=`8D9D97...C739 / E0A1DF...3444`，SDK10.0.402 library-packs parity；fresh package-only BrowserDemo exact0.3.10 chain、WS9002 x1／0 errors，generated JS markers存在，full/min SHA=`803C9C...1117 / 0C908E...C2F7`。Candidate ProductVersion仍指pre-source-commit HEAD，只作owner gate；final provenance與Daedilus原formal return-Earlier gate pending，不宣稱consumer close。
 - Owner final：source `4ce7e49915726f627f58f213e32085b888506ea2`已push；final Renderer／Interactive SHA=`78D848...C151 / F30E63...A243`，RepositoryCommit/ProductVersion、Interactive Renderer `[0.3.10]`與SDK10.0.402 cache hash parity exact。Fresh final Renderer126/126、Interactive20/20、verifierPASS；final package-only BrowserDemo exact0.3.10、WS9002 x1／0 errors，full/min SHA=`32541A...078D / 4F9BC1...9F3C`。Daedilus原formal return-Earlier gate pending，不宣稱consumer close。
+- 0.3.10 consumer RED：installed Renderer/Interactive DLL hash與ProductVersion exact，但原formal第一個initial4500 gate已送`1970..2026-02-24`並被durable-window validator拒絕。該state為QueryGeneration0、ActiveDetail99189/1500、local3000/1500且有cross-axis GlobalOverview；0.3.10錯把它與returned no-global active-local合流。
+- 0.3.11 candidate：`GlobalOverview=None`才走directional adjacent materialization；global-backed non-resident-authority改走clamped local prepared-event-range。DYN-T-736/737各1/1、Renderer127/127、Interactive20/20、verifierPASS；candidate SHA=`D7D7AF...7C76 / 5ED321...7E83`且SDK parity。Fresh package-only BrowserDemo exact0.3.11 chain、WS9002 x1／0 errors，full/min SHA=`723BC3...2147 / ACC847...DD84`。Final source provenance與Daedilus完整原formal pending，不宣稱consumer close。
 
 ### DYN-VFY-060 0.3.9 positive materialization settlement（complete）
 
