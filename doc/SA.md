@@ -1,5 +1,9 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## Current：ACK/prepared 之間的 queued authority（0.3.15 / RFC-0036 D38）
+
+真rapid證據的最早偏離是ui5 accepted後ui6/7仍帶expected revision5。runtime及committed都還是舊key時，相等不代表上一筆coverage已settle；LocalRange又保存舊action authority。修共同gate等待pending event-range，queue保留scope並在同scope發送前刷新revision/generation；不改UTC意圖，不放寬consumer驗證。0.3.14已過初始Earlier/resize，user約80根左界focused與rapid regression仍待真驗收。
+
 ## Current：接點保留（0.3.14 / RFC-0036 D37）
 
 No-ordinal response先前在generation前進時直接選new index0，丟失gesture的時間接點；固定4500 resident淘汰舊tail時，原reanchor又因查pre-drag viewport起點而None。DYN-T-741以old1500..5999→new0..4499、3000/80負移3000重現，正確落點為1500/80。改查release target timestamp，再套超出old domain的剩餘delta；保留width及generation fence。ACK與prepared data以同一atomic frame對齊。Research owner另修ProviderOpenEarlier在durable cross-axis分支被當空範圍拒絕的consumer缺口。

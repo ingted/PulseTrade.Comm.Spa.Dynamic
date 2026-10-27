@@ -69,7 +69,7 @@ type TaQueryViewportSettlementDiagnostics =
 
 [<RequireQualifiedAccess>]
 type TaQueuedViewportIntent =
-    | LocalRange of SduiAction
+    | LocalRange of SduiAction * string option
     | AdjacentCoverage of PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection * int
     | NavigatorAdjacentCoverage of PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection * int * int * string
     | CoverageWindow of int64 * int * string
@@ -2921,12 +2921,13 @@ module TaWorkspaceRenderer =
             || localViewportDisabled runtimeState.Value.Poll
         let committedCoverageReady () =
             let current = ProjectionCommitGate.key runtimeState.Value
-            projectionCommitGate.LastCommitted
-            |> Option.exists (fun committed ->
-                committed.Identity = current.Identity
-                && committed.CoverageIdentity = current.CoverageIdentity
-                && committed.CoverageRevision = current.CoverageRevision
-                && committed.QueryGeneration = current.QueryGeneration)
+            pendingEventRangeSettlement.IsNone
+            && (projectionCommitGate.LastCommitted
+                |> Option.exists (fun committed ->
+                    committed.Identity = current.Identity
+                    && committed.CoverageIdentity = current.CoverageIdentity
+                    && committed.CoverageRevision = current.CoverageRevision
+                    && committed.QueryGeneration = current.QueryGeneration))
         let publishViewportDispatchDiagnostics (root: Element) =
             if not (isNull root) then
                 root.SetAttribute("data-viewport-dispatch-kind", lastViewportDispatchKind)
@@ -3026,7 +3027,8 @@ module TaWorkspaceRenderer =
                         settleVisibleRangeDraft ())
         let sendOrQueueVisibleRangeAction action =
             if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
-                queuedViewportIntent <- Some(TaQueuedViewportIntent.LocalRange action)
+                let identity = coverageProjection runtimeState.Value |> Option.map _.CoverageIdentity
+                queuedViewportIntent <- Some(TaQueuedViewportIntent.LocalRange(action, identity))
             else
                 startVisibleRangeAction action
         let sendOrQueueCoverageWindowAction targetStart targetCount successText =
@@ -3057,8 +3059,10 @@ module TaWorkspaceRenderer =
             | Some intent when uiState.Value.PendingActionId.IsNone && pendingBoundaryPan.IsNone && committedCoverageReady () && not (remoteDisabled runtimeState.Value.Poll) ->
                 queuedViewportIntent <- None
                 match intent with
-                | TaQueuedViewportIntent.LocalRange action ->
-                    startVisibleRangeAction action
+                | TaQueuedViewportIntent.LocalRange(action, capturedIdentity) ->
+                    match RendererModel.tryRefreshQueuedEventRangeAction capturedIdentity (coverageProjection runtimeState.Value) action with
+                    | Some refreshed -> startVisibleRangeAction refreshed
+                    | None -> rejectNavigatorDraft "Queued event-range authority changed before dispatch."
                 | TaQueuedViewportIntent.AdjacentCoverage(direction, delta) ->
                     dispatchAdjacentCoverage direction delta
                 | TaQueuedViewportIntent.NavigatorAdjacentCoverage(direction, delta, observationCount, successText) ->

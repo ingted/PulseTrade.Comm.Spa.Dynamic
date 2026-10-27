@@ -8,6 +8,8 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 ### DYN-VFY-063 續載接點與ACK/prepared先後（0.3.14 / owner PASS，真UI pending）
 
+DYN-VFY-064（0.3.15 / pending）：DYN-T-743修前1 failed；typed queued event-range refresh與拒絕邊界見DYN-T-744。真0.3.14 formal前段Earlier/resize通過、rapid ui6/7/9 stale revision遭拒而geometry RED，evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0314-consumerfix`。0.3.15正式package/gates及rapid真驗尚未完成；0.3.14既有owner gate如下。
+
 DYN-T-741修前1 failed（tail evicted時None）；DYN-T-742指定generation、missing join與ACK/frame先後不變量。0.3.14正式 exact-package Renderer131/131、Interactive20/20、PtcsTaClient17/17，皆0 ignored/failed/errored；package verifier PASS，LiveDemo Release 0 errors。Source `ab591ac86e8bc42b388ca8b1feeda1b89c18cd61`；Renderer SHA256 `D2CE9CC6DBA14529FF69DE7062F739C8954436275ECBE1A142722A51DD2366DA`，Interactive SHA256 `C0DAA516DFF4EF0886E495A5967FD3F20376B06B80298B23C324D0F2F3FA20AC`，Ptcs.Client0.2.1 SHA256 `18AB669F2011A6B3E20F8BD5D8BBEFB74C73563142443F6DBD1356F28AFAE5E9`，皆複製 SDK10.0.402/FSharp/library-packs 並驗hash。Research owner已回consumer directional focused10/10及0.3.12真Earlier accepted，惟resize仍RED；0.3.14與其consumerfix共同真UI驗證pending，未宣告user issue完成。
 
 ### DYN-VFY-062 左界觸及續載（0.3.13 / pending）

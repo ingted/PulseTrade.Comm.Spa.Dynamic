@@ -1,5 +1,7 @@
 # PulseTrade.Comm.Spa.Dynamic WBS
 
+DYN-WBS-620 current：0.3.15修rapid ACK/prepared dispatch gap及同scope queued authority（RFC D38、DYN-T-743/744）；0.3.14真initial Earlier/resize過，rapid stale revision/geometry RED。約80根左界接點focused與rapid待驗，維持pending；先前0.3.14 source/package gate仍有效但非整體完成。
+
 Progress 是粗略 implementation checkpoint，不代表正式驗收。
 
 DYN-WBS-620 latest：0.3.14補release target時間接點與prepared/ACK同源settlement（DYN-T-741/742、RFC D37）；owner exact-package131/131＋20/20＋PTCS17/17、verifier/LiveDemo Release通過，source `ab591ac`，hash見DYN-VFY-063。Research durable ProviderOpenEarlier由daedilus修復並回focused10/10、舊版真Earlier accepted；0.3.14已交該owner，真UI接點/寬度/觸界與resize regression仍pending。

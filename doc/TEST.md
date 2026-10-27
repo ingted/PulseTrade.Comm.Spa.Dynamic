@@ -1,5 +1,9 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## Current gate：DYN-T-743/744 queue authority（0.3.15）
+
+DYN-T-743於0.3.14 source wiring重現1 failed：shared dispatch gate漏pending event-range；DYN-T-744驗同coverage identity刷新revision/generation但保留UTC/count/purpose，以及跨identity、ordinal、direction、provider-open、typed無projection拒絕和legacy不變。0.3.15 exact-package與真rapid待驗；約80根左界接點由owner先在0.3.14獨立focused，不與rapid混報。
+
 ## Current gate：DYN-T-741/742 接點settlement（0.3.14）
 
 - DYN-T-741在0.3.13正式package上1 failed：固定4500 resident淘汰原viewport timestamp，預期released head回new1500/80，實得None。

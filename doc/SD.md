@@ -1,5 +1,9 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## Current：queued event-range dispatch（0.3.15 / RFC-0036 D38）
+
+`committedCoverageReady`同時要求`pendingEventRangeSettlement.IsNone`，所有send/queue/drain沿同一gate。`LocalRange`帶captured coverage identity；`tryRefreshQueuedEventRangeAction`只在identity相同時保留原time/count/purpose並刷新explicit無ordinal/方向intent的revision與generation，跨scope或錯路徑拒絕；legacy無intent保持。Renderer/Interactive0.3.15、Ptcs.Client0.2.2同步全部active direct tests/LiveDemo；DYN-T-743/744、真rapid及左界focused為gate。
+
 ## Current：adjacent prepared settlement（0.3.14 / RFC-0036 D37）
 
 `tryReanchorWindow`先將oldWindow.StartIndex+delta界定為released target，查其timestamp在new timeline的位置，再套old domain外的remainingDelta。`navigatorAdjacentProjectionSettlement`拒絕舊generation，匹配接點則Reanchor；pending時缺接點Await，完成後缺接點Reject。prepared publication及ACK callback同用此函式；ACK讀shellPreparedFrame的state/data，避免混用runtime新state與舊timeline。DYN-T-741覆蓋tail eviction/expanding resident，DYN-T-742覆蓋frame/ACK先後與missing join。Renderer/Interactive0.3.14，Ptcs.Client0.2.1同步current reference；0.3.13未交付consumer。

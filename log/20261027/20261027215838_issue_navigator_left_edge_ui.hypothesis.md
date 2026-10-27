@@ -19,3 +19,9 @@ wait for accepted prepared data, preserve viewport width and temporal anchor
 - Producer另一個已定位的不變量破壞：no-ordinal pending在generation前進後無條件選StartIndex=0，會遺失剛拖到的時間接點。應由old timeline中的released target timestamp對齊new timeline；4500固定resident可evict原pre-drag viewport，所以不能只查舊viewport的起點。
 - 加DYN-T-741：old1500..5999→new0..4499、old window3000/80、delta=-3000；預期new1500/80（接點T01500），舊helper找已evicted的T04500而None。增長resident也需同一接點。
 - 原H1約5行擴至約30行production，因需同驗frame先到/ACK先到的同一settlement，不新增framework或consumer代碼。
+
+## Experiment：0.3.14 rapid ACK/prepared gap
+
+- 真Research `formal-overview-edge-drag-0314-consumerfix/workspace-action-requests.json`：ui5 expected5 accepted後，ui6/7仍expected5而被revision guard拒絕。中間移動frame trace 461 samples/0 regression，故不先改繪圖；最早偏離在dispatch authority。
+- 已定位：`committedCoverageReady`僅比較runtime與committed key，兩者仍為舊frame時會誤判ready；pendingEventRangeSettlement沒有加入共同gate。LocalRange queue另保存已建好的舊revision action，即使等待frame仍須在同一coverage identity內重新取得dispatch revision。
+- 最小方案約40行：共同gate等event-range settlement完成；LocalRange queue記captured coverage identity；drain只在identity相同、explicit無ordinal/方向的event-time action上刷新revision/generation，時間、寬度、purpose全保留。不同identity／ordinal／directional不重放。legacy無intent原路徑不變。先DYN-T-743 wiring RED，再DYN-T-744單元覆蓋refresh與拒絕邊界；0.3.15 exact-package及真rapid驗證，user約80根左界focused由daedilus並行驗0.3.14，不被此鄰路徑阻擋。

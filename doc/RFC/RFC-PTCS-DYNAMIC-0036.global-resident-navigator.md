@@ -2,6 +2,10 @@
 
 ## D36 — 2026-10-27 左界觸及即續載（user accepted；0.3.13）
 
+### D38 — accepted event-range 的 queue authority（0.3.15）
+
+0.3.14真rapid action在ACK後、prepared frame前放行下一筆，沿用舊revision被拒。共同dispatch gate須等待pending event-range settlement；queued LocalRange保留coverage identity，只有同scope explicit/no-ordinal/no-direction intent可刷新dispatch revision/generation，時間範圍、count、purpose不變；identity改變與其他型態拒絕重放，legacy無intent維持。DYN-T-743先RED，DYN-T-744驗refresh及拒絕邊界。主線約80根左界接點與rapid回歸分別驗，不能以任一局部PASS宣告全部完成。
+
 ### D37 — 接點settlement（0.3.14）
 
 左續載後以release target的event-time重新定位，保留viewport width；不可因query generation前進就設StartIndex=0。固定4500 resident會淘汰舊tail，故查找release target而非pre-drag viewport起點。Frame先到與ACK先到共用generation fence及atomic prepared frame；缺接點時待處理中則Await，完成後Reject，不假造index0。0.3.12真host另揭durable cross-axis local resolver拒絕合法ProviderOpenEarlier，交Research owner補既有directional contract，Dynamic不代改host。DYN-T-741已在0.3.13重現RED。

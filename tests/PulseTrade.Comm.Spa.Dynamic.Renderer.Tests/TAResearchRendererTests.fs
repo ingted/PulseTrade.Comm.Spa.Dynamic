@@ -4060,6 +4060,13 @@ let tests =
                 (Some { StartIndex = 1500; Count = 80 })
                 "an expanding resident also keeps the same time join and visible width rather than jumping to new index zero"
 
+        testCase "DYN-T-743 event-range ACK cannot release queued actions before its prepared frame" <| fun _ ->
+            let source = IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let start = source.IndexOf("let committedCoverageReady () =", StringComparison.Ordinal)
+            let finish = source.IndexOf("let publishViewportDispatchDiagnostics", start, StringComparison.Ordinal)
+            let gate = source.Substring(start, finish - start)
+            Expect.stringContains gate "pendingEventRangeSettlement.IsNone" "matching old runtime/committed keys are not sufficient while an accepted event-range projection is still pending"
+
         testCase "DYN-T-742 adjacent settlement waits for its prepared generation and rejects a missing join" <| fun _ ->
             let projection generation : TaLoadedCoverageProjection =
                 { CoverageIdentity = "adjacent-join"
@@ -4081,6 +4088,34 @@ let tests =
             Expect.equal (settle newTimeline 3L true) (TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 10; Count = 10 }) "the matching prepared frame preserves the time join even before ACK"
             Expect.equal (settle [| "unrelated" |] 3L true) TaCoverageIntentProjectionSettlement.Await "an in-flight partial result cannot reset the viewport"
             Expect.equal (settle [| "unrelated" |] 3L false) TaCoverageIntentProjectionSettlement.Reject "a completed response without the time join cannot be accepted as a jump to zero"
+
+        testCase "DYN-T-744 queued event ranges preserve intent while refreshing same-scope dispatch authority" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "same-market-scope"; CoverageRevision = 6L; QueryGeneration = 5L
+                  Completeness = TaCoverageCompleteness.Complete; TotalObservationCount = None
+                  Segments = [||]; OverviewAxisRef = "active"; OverviewAnchors = [||]
+                  ActiveDetail = { StartObservationOrdinal = 100L; ObservationCount = 4500; BaseAxisRef = "active" }
+                  GlobalOverview = None }
+            let intent : TaCoverageWindowIntent =
+                { ExpectedCoverageRevision = Some 5L; QueryGeneration = 5L; StartObservationOrdinal = None
+                  ObservationCount = 849; Direction = None; RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds
+                  Purpose = TaCoverageWindowPurpose.NavigatorWindow }
+            let range : VisibleRangeChange =
+                { BaseRowId = "price-30k"; StartEventTimeUtc = "2026-01-23T07:30:00Z"
+                  EndEventTimeExclusiveUtc = "2026-02-24T05:30:00Z"; MaximumBasePoints = 1500
+                  CoverageIntent = Some intent }
+            let action change = SduiAction.VisibleRangeChanged(CanvasInstanceId "queued", change)
+            let refresh identity change = RendererModel.tryRefreshQueuedEventRangeAction identity (Some projection) (action change)
+            let expected = { range with CoverageIntent = Some { intent with ExpectedCoverageRevision = Some 6L; QueryGeneration = 6L } }
+            Expect.equal (refresh (Some "same-market-scope") range) (Some(action expected)) "only dispatch revision/generation change; exact time bounds, width, purpose and canvas remain the user's intent"
+            Expect.isNone (refresh (Some "different-market-scope") range) "an old query or scale cannot be replayed into a different coverage identity"
+            for label, unsupported in [ "ordinal", { intent with StartObservationOrdinal = Some 100L }
+                                        "directional", { intent with Direction = Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier }
+                                        "provider-open", { intent with RangeAuthority = TaCoverageRangeAuthority.ProviderOpenEarlier } ] do
+                Expect.isNone (refresh (Some "same-market-scope") { range with CoverageIntent = Some unsupported }) (label + " must retain its dedicated dispatch route")
+            let legacy = { range with CoverageIntent = None }
+            Expect.equal (RendererModel.tryRefreshQueuedEventRangeAction None None (action legacy)) (Some(action legacy)) "the legacy untyped path is unchanged"
+            Expect.isNone (RendererModel.tryRefreshQueuedEventRangeAction None None (action range)) "typed intent cannot lose its authority"
 
         testCase "adaptive axes and coverage reanchor preserve event-time intent" <| fun _ ->
             let hourly = [| for index in 0 .. 3999 -> DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero).AddHours(float index).ToString("O") |]

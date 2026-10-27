@@ -3605,6 +3605,26 @@ module RendererModel =
     let tryNavigatorEventRangeIntent projection targetWindow =
         tryEventRangeIntent TaCoverageWindowPurpose.NavigatorWindow projection targetWindow
 
+    let tryRefreshQueuedEventRangeAction capturedIdentity (projection: TaLoadedCoverageProjection option) action =
+        if capturedIdentity <> (projection |> Option.map _.CoverageIdentity) then
+            None
+        else
+            match action with
+            | SduiAction.VisibleRangeChanged(canvasId, range) ->
+                match range.CoverageIntent, projection with
+                | None, _ -> Some action
+                | Some intent, Some current
+                    when intent.RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds
+                         && intent.StartObservationOrdinal.IsNone
+                         && intent.Direction.IsNone ->
+                    let refreshed =
+                        { intent with
+                            ExpectedCoverageRevision = Some current.CoverageRevision
+                            QueryGeneration = current.QueryGeneration + 1L }
+                    Some(SduiAction.VisibleRangeChanged(canvasId, { range with CoverageIntent = Some refreshed }))
+                | _ -> None
+            | _ -> None
+
     let tryNavigatorAdjacentEventRangeIntent
         (direction: TaCoverageDirection)
         (observationCount: int)
