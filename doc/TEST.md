@@ -1,10 +1,10 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-715（0.2.50 owner candidate / consumer pending）
+## 2026-10-27 DYN-T-715（0.2.50 owner package / consumer pending）
 
 - 反例：cross-axis projection同時持有active prepared timeline與resident overview timeline；兩者長度皆4但local0 UTC不同。0.2.49 package缺`navigatorEventTimeline`而3個FS0039 RED；修後cross-axis選validated overview原始UTC timestamps，same-axis及overview長度不等均保持active fallback，禁止比例插值或GLOBAL ordinal換算。
 - source gate：navigator local drop必以pointerdown frozen projection走`setNavigatorWindowFromPrepared`／`navigatorVisibleEventRangePrepared`；其他`setWindow` caller仍走active prepared range。DYN-T-689同步改驗default resolver仍存在，未刪browser-local activation或main CURSOR contract。
-- owner candidate：Renderer106/106、Interactive.Client20/20、Interactive package verifierPASS；package-only BrowserDemo以exact0.2.50與同步WebSharper/FSharp direct dependencies build 0 warnings/0 errors。Daedilus真18884須重現Loaded4500/79-bars body left：Action start等於resident overview local0 timestamp、settlement localStart=0、selection不跳回中段且下一次left-edge overscroll可繼續。
+- owner final：source commit `9f57a7e015ec42e047d7dbf9f8dfee1f85c95c08`已push；Renderer/Interactive.Client 0.2.50 SHA=`9E9D3186...15F2`／`497EE6B7...6ACA`，兩包RepositoryCommit/ProductVersion exact，Client exact Renderer `[0.2.50]`。以SDK10.0.402 library-packs權威Contracts `0.1.40`（SHA=`D55F53CD...642`）fresh restore後Renderer106/106、Interactive20/20、package verifierPASS；package-only BrowserDemo exact0.2.50 build 0 warnings/0 errors。Daedilus真18884須重現Loaded4500/79-bars body left：Action start等於resident overview local0 timestamp、settlement localStart=0、selection不跳回中段且下一次left-edge overscroll可繼續。
 
 ## 2026-10-27 DYN-T-714（0.2.49 owner candidate / consumer pending）
 

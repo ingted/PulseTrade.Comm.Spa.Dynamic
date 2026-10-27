@@ -1,0 +1,21 @@
+# Dynamic Renderer 0.2.50 package evidence
+
+## Pre-work plan
+
+- 背景：`20261027073700.narrow_overview_event_time_mapping.log`已完成source plan、RED/GREEN與owner candidate，source commit `9f57a7e015ec42e047d7dbf9f8dfee1f85c95c08`已push；本檔承接post-commit immutable package與handoff evidence。
+- 目標：讓兩個0.2.50 nupkg的RepositoryCommit／ProductVersion精確指向source commit，以權威package authority跑final direct tests、verifier及package-only BrowserDemo。
+- 假設：global cache內同版Contracts可能不是SDK library-packs的WebSharper-ready artifact；fresh cache須驗nupkg hash，不以版本字串代替authority。
+- 範圍：Renderer／Interactive.Client final nupkg、SDK10.0.402 library-packs、task-scoped NuGet caches、current WBS／TEST／DevLog與Daedilus handoff；不改consumer source。
+- 不變事項：不建立`nuget.config`、不push public feed、不改Action wire／consumer、外部dirty維持排除。
+- 步驟：final pack metadata/hash → fresh package-backed tests → verifier → package-only BrowserDemo → evidence commit/push → Daedilus真18884 handoff。
+- 驗收：Renderer106/106、Interactive20/20、verifier PASS、BrowserDemo 0 warnings/0 errors；兩包RepositoryCommit/ProductVersion exact且library-packs copy hash parity。
+- 風險：WebSharper compiler service會跨target持鎖；只以實際handle＋dead parent識別並停止精確PID，不清cache或擴大停服務。
+- 停止條件：真consumer localStart0與續overscroll仍由Daedilus驗；未回覆前owner package完成但不宣告consumer完成。
+
+## Operations
+
+- 2026-10-27 07:53 +08:00：第一次final Renderer pack重現`wsfsc.exe -532462766`；Application event 1026明確為刪除Renderer `websharper.log`遭拒。Microsoft-signed Sysinternals Handle v5.0證PID38624雖command line指向Daedilus Spaa log，實際另持有Renderer log；parent PID10004已不存在。通知Daedilus（`msg-fsi-3e2e36ab05824b6ea1e308c6b2f5e2db`）後只停止該orphan helper。
+- 2026-10-27 08:00 +08:00：持鎖解除後compiler不再crash，但global cache的Contracts0.1.40 nupkg為274322 bytes／SHA=`4722C73B...C498`，相對SDK10.0.402 library-packs權威438148 bytes／SHA=`D55F53CD...642`缺WebSharper metadata，造成47個WS9001。改用task-scoped cache與local package sources固定權威artifact；未新增`nuget.config`。
+- 2026-10-27 08:05 +08:00：Renderer standalone compiler final pack 39 warnings/0 errors；nupkg SHA=`9E9D318614407A98C0CA94FEBBF75A785B1E05D8BD18AFDEB3102E421A4F15F2`，RepositoryCommit=`9f57a7e015ec42e047d7dbf9f8dfee1f85c95c08`、ProductVersion=`0.2.50+9f57a7e015ec42e047d7dbf9f8dfee1f85c95c08`、Contracts=`[0.1.40]`，SDK library-packs hash parity。
+- 2026-10-27 08:08 +08:00：Interactive.Client standalone compiler final pack 1 warning/0 errors；nupkg SHA=`497EE6B749428DC24FF3A324658EFD8B58AD0BB66A260D013294F4A8EE7F6ACA`，RepositoryCommit/ProductVersion exact、Renderer=`[0.2.50]`，SDK library-packs hash parity；Interactive package verifier PASS。
+- 2026-10-27 08:11 +08:00：權威fresh cache解析final Renderer/Interactive與Contracts SHA後，Renderer106/106（含DYN-T-715）、Interactive20/20 PASS；package-only BrowserDemo exact0.2.50 Release 0 warnings/0 errors。owner package gates完成，待evidence commit/push及Daedilus真UI acceptance。
