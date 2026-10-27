@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 physical resident-track boundary gate（DYN-WBS-617）
+
+新增pure `navigatorGestureBoundaryDirection hasGlobalResidentTrack ... pointerX trackWidth`。無GLOBAL resident track時維持既有logical `navigatorBoundaryDirection`；有GLOBAL resident track時沿用`residentNavigatorBoundaryDirection`，只有pointerX小於0或大於trackWidth才回Earlier/Later。Production finish從captured `loadedCoverageSnapshot`判定`GlobalOverview.IsSome`，pointer仍在track內便走既有`commitLocalDraft`，由`setNavigatorWindowFromPrepared`送event-time `NavigatorWindow` intent；ordinal mapping與consumer不變。
+
+DYN-T-731鎖真值`start1198/count80/rawDelta-1200/pointerX10`：preview為local0，resident-track boundary=None；pointerX=-0.1才為Earlier。這直接覆蓋真B的pixel quantization，不以更改expected或比例換算繞過。
+
 ## 2026-10-27 bounded navigator publication telemetry（DYN-WBS-616）
 
 `navigatorCoverageTelemetryStatus defaultView data`以bounded text區分inline/ref-present/ref-missing/ref-invalid，再輸出none／some revision+generation+active range／第一個decode error code+field。Navigator mapper每次publication與persistent listener每次pointerdown共用`publishNavigatorGestureTelemetry`，在document root寫event、renderer instance、publication sequence、document source、state/prepared map counts與decode states、projection、document/data/transport revisions；`data-renderer-navigator-frame-trace`只保留最後12筆。

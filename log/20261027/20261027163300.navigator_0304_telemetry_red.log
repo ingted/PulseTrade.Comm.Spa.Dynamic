@@ -1,0 +1,36 @@
+# Navigator 0.3.4 telemetry Gate: pointerdown Some, action bare
+
+時間：2026-10-27 16:33:00 +08:00
+
+## Pre-work plan
+
+- 背景：0.3.4觀測包以原封不動真Gate B證long pointerdown實際consume `projection=Some`，但pointerup仍送bare `ui:4`，final local1122。
+- 目標：定位`startNavigatorDrag`後projection在drag state、move/preview、finish/pointerup action construction/dispatch的最早遺失點，建立修前RED gate並最小修復。
+- 已證實事實：ProductVersion=`0.3.4+aea3d7602d55853b5508e57559f803c8c630ae78`；canonical min SHA=`B0118BE13A9CB4420D3F1F41532F0937A0FEB86F8E28D56444549BAF36CE24E7`。Middle latest publish seq10：instance1/frame，state/prepared dataCount50，兩者coverage=`ref-present/some:4:3:49646:79`，projection=some，docRev2/dataRev5/transport7。Long pointerdown讀同seq10/Some，後publish seq11亦相同；actionObserved=true，但action無CoverageIntent，final local1122，browser/action errors空。
+- 預期不變量：pointerdown解出的projection必須成為該次drag唯一authority，並被move/preview/finish原子傳遞；pointerup不可重讀舊closure、latest global或不含projection的parallel drag state。
+- Source of truth：`startNavigatorDrag`、active navigator drag state、`finishNavigatorDragFromElement`／action builder/dispatch production code，以及Daedilus `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0304`兩個telemetry JSON與action evidence。
+- 假設：（1）start雖收Some projection，但實際active drag record/closure未儲存；（2）finish路徑使用另一cached drag/legacy action builder，因此丟失CoverageIntent。
+- 最小證據：先氿production source追蹤start參數到finish action的每一個變數，以單一test重現Some projection進start但finish產bare action；需要時才加bounded drag telemetry，不再擴publication instrumentation。
+- Canonical mechanism：同一drag transaction的immutable authority應在pointerdown建立後一路傳到finish；不以重算latest projection、consumer fallback或見None保留舊Some補洞。
+- 範圍：Renderer owner source/tests/package/docs；不改Daedilus consumer/oracle/host、wire contract、GLOBAL ordinal或main plot。
+- 步驟：0304 evidence與source dataflow audit → 修前RED gate → minimal authority propagation fix → focused/full/Interactive/verifier/BrowserDemo → commit/final packages → 同一真B。
+- 驗收：owner gate證Some projection進pointerdown後finish action必含NavigatorWindow CoverageIntent；Daedilus真B second long action含intent且final local0；A/D/highlight/Tagging/原C不回歸。
+- 風險：若unit直接呼叫action builder而跳過production drag lifecycle會再度假綠；gate必須鎖start→finish實際wiring。
+- 停止條件：修後真B仍無intent/local0即不close，依新證據重建因果模型。
+
+## Operations
+
+- 16:32 +08:00：drain Daedilus direct `msg-fsi-0404145d797a4f469e061b2ef0b5912f`；0.3.4 telemetry如上排除publication None假設。以exact replyTo送receipt `msg-fsi-63359cb77b4e46cab56180492a9352c2`，明示不close與不改consumer/oracle/host。
+- 17:04 +08:00：read-only核對0.3.4 canonical package與Daedilus temp consumer。18884實際served min bundle SHA=`B0118BE13A9CB4420D3F1F41532F0937A0FEB86F8E28D56444549BAF36CE24E7`，與`temp-research-0304-agent-daedilus`一致；generated bundle含`tryNavigatorEventRangeIntent`與typed record construction，排除舊bundle/cache。
+- 17:12 +08:00：以新RunId在真18884重現resize80→middle→left edge。Middle action含NavigatorWindow CoverageIntent；left edge pointer仍在track內，但pixel rounding使`1198 + (-1200) = -2`，sync drag outcome=`coverage-boundary`、preview draft=0，約34ms後action不含CoverageIntent，final只前移80到local1118。最早偏離改為logical boundary classifier早於clamped local commit。
+- 17:19 +08:00：先只加入DYN-T-731 fixture並以現行0.3.4 package-backed test build，得到預期FS0039 3處、exit1；證production尚無可區分GlobalOverview resident track與local-only navigator的boundary selector，RED成立。
+
+### Correction 2026-10-27 16:52 +08:00
+
+上列三筆`17:04`／`17:12`／`17:19`為記錄時誤用預估時刻，尚未到達該時間；僅時間標籤無效，操作順序、命令結果、SHA與evidence內容不變。後續一律以實際`Get-Date`記錄。
+
+- 16:52–16:56 +08:00：加入pure `navigatorGestureBoundaryDirection`並在production finish以captured `GlobalOverview.IsSome`選physical resident-track gate；local-only logical boundary與cross-axis ordinal禁制不變。Renderer 0.3.5 candidate SHA=`A28D3F224947DB0E0C1D22C6A71C0FB6B386CB841BEB3F10F65BF13BD5F71775`，Interactive.Client 0.3.5 candidate SHA=`9DDCF8CD77CE1CECB403B52D629A425BADBCB9A44DB71DE3F4E53AD9B5CF57DF`，兩者copy SDK10.0.402 library-packs後hash parity。DYN-T-731 1/1、Renderer121/121、Interactive20/20、package verifierPASS。
+- 16:56 +08:00：fresh package-only BrowserDemo從獨立candidate package root解析Contracts0.1.41、Renderer0.3.5、Interactive.Client0.3.5、FSharp.Core10.1.402、WebSharper.FSharp10.1.7.680、WebSharper.UI10.1.6.680；Release僅既有WS9002／0 errors，7個JS共1,484,797 bytes，full/min SHA=`885D0B1D0A4D39C4CB38D1842A858FDA59C6ED39BC97E9BEDE49816DFD7F964D / 1565A2F4F51EE3526F2EF4DE1E64C283644CAB7A5D4EFB77C02A674D00214839`。Candidate gate完成，下一步先commit/push source，再重建含exact provenance的immutable packages並重跑owner gates；consumer/oracle/host不動。
+- 16:58–17:01 +08:00：drain Daedilus `msg-fsi-9d439714214b457e9237240dab04b9d3`與`msg-fsi-2a453cfcef454fcbb1480010866feb55`；後者finish telemetry exact證`resident-local`、domain4500、committed1201/count79、delta-1202、requested-1、draft0、outcome=coverage-boundary，與本修正因果一致。已各以exact replyTo回覆，message=`msg-fsi-311292da34084d8da7e80a24ea4ba035`／`msg-fsi-f836e9d8154140ceb11d1317b8075ff4`。
+- 17:00 +08:00：encoding baseline診斷第一次只讀git blob前三bytes後未drain stdout，留下本輪hung `git cat-file`與wrapper PID46560/24784並鎖guard；確認exact command/parent後只停止這兩個本輪診斷process，guard恢復。第二次以MemoryStream完整drain成功證Renderer/Interactive fsproj HEAD與current皆保留既有UTF-8 BOM；其他14個changed text strict UTF-8 no BOM，全部NUL=0/U+FFFD=0。無source/build/service影響。
+- 17:01 +08:00：changed-path sensitive scan files=12、High=0／Medium=0；`git diff --check` PASS。Fresh checker session `asteer-dyn0305-202610271701`：PASS=28／WARN=2／FAIL=0；WARN僅expected dirty與既有RFC traceability，WBS/Test missing均0，本輪無FAIL。

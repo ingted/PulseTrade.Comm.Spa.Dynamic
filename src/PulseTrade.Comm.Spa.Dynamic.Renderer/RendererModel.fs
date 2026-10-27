@@ -3400,6 +3400,12 @@ module RendererModel =
         | Some TaCoverageDirection.Later when trackWidth > 0.0 && pointerX > trackWidth -> Some TaCoverageDirection.Later
         | _ -> None
 
+    let navigatorGestureBoundaryDirection hasGlobalResidentTrack total committed drag rawDelta pointerX trackWidth =
+        if hasGlobalResidentTrack then
+            residentNavigatorBoundaryDirection total committed drag rawDelta pointerX trackWidth
+        else
+            navigatorBoundaryDirection total committed drag rawDelta
+
     let optimisticViewportAfterActionSettlement queuedIntent draft =
         if queuedIntent then draft else None
 

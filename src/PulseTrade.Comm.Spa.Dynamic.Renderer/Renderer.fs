@@ -4358,11 +4358,18 @@ module TaWorkspaceRenderer =
                                 finishNavigatorDrag <- None
                                 activeNavigatorDragMode <- None
                                 activeNavigatorCursor <- None
+                                let hasGlobalResidentTrack =
+                                    loadedCoverageSnapshot
+                                    |> Option.exists (fun (_, _, _, projection, _) -> projection.GlobalOverview.IsSome)
                                 let boundaryDirection =
-                                    if gestureDomain.UsesResidentAuthority then
-                                        RendererModel.residentNavigatorBoundaryDirection total committed drag latestRawDelta latestPointerX bounds.Width
-                                    else
-                                        RendererModel.navigatorBoundaryDirection total committed drag latestRawDelta
+                                    RendererModel.navigatorGestureBoundaryDirection
+                                        hasGlobalResidentTrack
+                                        total
+                                        committed
+                                        drag
+                                        latestRawDelta
+                                        latestPointerX
+                                        bounds.Width
                                 let preferPendingBoundary = gestureDomain.UsesResidentAuthority && boundaryDirection.IsSome
                                 let draft =
                                     RendererModel.releaseNavigatorDraft

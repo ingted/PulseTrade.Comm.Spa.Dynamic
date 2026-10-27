@@ -1,10 +1,16 @@
 ---
 status: active
-updated: 2026-10-26
+updated: 2026-10-27
 scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 ---
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
+
+### DYN-VFY-056 0.3.5 resident-track physical boundary（candidate）
+
+- RED：0.3.4真18884從local1198/count80拖到視覺左邊界；pointer仍在track內、preview已clamp local0，但CSS換算raw delta -1200使requested -2，logical classifier先回Earlier，約34ms後送bare action並settle local1118。Middle action仍含`NavigatorWindow` intent，故projection/publication不是根因。
+- Owner candidate：DYN-T-731固定同一fixture，無GLOBAL resident track仍回Earlier；有GLOBAL track且pointerX=10時回None並commit local0，pointerX=-0.1才回Earlier。Renderer121/121、Interactive.Client20/20、package verifierPASS；fresh package-only BrowserDemo exact Renderer／Interactive.Client0.3.5，僅既有WS9002、0 errors。
+- Final gate：source commit後重建immutable packages並驗RepositoryCommit／ProductVersion／SDK library-packs hash parity，再由Daedilus以consumer/oracle/host不變重跑resize80→middle→target0。最後action須含`CoverageIntent.Purpose=NavigatorWindow`、QueryGeneration前進、final local0且browser/action errors為0；未達前不宣告整體修復。
 
 ### DYN-VFY-055 no-1K/5K authority與main-plot explicit mode（candidate）
 

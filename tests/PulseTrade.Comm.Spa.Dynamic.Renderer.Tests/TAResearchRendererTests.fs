@@ -2433,6 +2433,25 @@ let tests =
             Expect.isNone (direction -1500 0.0) "Landing exactly on the left track boundary is local."
             Expect.isNone (direction 2000 1000.0) "Landing exactly on the right track boundary is local."
 
+        testCase "DYN-T-731 cross-axis resident track clamps pixel quantization at local zero" <| fun _ ->
+            let committed = { StartIndex = 1198; Count = 80 }
+            let rawDelta = -1200
+            let draft =
+                RendererModel.previewWindowBounds 1 4000 4500 committed TaWindowDrag.Move rawDelta
+
+            Expect.equal draft { StartIndex = 0; Count = 80 } "the rendered preview already owns exact local zero"
+            Expect.equal
+                (RendererModel.navigatorGestureBoundaryDirection false 4500 committed TaWindowDrag.Move rawDelta 10.0 1200.0)
+                (Some TaCoverageDirection.Earlier)
+                "a local-only navigator retains logical-boundary behavior"
+            Expect.isNone
+                (RendererModel.navigatorGestureBoundaryDirection true 4500 committed TaWindowDrag.Move rawDelta 10.0 1200.0)
+                "a resident track must commit clamped local zero while the pointer remains physically inside"
+            Expect.equal
+                (RendererModel.navigatorGestureBoundaryDirection true 4500 committed TaWindowDrag.Move rawDelta -0.1 1200.0)
+                (Some TaCoverageDirection.Earlier)
+                "an actual physical overscroll still requests earlier resident coverage"
+
         testCase "navigator hit resolver uses boundary targets and interior move for ordinary selections" <| fun _ ->
             let ratios = 0.2, 0.4
             let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer
