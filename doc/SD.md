@@ -1,5 +1,9 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## Current：adjacent prepared settlement（0.3.14 / RFC-0036 D37）
+
+`tryReanchorWindow`先將oldWindow.StartIndex+delta界定為released target，查其timestamp在new timeline的位置，再套old domain外的remainingDelta。`navigatorAdjacentProjectionSettlement`拒絕舊generation，匹配接點則Reanchor；pending時缺接點Await，完成後缺接點Reject。prepared publication及ACK callback同用此函式；ACK讀shellPreparedFrame的state/data，避免混用runtime新state與舊timeline。DYN-T-741覆蓋tail eviction/expanding resident，DYN-T-742覆蓋frame/ACK先後與missing join。Renderer/Interactive0.3.14，Ptcs.Client0.2.1同步current reference；0.3.13未交付consumer。
+
 ## Current correction：left-edge release（RFC-0036 D36 / 0.3.13）
 
 `navigatorGestureBoundaryDirection`在有效domain、Move、rawDelta<0且requestedStart<=0時回Earlier；其他gesture沿既有規則。`requiresNavigatorAdjacentEventRangeMaterialization`對無GLOBAL或GLOBAL.AxisRef與ActiveDetail.BaseAxisRef不同者走event-time；same-axis保留ordinal route。既有queue、revision/generation fence、request count1500及provider-open loaded-head anchor不變。DYN-T-740覆蓋觸界/interior/no-motion/resize；DYN-T-737覆蓋cross-axis與same-axis分流。0.3.13同步Renderer/Interactive/direct tests；Ptcs.Client0.2.1與其tests/LiveDemo同步Renderer引用。

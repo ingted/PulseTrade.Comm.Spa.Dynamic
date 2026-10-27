@@ -2,6 +2,8 @@
 
 Progress 是粗略 implementation checkpoint，不代表正式驗收。
 
+DYN-WBS-620 latest：0.3.14補release target時間接點與prepared/ACK同源settlement（DYN-T-741/742、RFC D37）。0.3.13 owner129/129＋20/20，尚未交付consumer；Research durable ProviderOpenEarlier缺口已交daedilus。完整UI仍pending。
+
 DYN-WBS-620 current：0.3.13依RFC-0036 D36修selection左觸界與cross-axis adjacent routing；DYN-T-740已有RED→source focused GREEN。正式package與Research真UI驗收進行中，未close；詳見TEST current gate及`log/20261027/20261027215838.navigator_left_edge_ui.log`。
 
 | ID | 工項 | 狀態 | Progress | Test ID | 證據 / 備註 |

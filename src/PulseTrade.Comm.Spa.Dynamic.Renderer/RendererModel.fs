@@ -3887,7 +3887,10 @@ module RendererModel =
                 |> Option.exists (fun index -> index < newTimeline.Length - 1)
 
     let tryReanchorWindow minimumCount maximumCount delta (oldTimeline: string array) (newTimeline: string array) oldWindow =
-        let oldBounded = clampWindow minimumCount maximumCount oldTimeline.Length oldWindow
+        let requestedStart = oldWindow.StartIndex + delta
+        let oldBounded =
+            clampWindow minimumCount maximumCount oldTimeline.Length { oldWindow with StartIndex = requestedStart }
+        let remainingDelta = requestedStart - oldBounded.StartIndex
         oldTimeline
         |> Array.tryItem oldBounded.StartIndex
         |> Option.bind (fun anchor -> newTimeline |> Array.tryFindIndex ((=) anchor))
@@ -3896,8 +3899,17 @@ module RendererModel =
                 minimumCount
                 maximumCount
                 newTimeline.Length
-                { StartIndex = anchorIndex + delta
+                { StartIndex = anchorIndex + remainingDelta
                   Count = oldBounded.Count })
+
+    let navigatorAdjacentProjectionSettlement minimumCount maximumCount delta oldTimeline newTimeline oldWindow pendingGeneration actionPending (projection: TaLoadedCoverageProjection) =
+        if projection.QueryGeneration < pendingGeneration then
+            TaCoverageIntentProjectionSettlement.Await
+        else
+            match tryReanchorWindow minimumCount maximumCount delta oldTimeline newTimeline oldWindow with
+            | Some window -> TaCoverageIntentProjectionSettlement.Reanchor window
+            | None when actionPending -> TaCoverageIntentProjectionSettlement.Await
+            | None -> TaCoverageIntentProjectionSettlement.Reject
 
     let tryAdjacentCoverageRange direction maximumBasePoints (document: TaWorkspaceDocument) prepared =
         document.BaseRowId

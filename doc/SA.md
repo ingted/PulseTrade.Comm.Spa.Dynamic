@@ -1,5 +1,9 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## Current：接點保留（0.3.14 / RFC-0036 D37）
+
+No-ordinal response先前在generation前進時直接選new index0，丟失gesture的時間接點；固定4500 resident淘汰舊tail時，原reanchor又因查pre-drag viewport起點而None。DYN-T-741以old1500..5999→new0..4499、3000/80負移3000重現，正確落點為1500/80。改查release target timestamp，再套超出old domain的剩餘delta；保留width及generation fence。ACK與prepared data以同一atomic frame對齊。Research owner另修ProviderOpenEarlier在durable cross-axis分支被當空範圍拒絕的consumer缺口。
+
 ## Current correction：左界觸及續載（RFC-0036 D36 / 0.3.13）
 
 User截圖的操作要求是selection觸界即向左接1500，而0.3.12的physical-pointer gate只有pointer出框才續載；cross-axis GLOBAL另一分支更會將boundary降為local commit。DYN-T-740以4500/start1198/count80、delta=-1198重現None而非Earlier。共同不變量是以當前navigator axis及loaded-head event time接續，不能以GLOBAL存在與否阻擋續載。修正只影響負向Move觸左界及cross-axis adjacent routing；request1500與viewport寬度分離維持。True-host接縫/viewport驗收仍須完成。

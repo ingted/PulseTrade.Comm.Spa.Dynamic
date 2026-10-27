@@ -4047,6 +4047,41 @@ let tests =
             while queue.Count > 0 do queue.Dequeue() ()
             Expect.equal actual (Some expected) "scheduled preparation must preserve the pure prepared-data result"
 
+        testCase "DYN-T-741 earlier prepend anchors the released viewport when the original page tail is evicted" <| fun _ ->
+            let timeline first last = [| for index in first .. last -> $"T{index:D5}" |]
+            let oldTimeline = timeline 1500 5999
+            let shiftedResident = timeline 0 4499
+            Expect.equal
+                (RendererModel.tryReanchorWindow 1 1500 -3000 oldTimeline shiftedResident { StartIndex = 3000; Count = 80 })
+                (Some { StartIndex = 1500; Count = 80 })
+                "the released loaded-head timestamp stays at the join even though the pre-drag viewport timestamp was evicted"
+            Expect.equal
+                (RendererModel.tryReanchorWindow 1 1500 -1198 oldTimeline (timeline 0 5999) { StartIndex = 1198; Count = 80 })
+                (Some { StartIndex = 1500; Count = 80 })
+                "an expanding resident also keeps the same time join and visible width rather than jumping to new index zero"
+
+        testCase "DYN-T-742 adjacent settlement waits for its prepared generation and rejects a missing join" <| fun _ ->
+            let projection generation : TaLoadedCoverageProjection =
+                { CoverageIdentity = "adjacent-join"
+                  CoverageRevision = 4L
+                  QueryGeneration = generation
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "active"
+                  OverviewAnchors = [||]
+                  ActiveDetail = { StartObservationOrdinal = 0L; ObservationCount = 30; BaseAxisRef = "active" }
+                  GlobalOverview = None }
+            let oldTimeline = [| for i in 10 .. 29 -> string i |]
+            let newTimeline = [| for i in 0 .. 29 -> string i |]
+            let settle timeline generation actionPending =
+                RendererModel.navigatorAdjacentProjectionSettlement 1 1500 -5 oldTimeline timeline
+                    { StartIndex = 5; Count = 10 } 3L actionPending (projection generation)
+            Expect.equal (settle newTimeline 2L false) TaCoverageIntentProjectionSettlement.Await "ACK cannot settle an older prepared frame"
+            Expect.equal (settle newTimeline 3L true) (TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 10; Count = 10 }) "the matching prepared frame preserves the time join even before ACK"
+            Expect.equal (settle [| "unrelated" |] 3L true) TaCoverageIntentProjectionSettlement.Await "an in-flight partial result cannot reset the viewport"
+            Expect.equal (settle [| "unrelated" |] 3L false) TaCoverageIntentProjectionSettlement.Reject "a completed response without the time join cannot be accepted as a jump to zero"
+
         testCase "adaptive axes and coverage reanchor preserve event-time intent" <| fun _ ->
             let hourly = [| for index in 0 .. 3999 -> DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero).AddHours(float index).ToString("O") |]
             let fiveMinute = [| for index in 0 .. 299 -> DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero).AddMinutes(float index * 5.0).ToString("O") |]

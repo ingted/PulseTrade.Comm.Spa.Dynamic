@@ -6,6 +6,10 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
+### DYN-VFY-063 續載接點與ACK/prepared先後（0.3.14 / pending）
+
+DYN-T-741修前1 failed（tail evicted時None）；DYN-T-742指定generation、missing join與ACK/frame先後不變量。0.3.13觸界分支已129/129＋20/20，0.3.14再補接點settlement；待正式package與Research directional consumer修復共同驗證。
+
 ### DYN-VFY-062 左界觸及續載（0.3.13 / pending）
 
 - DYN-T-740：4500 loaded/start1198/count80、負向Move剛到左界且pointer仍在內；0.3.12 RED，source focused GREEN。Interiors/no-motion/resize與same-axis須維持。

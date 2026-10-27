@@ -3366,14 +3366,26 @@ module TaWorkspaceRenderer =
                                             None
                                         | TaCoverageIntentProjectionSettlement.Await -> None
                                     | None ->
-                                        pendingBoundaryPan <- None
-                                        Some(
-                                            RendererModel.clampWindow
+                                        match
+                                            RendererModel.navigatorAdjacentProjectionSettlement
                                                 options.MinimumVisibleBars
                                                 maximumVisibleBars
-                                                nextTimeline.Length
-                                                { StartIndex = 0
-                                                  Count = min pending.ObservationCount nextTimeline.Length })
+                                                pending.LegacyDelta
+                                                pending.IntentTimeline
+                                                nextTimeline
+                                                { pending.IntentWindow with Count = pending.ObservationCount }
+                                                pending.QueryGeneration
+                                                uiState.Value.PendingActionId.IsSome
+                                                projection
+                                        with
+                                        | TaCoverageIntentProjectionSettlement.Reanchor window ->
+                                            pendingBoundaryPan <- None
+                                            Some window
+                                        | TaCoverageIntentProjectionSettlement.Await -> None
+                                        | TaCoverageIntentProjectionSettlement.Reject ->
+                                            pendingBoundaryPan <- None
+                                            rejectNavigatorDraft "Accepted adjacent coverage does not retain the requested time anchor."
+                                            None
                                 | _ when pending.TargetStartObservationOrdinal.IsNone
                                          && RendererModel.coverageExtended pending.Direction pending.IntentTimeline nextTimeline ->
                                     pendingBoundaryPan <- None
@@ -3701,14 +3713,15 @@ module TaWorkspaceRenderer =
             changed, bounded
 
         settlePendingCoverageProjection <- fun () ->
-            match pendingBoundaryPan, runtimeState.Value.Document with
+            let preparedState, preparedData = shellPreparedFrame.Value
+            match pendingBoundaryPan, preparedState.Document with
             | Some pending, Some document ->
                 match
                     pending.TargetStartObservationOrdinal,
-                    RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data
+                    RendererModel.tryLoadedCoverageResolved document.DefaultView preparedState.Data
                 with
                 | Some targetStart, Some projection ->
-                    let timeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
+                    let timeline = RendererModel.referenceTimelineForDocumentPrepared document preparedData
                     match
                         RendererModel.coverageIntentProjectionSettlement
                             options.MinimumVisibleBars
@@ -3733,6 +3746,30 @@ module TaWorkspaceRenderer =
                     | TaCoverageIntentProjectionSettlement.Reject ->
                         pendingBoundaryPan <- None
                         rejectNavigatorDraft "Accepted coverage frame does not contain the requested viewport."
+                        true
+                    | TaCoverageIntentProjectionSettlement.Await -> false
+                | None, Some projection ->
+                    let timeline = RendererModel.referenceTimelineForDocumentPrepared document preparedData
+                    match
+                        RendererModel.navigatorAdjacentProjectionSettlement
+                            options.MinimumVisibleBars
+                            (maximumVisibleBarsFor document)
+                            pending.LegacyDelta
+                            pending.IntentTimeline
+                            timeline
+                            { pending.IntentWindow with Count = pending.ObservationCount }
+                            pending.QueryGeneration
+                            false
+                            projection
+                    with
+                    | TaCoverageIntentProjectionSettlement.Reanchor window ->
+                        pendingBoundaryPan <- None
+                        let followLatest = window.StartIndex = RendererModel.viewportMaximumStart timeline.Length window
+                        commitLocalWindow followLatest window |> ignore
+                        true
+                    | TaCoverageIntentProjectionSettlement.Reject ->
+                        pendingBoundaryPan <- None
+                        rejectNavigatorDraft "Accepted adjacent coverage does not retain the requested time anchor."
                         true
                     | TaCoverageIntentProjectionSettlement.Await -> false
                 | _ -> false
