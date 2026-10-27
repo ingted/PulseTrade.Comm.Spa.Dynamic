@@ -1,10 +1,10 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-716（0.2.51 owner candidate / consumer pending）
+## 2026-10-27 DYN-T-716（0.2.51 owner package / consumer pending）
 
 - 反例：舊active timeline中requested event start位於local1985；consumer將ActiveDetail按main pan `+340` relocation後，同一exact event time在新timeline位於local1645。舊Renderer保留optimistic local1985，等於double-apply；新pure settlement以normalized UTC exact match回`1645/1215`，不使用GLOBAL ordinal或比例推測。
 - lifecycle gate：projection generation較pending舊時Await；matching generation但target尚未出現且action pending時Await；terminal仍缺exact start或完整count時Reject。Renderer只為`ExplicitBounds + Start=None + Direction=None`保存context，identity／scope／reject清除；Resize、navigator、CURSOR不變。
-- RED/GREEN：0.2.50 package缺`mainPlotEventRangeProjectionSettlement`而4個FS0039 RED；0.2.51 candidate DYN-T-716 1/1、Renderer107/107、Interactive20/20、package verifierPASS，package-only BrowserDemo exact0.2.51 build 0 warnings/0 errors。Daedilus真18884須證server relocation後local visible start維持1645、pointer canonical event-time不漂移，且coverage/query generation仍各只前進一次。
+- RED/GREEN：0.2.50 package缺`mainPlotEventRangeProjectionSettlement`而4個FS0039 RED；final 0.2.51 source `7758cc0d243cca85b134053f2936ac0800089979`已push，Renderer/Interactive SHA=`20F3C9C5...6D4A`／`6FD75678...5E7E`、RepositoryCommit/ProductVersion exact、Client exact Renderer `[0.2.51]`。fresh DYN-T-716與Renderer107/107、Interactive20/20、package verifierPASS，package-only BrowserDemo exact0.2.51 build 0 warnings/0 errors。Daedilus真18884須證server relocation後local visible start維持1645、pointer canonical event-time不漂移，且coverage/query generation仍各只前進一次。
 
 ## 2026-10-27 DYN-T-715（0.2.50 owner package / consumer pending）
 

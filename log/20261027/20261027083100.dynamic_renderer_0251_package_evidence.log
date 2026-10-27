@@ -1,0 +1,20 @@
+# Dynamic Renderer 0.2.51 package evidence
+
+## Pre-work plan
+
+- 背景：`20261027081441.main_projection_settlement_reanchor.log`已完成DYN-T-716 RED/GREEN與source commit `7758cc0d243cca85b134053f2936ac0800089979`；本檔承接post-commit immutable package與Daedilus handoff。
+- 目標：以該source commit重建兩個0.2.51 final packages，證明exact dependency、metadata、hash與fresh consumer gates。
+- 假設：task-scoped package cache與SDK10.0.402 library-packs可避免global同版Contracts authority混淆；standalone WebSharper compiler避免orphan booster cross-target持鎖。
+- 範圍：Renderer／Interactive.Client 0.2.51 packages、direct tests、package verifier、package-only BrowserDemo、current WBS／TEST／DevLog與handoff；consumer source唯讀。
+- 不變事項：不建立`nuget.config`、不push public feed、不動Daedilus consumer或外部dirty。
+- 步驟：post-commit pack/hash/metadata → fresh direct tests → verifier → package-only BrowserDemo → evidence commit/push → exact COMM handoff。
+- 驗收：兩包RepositoryCommit/ProductVersion exact、Client Renderer `[0.2.51]`、feed hash parity；Renderer107/107、Interactive20/20、verifier PASS、BrowserDemo 0/0。
+- 風險：同numeric version candidate cache不可作final authority；所有final consumer各用新cache並核nupkg SHA。
+- 停止條件：owner package gates完成後等待真18884；local fixture不冒充consumer offset/pointer evidence。
+
+## Operations
+
+- 2026-10-27 08:28 +08:00：post-commit Renderer standalone pack 39 warnings/0 errors；final SHA=`20F3C9C598DFE15CE48A571E3767EFAD367937315D9CF6F590EC504787006D4A`，RepositoryCommit=`7758cc0d243cca85b134053f2936ac0800089979`、ProductVersion=`0.2.51+7758cc0d243cca85b134053f2936ac0800089979`、Contracts=`[0.1.40]`，SDK library-packs hash parity。
+- 2026-10-27 08:29 +08:00：new final cache解析上述Renderer與權威Contracts SHA=`D55F53CD...642`；DYN-T-716在full Renderer107/107中PASS。
+- 2026-10-27 08:30 +08:00：Interactive.Client以new final cache解析final Renderer後standalone pack 1 warning/0 errors；final SHA=`6FD75678E5FF7F3769698DBA4379A67A603793C4147FB3B732BFAFE0FC645E7E`，RepositoryCommit/ProductVersion exact、Renderer=`[0.2.51]`、feed parity。fresh Interactive20/20及package verifierPASS。
+- 2026-10-27 08:31 +08:00：package-only BrowserDemo以new final cache解析兩個final SHA，Release 0 warnings/0 errors。owner package gates完成，下一步evidence commit/push及Daedilus真18884 handoff。
