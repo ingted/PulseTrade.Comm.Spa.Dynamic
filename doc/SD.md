@@ -4,7 +4,7 @@
 
 新增純函式`navigatorDocumentForRenderedFrame cachedDocument renderedState`：有frame document時必選frame值，只有None才fallback cached shell。Navigator mapper收到`(renderedState, currentPreparedData)`後先算`currentDocument`，timeline、maximum-visible-bars、coverage decode與`navigatorGestureFrame` publication全用該document；禁止再出現`tryLoadedCoverageResolved document.DefaultView currentPreparedData.RawData`。因此多個retained mapper即使都收到同一shell frame，也會發布相同document/projection，不再由舊lexical document覆寫None。
 
-DYN-T-729鎖actual production wiring，0.3.2 source 0/1 RED；DYN-T-729B以兩個不同document證frame document優先、None才fallback。Candidate0.3.3修後DYN-T-726/727/728/729/729B全綠，package-backed Renderer118/118、Interactive20/20、verifierPASS，package-only BrowserDemo exact0.3.3僅既有WS9002／0 errors。Final commit provenance、immutable package與Daedilus同一真B仍pending。
+DYN-T-729鎖actual production wiring，0.3.2 source 0/1 RED；DYN-T-729B以兩個不同document證frame document優先、None才fallback。0.3.3 source commit `a03c41f1c22aea50c8ad778e0c280bab538c149c`已push；final immutable Renderer／Interactive.Client SHA-256分別為`1C7AFF43870BD63F09155646D8FB116685211FF9EDEB8972EADFF44DBA3DC2A1`／`8EB30D4DF0620F4828E567BD116E6E08F5B20EF0E37FBBDF87B74CD4F7680654`，RepositoryCommit／ProductVersion exact。Fresh final package cache下Renderer118/118、Interactive20/20、verifierPASS；BrowserDemo exact0.3.3 Release僅既有WS9002／0 errors，min bundle SHA-256=`308D4D7F714541913DC714F859C83AD2C50D89EBF5568A2DA8823EFA251DEC80`。Daedilus同一真B仍pending。
 
 ## 2026-10-27 renderer-published persistent gesture frame（DYN-WBS-614）
 
