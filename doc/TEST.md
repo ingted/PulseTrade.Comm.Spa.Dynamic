@@ -1,10 +1,10 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-718（0.2.53 owner candidate / consumer pending）
+## 2026-10-27 DYN-T-718（0.2.53 owner package / consumer pending）
 
 - 真反例：0.2.51 package/host ProductVersion exact、新browser context，action與server materialization全GREEN，DOM仍`1645 -> 1985`。`viewportScopeKey`包含CoverageIdentity；accepted ui:5 更新identity時live branch先清pending，再以document default覆寫viewport，故DYN-T-716 pure exact UTC helper未成為live authority。
 - policy gate：changed coverage scope＋matching base row時，Reanchor/Reject consumed必須壓過default並完成新scope；Await須保留pending/viewport；base-row mismatch仍不得保留舊action；scope未變不需抑制default。source gate要求`acceptPreparedDataCore`實際使用同一pure policy。
-- RED/GREEN：0.2.52 exact package缺`eventRangeSettlementOwnsViewportScope`而4個FS0039 RED；0.2.53 candidate DYN-T-718與Renderer109/109、Interactive20/20、Interactive package verifierPASS、package-only BrowserDemo 0 warnings/0 errors。candidate Renderer/Interactive SHA=`410F1113...5065`／`8646DE9D...5E02`，尚非post-commit authority。真E2E須以Daedilus原ui:4→ui:5 sequence驗main local維持1645，再驗cross-axis local0／續overscroll。
+- RED/GREEN：0.2.52 exact package缺`eventRangeSettlementOwnsViewportScope`而4個FS0039 RED；final 0.2.53 source `59c535ecfdc05751c181c82445bda096d7125c0a`已push，Renderer/Interactive SHA=`A312BBDE...892C`／`79AE7EBB...EA4F`、RepositoryCommit/ProductVersion exact、Client Renderer `[0.2.53]`、SDK10.0.402 library-packs parity。fresh Renderer109/109、Interactive20/20、Interactive package verifierPASS、package-only BrowserDemo 0 warnings/0 errors。真E2E須以Daedilus原ui:4→ui:5 sequence驗main local維持1645，再驗cross-axis local0／續overscroll，以及no-wait rapid-2-body第3手勢期間navigator/selection geometry不unmount超過5秒。
 
 ## 2026-10-27 DYN-T-717（0.2.52 source complete / 0.2.53 successor consumer pending）
 

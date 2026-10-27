@@ -1,0 +1,20 @@
+# Dynamic Renderer 0.2.53 package evidence
+
+## Pre-work plan
+
+- 背景：DYN-WBS-603／604 source/docs/tests commit `59c535e` 已push；candidate 0.2.53 owner gates全綠但metadata仍指前一HEAD，不可交付。
+- 目標：由exact source commit重建Renderer／Interactive.Client 0.2.53 immutable packages，驗metadata/hash/feed parity/fresh consumers後正式handoff Daedilus。
+- 假設：fresh task-scoped caches與standalone WebSharper可隔離candidate及global stale package；真main/cross-axis E2E仍由Daedilus驗收。
+- 範圍：0.2.53兩包、direct tests、package verifier、package-only BrowserDemo、current evidence docs與COMM；consumer source唯讀。
+- 步驟：fresh restore／lock audit／pack → metadata/hash → SDK10.0.402 library-packs copy/readback → fresh tests/verifier/BrowserDemo → checker → evidence commit/push → exact handoff。
+- 驗收：RepositoryCommit/ProductVersion exact `59c535e...`、Client exact Renderer `[0.2.53]`、feed parity；Renderer109/109、Interactive20/20、verifier PASS、BrowserDemo 0 warnings/0 errors。
+- 風險：same-version candidate cache、WebSharper orphan log lock、package source commit不一致。
+- 停止條件：owner package gates與handoff完成；Daedilus main1645及cross-axis local0/續overscroll回報前不宣告consumer完成。
+
+## Operations
+
+- 09:11：source commit `59c535e` push完成；existing external dirty仍為`lib-packs.txt`、Ptcs.Tests `Program.fs`、`.pcsl/`與`temp/`，未納入。
+- 09:13：post-commit Renderer standalone pack完成（既有39 warnings／0 errors）；final SHA=`A312BBDE24D16F59D79B36D5060F15562131799A98DD9E6B12D4C30FB380892C`，RepositoryCommit=`59c535ecfdc05751c181c82445bda096d7125c0a`、ProductVersion=`0.2.53+59c535ecfdc05751c181c82445bda096d7125c0a`、Contracts=`[0.1.40]`，SDK feed parity。fresh final Renderer109/109 PASS。
+- 09:14：Interactive standalone pack 1 warning／0 errors；final SHA=`79AE7EBB6450E39C5461F5DBB10CECE9FC87B35CADBDEABCAC4AED898CD1EA4F`，RepositoryCommit/ProductVersion exact、Renderer=`[0.2.53]`，SDK feed parity。fresh Interactive20/20與package verifierPASS。
+- 09:15：package-only BrowserDemo以fresh cache解析上述兩包與權威Contracts SHA=`D55F53CD...9642`，Release 0 warnings/0 errors；owner local package gates完成，下一步checker/evidence commit/push與Daedilus exact handoff。
+- 09:16：drain Daedilus補充0.2.51 no-wait rapid sequence第3 gesture曾navigator/selection geometry unmount >5s；已回覆`msg-fsi-5fedeac5...`並納入0.2.53 E2E acceptance。其2018 consumer roundtrip已獨立GREEN，不混入Renderer判定。
