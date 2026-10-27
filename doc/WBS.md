@@ -1,6 +1,8 @@
 # PulseTrade.Comm.Spa.Dynamic WBS
 
-DYN-WBS-620 current：Complete；source0b7e6b1、Renderer/Interactive0.3.16及Ptcs.Client0.2.4 exact gates134/134＋20/20＋17/17、verifier/LiveDemo Release過，hash見DYN-VFY-067。Consumer83925ca3已push且18884回canonical G盤host；formal r3 1/1 PASS，補強獨立UTC/no-network oracle後local5/5、remote6/6與真focused r6 1/1 PASS，未為oracle-only變更再跑full。真Loaded3000/width700右移精確600、不誤Later1500；user Chrome已重開最新版、Loaded4500/console error0。完整evidence及界線見DYN-VFY-068；未public NuGet push，其他WIP不納入完成聲明。
+DYN-WBS-621 current：In progress。非CURSOR主圖preview整段須等於正式TA/resident selection兩界；DYN-T-707在0.3.16實跑1/0/1 RED，consumer25%→65%左界偏225。依RFC0037 amendment修SelectRange共同端點；候選Renderer/Interactive0.3.17、Ptcs.Client0.2.5。owner source/tests/package由asteer，consumer部署/regression及B偶發stall定位由daedilus；未驗收不標完成。詳見同日main_chart_range_contract log及hypothesis。
+
+DYN-WBS-620 prior：Complete；source0b7e6b1、Renderer/Interactive0.3.16及Ptcs.Client0.2.4 exact gates134/134＋20/20＋17/17、verifier/LiveDemo Release過，hash見DYN-VFY-067。Consumer83925ca3已push且18884回canonical G盤host；formal r3 1/1 PASS，補強獨立UTC/no-network oracle後local5/5、remote6/6與真focused r6 1/1 PASS，未為oracle-only變更再跑full。真Loaded3000/width700右移精確600、不誤Later1500；user Chrome已重開最新版、Loaded4500/console error0。完整evidence及界線見DYN-VFY-068；未public NuGet push，其他WIP不納入完成聲明。
 
 Progress 是粗略 implementation checkpoint，不代表正式驗收。
 

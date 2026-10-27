@@ -1,0 +1,31 @@
+# Main chart non-CURSOR range contract
+
+## Pre-work plan
+
+- 背景：原左界續載DYN-WBS-620已於8adeb9c完成closeout。03:23 daedilus僅詢status，本agent如實回尚未做新主圖range；03:38正式handoff msg-fsi-47f2b231f6384ec6983e8f5d165d5b6a要求恢復owner/consumer合作，現接回A。B resident偶發stall由consumer owner縮小rapid/rerun/stale-session，不以fresh多次PASS否定。
+- 目標與不變量：非CURSOR主TA圖pointer-down/up反白整段即新visible range，左右向normalize；新TA與4500 resident selection兩界一致。CURSOR點選、navigator resize/move/續載、GLOBAL跨axis/event-time與typed ACK/generation契約不變。
+- Source of truth：使用者既有Dynamic/src修改及daedilus協作授權；本次exact contract/consumer RED由該owner訊息交接，仍須獨立讀canonical test/evidence。候選原因為main Resize模式以起點半區只選ResizeLeft/Right（訊息所述，尚未讀碼確認），不是先改oracle或容差。
+- 範圍：canonical C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic，branch20260915_033.ptcs_group_support，baseline8adeb9c4e6d5b0442206f1308b590887ce3bad41/source0b7e6b1。owner agent.asteer負責Renderer/Interactive與必要active exact graph；agent.daedilus負責G盤Research consumer/tests/18884部署/full regression。保留lib-packs.txt、Ptcs.Tests/Program.fs、generated LiveDemo JS及PCSL/temp外部dirty，未授權新branch/worktree。
+- 步驟：read當前README/Verification/RFC-0037與最小review insight → 獨立對齊consumer兩方向oracle、定位最早分歧 → hypothesis與既有RFC/SA/SD/WBS/TEST短更新 → 原package RED、最小typed F#修復 → 目標restore/build/Expecto/既有owner Playwright → exact0.3.17及必要Ptcs.Client0.2.5 pack/provenance/hash/SDK copy → consumer真驗收 → checker/sensitive/encoding/commit/push。公開NuGet依既有release gate，不把local candidate當public/deployed。
+- 驗收例：25%→65%、85%→15%的整段邊界/visible count；正反向normalize、clamp/零距離/單bar/出界/最新ACK與stale generation按既有mechanism；其他導航回歸不弱化。不得只以unit/build或exit0稱真UI完成，consumer實測由owner交證據。
+- 停止條件：A exact packages與consumer範圍已驗完成，或owner/授權/正確性blocker且無獨立ready項；不得無因重跑full或擴大B猜修。工作中沿公版COMM單一watcher300秒收訊，不啟第二consumer。
+
+## Operations
+
+- 2026-10-28 03:40:56 +08:00 handoff已durable drain、接單回覆msg-fsi-5baa7671273c44e9aa8cd62bfc5cf544。讀完整comm-foreground-wait skill及公版README；status先誤將PowerShell物件ConvertFrom-Json造成唯讀parse error，已改直接欄位投影，沒有啟第二reader。status現可證participant/state/PollSeconds300/ContinuousHandoff=true，PID欄位名稱待核，不將null當無watcher。git HEAD/dirty已盤點，未改source；本repo無AGENTS/GEMINI，沿本session規範與README/runbook。未發現available知識圖/FSharp搜尋MCP，後續用repo canonical資料。
+
+- 2026-10-28 04:00:15 +08:00 Root cause已證：mainPlotInteractionDrag將Resize依半區變單邊handle，preview卻為完整min/max。baseline Release39W0E；DYN-T-707 exact0.3.16實跑1/0/1 RED（select-range vs resize-left），不是更改容差。修SelectRange與共同half-open端點helper、captured prepared commit及cleanup清pending draft；source Release39W0E。runtime diff48加29刪在65行預估範圍；新增12個746參數化/邊界/wiring案例待fresh package。RFC0037 amendment/REQ/SA/SD/WBS621/TEST/Verification069同步；Renderer/Interactive候選0.3.17、Ptcs.Client0.2.5，8個active fsproj含本輪owner BrowserDemo同步精確dependencies及WebSharper。
+- 2026-10-28 04:00:15 +08:00 Owner BrowserDemo僅既有隔離renderer fixture，新range-only Expecto Playwright revision0.1先登錄Verification用途/範圍/無secret/不啟停host，不能當Research真驗收；舊grab-pan verifier的CURSOR resident-relocation/單邊resize oracle過期，本片不宣稱它已過。main_chart_range_contract目前producer source/compile完成、exact-package tests/owner browser/consumer仍待驗。與daedilus最新進度回覆msg-fsi-387f793bea4c428b9d42db448f79dd46已送達；watcher PID34084/Running=true/Fixed300/ContinuousHandoff=true已核。
+- 2026-10-28 04:00:15 +08:00 操作偏差：第一次假定doc/Runbook.md存在使guard整組讀取失敗，改rg實際檔名；另一組混讀README/rg長行capture31502 bytes超20KiB，未讀raw，改exact ranges/max-columns縮小；一個apply_patch含未核對test標題被原子拒絕，重查後用已讀header套用。以上未覆寫外部WIP。接著scanner/checker、exact source commit固定provenance，再fresh pack/SDK copy/hash/restore/build/測試；未驗前不public push。
+
+- 假設：pre-work已記的最早分歧是preview雙端點與main half-side commit並存；已由source與DYN-T-707 RED證實。此行補checker所需明確欄名，不改寫pre-work歷史。
+- 風險：既有minimum bars/clamp會限制過窄區間；UI fixture不等於Research資料；source metadata、exact dependencies與consumer驗收需分開確認。capture共享pair不可並行；舊test oracle不得放寬容差換綠。
+- 流程偏差：一段exec在scanner native session99562首次yield後就啟checker39673，兩者guard共享capture pair，違反單一guard規範。兩程序已逐一續接至exit0，未重啟或覆寫source，但該次scanner/checker輸出不作最終gate；補上述兩欄後改完全串行重跑，每個native session完成才起下一命令。初次checker42/4/0包含本輪缺欄WARN，修後結果另記；不把wrapper exit0等同正式驗收。
+
+## Plan Correction
+
+- 假設：原pre-work候選原因已由DYN-T-707與main mode source確認為preview/commit雙authority；本片以完整反白端點修commit，不改navigator/CURSOR與consumer。
+- 風險：最低可視根數/clamp仍限制極窄框選；fixture不等於真Research，source/package/部署分別驗。此為原pre-work缺明確欄名的append-only修正，不修改歷史內容。
+- 根因與canonical修正：串行checker30/10/0仍報缺欄，已讀misc/CheckEvidencePolicy.fsx 82–115，確認只採Operations之前或明確Plan Correction段，先前普通Operations補字不會生效。現沿既有extractPlanCorrection機制補欄，不改checker、不弱化gate；其他unchanged WARN來自前次state已記同一批文件，未為消WARN捏造內容。串行敏感scan已High0/Medium0；重新checker後固定source commit，fresh packages/tests再記Operations。
+
+## Operations continued

@@ -1,5 +1,9 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## Current：主圖完整range選取（RFC-0037 amendment / WBS621）
+
+`TaWindowDrag.SelectRange`只由非CURSOR main mode產生；`tryMainPlotRangeWindow`復用`mainPlotRangePreviewBounds`，將captured visible window的左floor/右ceil half-open slots沿既有min/max clamp，零寬/非法geometry回None。`startMainPlotDrag`保存capture時reference length/document/prepared及latest range，preview/update/finish用同一結果；finish走既有`setWindowFromPrepared`，cleanup清pending draft以阻止延後RAF復活。CURSOR Move及navigator ResizeLeft/Right保持。DYN-T-707 baseline RED；DYN-T-746驗雙方向、active offset、clip/zero/invalid/minimum及source wiring。候選Renderer/Interactive0.3.17，active Ptcs.Client exact graph同步0.2.5；package/hash/consumer gates未完成不標驗收。
+
 ## Current：無GLOBAL loaded navigator共同座標（RFC-0036 D39）
 
 `resolveNavigatorGestureDomain`及selection以`coverageNavigatorWindowWithAuthority`取得同一domain/window；無GLOBAL的intent復用`tryLoadedCoverageWindowIntent`，GLOBAL仍用resident offset。`residentGestureScopeMatches`對無GLOBAL比較native axis與segments，允許同scope較新revision/generation，不讓舊gesture跨域。queued rebase使用相同coverage window/intent；無GLOBAL外界沿既有event-time adjacent seam。DYN-T-745以2991 loaded/1500 active、797/694向右600先重現，再驗1397/694/no-direction；resize、active offset、metadata-only ACK與scope拒絕同驗。真formal由daedilus依修後共用domain重新量測，不能硬鎖舊錯誤domain的694結果。

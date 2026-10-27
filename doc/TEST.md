@@ -1,5 +1,9 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## Current gate：DYN-T-707/746 主圖完整框選（RFC0037 amendment）
+
+0.3.16 exact-package DYN-T-707已跑1 executed/0 passed/1 failed/0 ignored/0 errored（expected select-range、actual resize-left）。新增746須驗1500根25%→65%=start+375/count600、正反向同界、active offset/clip/zero/invalid/minimum；source wiring必須共用range helper與captured frame，不能改navigator單邊resize oracle。Owner browser與consumer正反向/相鄰GLOBAL/resident/CURSOR待驗，舊preview-only714不代表正式range正確。
+
 ## Current gate：DYN-T-745 native loaded domain（RFC D39 / 0.3.16 accepted）
 
 2991 loaded/1500 active、797/694向右600須1397/694且Direction=None；同驗selection分母/active offset/兩側resize、同scope較新ACK及不同identity/axis/segments/stale rev/gen拒絕，queued wiring須共用coverage helper。先在0.3.15重現1 executed/0 passed/1 failed（expected2991/actual1500）；source0b7e6b1的fresh0.3.16 package全套134/134、Interactive20/20、Ptcs.Client0.2.4 17/17，0 ignored/failed/errored，verifier/LiveDemo Release過。舊無GLOBAL local-only selection斷言依D39改為ActiveDetail.Start+local在loaded domain的比例；GLOBAL跨axis保護不改。

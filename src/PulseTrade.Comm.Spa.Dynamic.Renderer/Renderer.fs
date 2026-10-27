@@ -4060,6 +4060,7 @@ module TaWorkspaceRenderer =
                     let startClientX = float event.ClientX
                     let pointerDocument = runtimeState.Value.Document
                     let pointerPreparedData = latestPreparedData
+                    let pointerReferenceLength = referenceLength ()
                     let pointerProjection =
                         pointerDocument
                         |> Option.bind (fun document ->
@@ -4071,6 +4072,7 @@ module TaWorkspaceRenderer =
                             (startClientX - bounds.Left)
                     let mutable latestClientX = startClientX
                     let mutable latestDelta = 0
+                    let mutable latestRangeWindow: TaVisibleWindow option = None
                     let mutable moved = false
                     let mutable pendingDraft: TaVisibleWindow option = None
                     let mutable draftFrameScheduled = false
@@ -4148,14 +4150,23 @@ module TaWorkspaceRenderer =
                         if moved then
                             let total = referenceLength ()
                             let draft =
-                                RendererModel.previewWindowBounds
-                                    options.MinimumVisibleBars
-                                    (maximumVisibleBarsNow ())
-                                    total
-                                    committed
-                                    drag
-                                    latestDelta
-                            scheduleDraft draft
+                                match drag with
+                                | TaWindowDrag.SelectRange ->
+                                    RendererModel.tryMainPlotRangeWindow
+                                        options.MinimumVisibleBars
+                                        (maximumVisibleBarsNow ())
+                                        pointerReferenceLength
+                                        committed
+                                        bounds.Width
+                                        (startClientX - bounds.Left)
+                                        (latestClientX - bounds.Left)
+                                | _ ->
+                                    Some(RendererModel.previewWindowBounds
+                                        options.MinimumVisibleBars
+                                        (maximumVisibleBarsNow ())
+                                        total committed drag latestDelta)
+                            latestRangeWindow <- draft
+                            draft |> Option.iter scheduleDraft
                             plotRoot.SetAttribute("data-main-plot-drag-outcome", "moving")
                             plotRoot.SetAttribute("data-main-plot-drag-delta", string latestDelta)
 
@@ -4169,6 +4180,7 @@ module TaWorkspaceRenderer =
                         if not (isNull cancelHandler) then JS.Document.RemoveEventListener("pointercancel", cancelHandler)
                         finishMainPlotDrag <- None
                         cancelMainPlotDrag <- None
+                        pendingDraft <- None
                         hideRangePreview ()
                         let cursor =
                             match mainPlotInteractionMode.Value with
@@ -4188,25 +4200,18 @@ module TaWorkspaceRenderer =
                                 match pointerDocument, pointerProjection with
                                 | Some document, Some projection -> commitMainPlotPan latestDelta document pointerPreparedData committed projection
                                 | _ -> draftWindow.Value <- None
-                            | _ ->
-                                let total = referenceLength ()
-                                let draft =
-                                    pendingDraft
-                                    |> Option.defaultWith (fun () ->
-                                        RendererModel.previewWindowBounds
+                            | TaWindowDrag.SelectRange ->
+                                match latestRangeWindow, pointerDocument with
+                                | Some draft, Some document ->
+                                    let followLatest, next =
+                                        RendererModel.commitWindowBounds
                                             options.MinimumVisibleBars
                                             (maximumVisibleBarsNow ())
-                                            total
-                                            committed
-                                            drag
-                                            latestDelta)
-                                let followLatest, next =
-                                    RendererModel.commitWindowBounds
-                                        options.MinimumVisibleBars
-                                        (maximumVisibleBarsNow ())
-                                        total
-                                        draft
-                                setWindow followLatest next
+                                            pointerReferenceLength
+                                            draft
+                                    setWindowFromPrepared document pointerPreparedData None followLatest next
+                                | _ -> draftWindow.Value <- None
+                            | _ -> draftWindow.Value <- None
                         else
                             draftWindow.Value <- None
                             plotRoot.SetAttribute("data-main-plot-drag-outcome", "click")

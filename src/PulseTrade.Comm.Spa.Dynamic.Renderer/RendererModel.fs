@@ -441,6 +441,9 @@ module TaWindowDrag =
     [<Literal>]
     let ResizeRight = "resize-right"
 
+    [<Literal>]
+    let SelectRange = "select-range"
+
 type TaCursorValue =
     { Label: string
       Value: string }
@@ -556,12 +559,10 @@ module RendererModel =
         | TaMainPlotInteractionMode.Cursor -> TaMainPlotInteractionMode.Resize
         | TaMainPlotInteractionMode.Resize -> TaMainPlotInteractionMode.Cursor
 
-    let mainPlotInteractionDrag mode trackWidth pointerX =
+    let mainPlotInteractionDrag mode (_trackWidth: float) (_pointerX: float) =
         match mode with
         | TaMainPlotInteractionMode.Cursor -> TaWindowDrag.Move
-        | TaMainPlotInteractionMode.Resize when trackWidth > 0.0 && pointerX < trackWidth / 2.0 ->
-            TaWindowDrag.ResizeLeft
-        | TaMainPlotInteractionMode.Resize -> TaWindowDrag.ResizeRight
+        | TaMainPlotInteractionMode.Resize -> TaWindowDrag.SelectRange
 
     let mainPlotDragExceededThreshold threshold startClientX currentClientX =
         threshold >= 0.0
@@ -3583,6 +3584,19 @@ module RendererModel =
             None
         else
             Some { bounded with StartIndex = requestedStart }
+
+    let tryMainPlotRangeWindow minimumCount maximumCount referenceLength activeWindow trackWidth startX currentX =
+        let left, width = mainPlotRangePreviewBounds trackWidth startX currentX
+        let captured = clampWindow minimumCount maximumCount referenceLength activeWindow
+        if referenceLength <= 0 || activeWindow.Count <= 0 || captured.Count <= 0 || width <= 0.0 then
+            None
+        else
+            let startSlot = int (Math.Floor(left / trackWidth * float captured.Count))
+            let endExclusive = int (Math.Ceiling((left + width) / trackWidth * float captured.Count))
+            let selected =
+                clampWindow minimumCount maximumCount captured.Count
+                    { StartIndex = startSlot; Count = endExclusive - startSlot }
+            Some { selected with StartIndex = captured.StartIndex + selected.StartIndex }
 
     let mainPlotPanBoundaryDirection referenceLength activeWindow delta =
         let bounded = clampWindow 1 Int32.MaxValue referenceLength activeWindow

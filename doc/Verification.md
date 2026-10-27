@@ -6,6 +6,12 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
+### DYN-VFY-069 主圖完整框選（0.3.17候選，尚待package/consumer）
+
+- Baseline owner Renderer Release39 warnings/0 errors；DYN-T-707在0.3.16 exact package實跑1/0/1 RED（expected select-range/actual resize-left）。最小source修復Release同39/0，新增DYN-T-746雙向/邊界/最低根數/source wiring待fresh0.3.17 exact tests。
+- 新verifier缺口：既有`verify-ta-main-plot-grab-pan-playwright.fsx`仍驗舊CURSOR resident relocation及單邊resize，不能用來驗本次完整框選。新增`verify-ta-main-plot-range-fixture-playwright.fsx` revision0.1：沿現有BrowserDemo隔離fixture，以真Chrome mouse驗兩界、preview/up/cancel、TA/navigator比例和CURSOR模式恢復；只做UI機制級test，不代表Research真資料/E2E。無secret、無service mutation；client script不build/spawn/stop host，output只在`temp/agent.asteer/main-chart-range/`。正式consumer驗收由daedilus的canonical Research test/r2 RED與後續matrix負責。
+- BrowserDemo作本輪owner test host，在canonical test project同步Interactive0.3.17與現有FSharp.Core10.1.402/WebSharper.FSharp10.1.7.680/UI10.1.6.680，不再複製staging checkout；其餘既有legacy scripts不宣稱已測。Renderer/Interactive0.3.16→0.3.17、Ptcs.Client0.2.4→0.2.5與active direct graph同步，public publish/真部署尚未做。
+
 ### DYN-VFY-068 原左界接續與D39真consumer closeout（2026-10-28）
 
 - Source/package沿用DYN-VFY-067，不再bump/build/pack：producer source `0b7e6b12103bb2d448c6343a52c73a0574c912d9`、Renderer/Interactive0.3.16與Ptcs.Client0.2.4。Consumer canonical root `G:\coldfar_py\coldfar-symbolics`，branch `20260928_042.spaa_ui_refinement`，final source/test commit `83925ca3ca91adeac0731fa0a1bca5793db2b184`已push且獨立查upstream0/0；owner為agent.daedilus。

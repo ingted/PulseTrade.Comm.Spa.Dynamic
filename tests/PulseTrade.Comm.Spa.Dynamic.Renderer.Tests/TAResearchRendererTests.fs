@@ -31,6 +31,55 @@ let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc avai
 
 let tests =
     testList "TA renderer model" [
+        for label, trackWidth, startX, currentX, expected in
+            [ "forward 25 to 65", 1000.0, 250.0, 650.0, Some { StartIndex = 3375; Count = 600 }
+              "reverse same bounds", 1000.0, 650.0, 250.0, Some { StartIndex = 3375; Count = 600 }
+              "reverse 85 to 15", 1000.0, 850.0, 150.0, Some { StartIndex = 3225; Count = 1050 }
+              "clipped full window", 1000.0, -40.0, 1040.0, Some { StartIndex = 3000; Count = 1500 }
+              "minimum stays inside captured window", 1000.0, 999.0, 1000.0, Some { StartIndex = 4488; Count = 12 }
+              "stationary is not a range", 1000.0, 500.0, 500.0, None
+              "outside same edge is empty", 1000.0, -40.0, -10.0, None
+              "zero width is invalid", 0.0, 250.0, 650.0, None
+              "nonfinite pointer is invalid", 1000.0, Double.NaN, 650.0, None
+              "nonfinite track is invalid", Double.PositiveInfinity, 250.0, 650.0, None ] do
+            testCase ("DYN-T-746 main plot full range " + label) <| fun _ ->
+                Expect.equal
+                    (RendererModel.tryMainPlotRangeWindow 12 1500 4500
+                        { StartIndex = 3000; Count = 1500 } trackWidth startX currentX)
+                    expected
+                    "the normalized pointer span owns both edges within the captured viewport"
+
+        testCase "DYN-T-746 range after a prior selection and empty capture" <| fun _ ->
+            Expect.equal
+                (RendererModel.tryMainPlotRangeWindow 12 1500 4500
+                    { StartIndex = 3375; Count = 600 } 1000.0 850.0 150.0)
+                (Some { StartIndex = 3465; Count = 420 })
+                "the reverse selection uses the new visible window, not the whole resident domain"
+            Expect.isNone
+                (RendererModel.tryMainPlotRangeWindow 12 1500 0
+                    { StartIndex = 0; Count = 0 } 1000.0 250.0 650.0)
+                "an empty captured timeline cannot submit a selection"
+            Expect.isNone
+                (RendererModel.tryMainPlotRangeWindow 12 1500 4500
+                    { StartIndex = 0; Count = 0 } 1000.0 250.0 650.0)
+                "an empty visible window is not expanded into a synthetic selection"
+
+        testCase "DYN-T-746 main plot commit shares range endpoints and clears queued draft" <| fun _ ->
+            let source = IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let first = source.IndexOf("let startMainPlotDrag", StringComparison.Ordinal)
+            let last = source.IndexOf("let zoomWindow", first, StringComparison.Ordinal)
+            let mainPlot = source.Substring(first, last - first)
+            for required in
+                [ "RendererModel.tryMainPlotRangeWindow"
+                  "| TaWindowDrag.SelectRange ->"
+                  "pointerReferenceLength"
+                  "latestRangeWindow <- draft"
+                  "pendingDraft <- None"
+                  "setWindowFromPrepared document pointerPreparedData None followLatest next" ] do
+                Expect.stringContains mainPlot required ("missing full-range commit invariant: " + required)
+            Expect.isFalse (mainPlot.Contains("| TaWindowDrag.ResizeLeft")) "main plot must not route a range to the navigator left handle"
+            Expect.isFalse (mainPlot.Contains("| TaWindowDrag.ResizeRight")) "main plot must not route a range to the navigator right handle"
+
         testCase "DYN-T-745 non-GLOBAL loaded segments share label selection gesture and queued authority" <| fun _ ->
             let segment id start count first last =
                 { SegmentId = id
@@ -330,11 +379,11 @@ let tests =
                 (RendererModel.mainPlotDragExceededThreshold RendererModel.MainPlotDragThresholdCssPixels 100.0 104.0)
                 "threshold motion becomes a drag and suppresses the following click"
 
-        testCase "DYN-T-707 main plot right-click mode owns pan versus boundary resize" <| fun _ ->
+        testCase "DYN-T-707 main plot right-click mode owns pan versus full range selection" <| fun _ ->
             Expect.equal
                 (RendererModel.toggleMainPlotInteractionMode TaMainPlotInteractionMode.Cursor)
                 TaMainPlotInteractionMode.Resize
-                "right-click leaves cursor mode for boundary resize"
+                "right-click leaves cursor mode for full range selection"
             Expect.equal
                 (RendererModel.toggleMainPlotInteractionMode TaMainPlotInteractionMode.Resize)
                 TaMainPlotInteractionMode.Cursor
@@ -345,12 +394,12 @@ let tests =
                 "cursor mode always owns a pan regardless of pointer half"
             Expect.equal
                 (RendererModel.mainPlotInteractionDrag TaMainPlotInteractionMode.Resize 1000.0 499.0)
-                TaWindowDrag.ResizeLeft
-                "resize mode assigns the visible left half to the left boundary"
+                "select-range"
+                "non-cursor mode selects the full pointer span even when starting in the left half"
             Expect.equal
                 (RendererModel.mainPlotInteractionDrag TaMainPlotInteractionMode.Resize 1000.0 500.0)
-                TaWindowDrag.ResizeRight
-                "resize mode assigns the midpoint and right half to the right boundary"
+                "select-range"
+                "non-cursor mode selects the full pointer span even when starting in the right half"
             Expect.equal
                 (RendererModel.mainPlotPanDelta 1000 1000.0 500.0 400.0)
                 100

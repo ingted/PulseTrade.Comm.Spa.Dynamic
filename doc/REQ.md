@@ -1,5 +1,9 @@
 # Requirements (REQ) - PulseTrade.Comm.Spa.Dynamic
 
+## Current：DYN-WBS-621 非CURSOR主圖完整框選
+
+右鍵離開CURSOR後，pointer-down/up反白整段須成為新TA與resident selection的相同左右界，正反向normalize；不可依起點半區只改一側。沿既有最低可視根數/clamp與event-time authority，CURSOR/navigator不變。驗收為25%→65%、85%→15%的兩界/根數及相鄰導航回歸；RFC-0037 amendment、DYN-T-707/746。B偶發resident左展stall另由consumer owner定位，不以fresh PASS宣稱消失。
+
 ## 1. 專案背景 (Background)
 `PulseTrade.Comm.Spa` (PTCS) 目前內建了 `fskynet-sdui` (Server-Driven UI) 的邏輯，這使得核心元件過於臃腫且與特定展示層耦合過深。使用者期望能夠將這些動態 UI 與 FSkynet Actor 邏輯抽離為一個獨立的擴充 NuGet 套件 (`PulseTrade.Comm.Spa.Dynamic`)，提供一種可掛載 (Mount / Inject) 的機制，只有在需要的環境中才載入並啟用 SDUI 功能。
 

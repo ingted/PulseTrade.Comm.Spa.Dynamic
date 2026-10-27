@@ -1,5 +1,9 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## Current：主圖框選預覽/提交共同端點（RFC-0037 amendment）
+
+最早偏離在`mainPlotInteractionDrag`：非CURSOR依起點半區被映為單邊ResizeLeft/Right，但反白preview是min/max兩端點。25%→65%在1500根上，舊路徑只將左界移600而非375，正是consumer225 bars RED。改專屬SelectRange與同一captured window的雙界量化，復用既有prepared提交；不改navigator單邊resize/CURSOR語意、wire或consumer。原RFC preview-only非目標現被明確需求取代，不調oracle容差。
+
 ## Current：無GLOBAL loaded navigator共同authority（RFC-0036 D39）
 
 r11真資料coverage有2991個loaded ordinals，但ActiveDetail僅1500。label取loaded coverage、gesture/selection取active payload，最早偏離在`resolveNavigatorGestureDomain`與selection分流。共用既有`coverageNavigatorWindowWithAuthority`；無GLOBAL ordinal屬active axis的loaded segments，不是GLOBAL跨axis ordinal。保留bounded active payload與跨axis安全分流，scope需拒絕coverage identity/axis/segments更動。不是修600 oracle或把Later結果重標成local move。
