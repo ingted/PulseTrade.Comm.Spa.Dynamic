@@ -6,9 +6,9 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
-### DYN-VFY-063 續載接點與ACK/prepared先後（0.3.14 / pending）
+### DYN-VFY-063 續載接點與ACK/prepared先後（0.3.14 / owner PASS，真UI pending）
 
-DYN-T-741修前1 failed（tail evicted時None）；DYN-T-742指定generation、missing join與ACK/frame先後不變量。0.3.13觸界分支已129/129＋20/20，0.3.14再補接點settlement；待正式package與Research directional consumer修復共同驗證。
+DYN-T-741修前1 failed（tail evicted時None）；DYN-T-742指定generation、missing join與ACK/frame先後不變量。0.3.14正式 exact-package Renderer131/131、Interactive20/20、PtcsTaClient17/17，皆0 ignored/failed/errored；package verifier PASS，LiveDemo Release 0 errors。Source `ab591ac86e8bc42b388ca8b1feeda1b89c18cd61`；Renderer SHA256 `D2CE9CC6DBA14529FF69DE7062F739C8954436275ECBE1A142722A51DD2366DA`，Interactive SHA256 `C0DAA516DFF4EF0886E495A5967FD3F20376B06B80298B23C324D0F2F3FA20AC`，Ptcs.Client0.2.1 SHA256 `18AB669F2011A6B3E20F8BD5D8BBEFB74C73563142443F6DBD1356F28AFAE5E9`，皆複製 SDK10.0.402/FSharp/library-packs 並驗hash。Research owner已回consumer directional focused10/10及0.3.12真Earlier accepted，惟resize仍RED；0.3.14與其consumerfix共同真UI驗證pending，未宣告user issue完成。
 
 ### DYN-VFY-062 左界觸及續載（0.3.13 / pending）
 

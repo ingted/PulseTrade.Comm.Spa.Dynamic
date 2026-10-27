@@ -4,7 +4,7 @@
 
 - DYN-T-741在0.3.13正式package上1 failed：固定4500 resident淘汰原viewport timestamp，預期released head回new1500/80，實得None。
 - DYN-T-742覆蓋舊prepared generation等待、matching frame先於ACK可定位、pending缺接點等待、完成後缺接點拒絕。真host須驗維持時間接點與80根寬度，不以索引0當唯一oracle。
-- 0.3.13 exact package Renderer129/129、Interactive20/20、package verifier PASS；未交付consumer。0.3.14正式package與consumer整合待驗。
+- 0.3.14 exact package Renderer131/131、Interactive20/20、PTCS client17/17，0 ignored/failed/errored；package verifier PASS、LiveDemo Release 0 errors。DYN-T-741舊0.3.13 RED後在新exact package GREEN；真Research與consumerfix整合待驗，不能以unit/Release取代UI。source/hash見DYN-VFY-063。
 
 ## Current gate：DYN-T-740 selection reaches left edge（0.3.13）
 

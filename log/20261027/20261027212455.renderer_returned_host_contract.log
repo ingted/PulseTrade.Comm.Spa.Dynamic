@@ -29,3 +29,4 @@
 - 2026-10-27 21:33 +08:00：同一COMM handoff因drain default state不符repo bridge path而重現；讀取公版script參數後，以`-StateDir G:\PulseTrade.fs\temp\agent.asteer\comm-bridge -HandoffOnly`正確drain exact message。未重複當新訊息處理。
 - 2026-10-27 21:34 +08:00：一次合併讀取六份current docs超過guard（41,225 bytes）；未讀raw，停止合併，改逐份最小片段。另一次`rg | head`遇Windows broken-pipe，後續改exact path/glob且不截斷producer。
 - 2026-10-27 21:35 +08:00：fresh scratch package-only BrowserDemo exact解析Contracts0.1.41、Renderer/Interactive0.3.12、FSharp.Core10.1.402、WebSharper.FSharp10.1.7.680、UI10.1.6.680；build WS9002 x1／0 errors，generated JS含count planner／ProviderOpenEarlier，full/min SHA=`CCAA968DA84110A6342D5D1D31EE8FC1114EF7B9AB82AF1392BBA76BFF0BC07B / D2C0A2CD56AEF3885381B17675060C64A889EADAE9C6297640EB4A7B1A43159F`。
+

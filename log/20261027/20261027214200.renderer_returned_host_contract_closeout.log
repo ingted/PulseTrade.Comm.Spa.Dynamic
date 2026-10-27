@@ -20,3 +20,4 @@
 - 2026-10-27 21:44 +08:00：dependency-only同步Dynamic.Ptcs0.2.1與Ptcs.Client0.2.0及direct consumers。Candidate package SHA=`3206D1DB09E0196438B25C384988BB1983A0467F7F8FC1777FEC366D186AB6FB / 2A652BD8D761BA551A792B2ED283AFDAFDB1E7AF3A55F2E9C8822CB40D2BC4D7`，SDK cache parity。
 - 2026-10-27 21:45 +08:00：Contracts0.1.41使兩個committed legacy intent fixtures缺`Purpose`而FS0764；Ptcs.Tests他人dirty僅不同位置空白行，故只補owned `NavigatorWindow`欄並計畫partial stage。修後Ptcs.Tests15/15、PtcsTaClient.Tests17/17、PTCS LiveDemo Release0 errors。
 - 2026-10-27 21:46 +08:00：四條PTCS restore/build路徑均揭露transitive `System.Security.Cryptography.Pkcs 9.0.18` NU1902/NU1903。建立`Blocker.md`；不抑制warning、不把local sync包視為security-clean/public rollout。
+
