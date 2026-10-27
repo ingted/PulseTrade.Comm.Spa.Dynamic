@@ -1,0 +1,20 @@
+# Dynamic 0.2.58 package evidence
+
+## Pre-work plan
+
+- Context: DYN-WBS-610 source/docs/tests checkpoint `7027136ba7d957a026552addbbb28c3d4c8c25cd` is committed and pushed. This phase produces immutable packages and package-backed evidence without changing source semantics.
+- 目標: create Renderer/Interactive.Client 0.2.58 packages whose repository commit, DLL ProductVersion, dependencies, SDK copy and focused consumer gates all agree with the pushed source checkpoint.
+- 假設: after restoring each project from canonical package sources, any repeated `wsfsc.exe -532462766` is an operational compiler-log ownership failure rather than a source regression; Event Log plus exact process parent/command line distinguishes it.
+- Scope: package/build/test outputs under project `bin/obj`, SDK 10.0.402 FSharp/library-packs copies, package-only BrowserDemo staging under ignored `temp/agent.asteer/dynamic-0258`, and current evidence docs/log only. No public NuGet push and no consumer source edits.
+- Acceptance: metadata/hash parity; Renderer and Interactive focused suites green; interactive package verifier green; BrowserDemo resolves Contracts0.1.41/Renderer0.2.58/Interactive0.2.58 and builds with no error; checker/sensitive/encoding gates green; evidence commit/push.
+- 風險: stale WebSharper compiler services can lock project-local generated logs; only a verified orphan with exact command line and absent parent may be stopped. Package evidence cannot substitute for Daedilus real 18884 A/B/C acceptance.
+
+## Operations
+
+- 2026-10-27 12:44 +08:00: sensitive scan on exact owned source/docs/log paths: High=0, Medium=0. Strict UTF-8 decode passed for 15 files; no NUL/U+FFFD and DevLog remains no-BOM. Source checkpoint checker PASS=41/WARN=4/FAIL=0; warnings were corrected explicit-field formatting, expected dirty state, existing traceability debt, and legacy Ptcs package pins already covered by the priority WBS.
+- 2026-10-27 12:45 +08:00: committed/pushed source/docs/tests checkpoint `7027136ba7d957a026552addbbb28c3d4c8c25cd` (`Preserve navigator purpose after settlement`). Unrelated dirty files remained unstaged.
+- 2026-10-27 12:46 +08:00: formal Renderer rebuild first failed twice with `wsfsc.exe -532462766`. The first failure also exposed stale 0.2.57 restore package paths, corrected by a default forced restore. Windows .NET Runtime event 1026 then proved the remaining cause: `UnauthorizedAccessException` deleting `src/PulseTrade.Comm.Spa.Dynamic.Renderer/websharper.log`. Exact holder PID 15880 was an agent.asteer 0.2.57 compiler service whose parent PID 41248 no longer existed; stopped only that orphan. Rebuild then succeeded with 0 errors.
+- 2026-10-27 12:48 +08:00: built final Renderer 0.2.58 package SHA `09C024C3201D6D57B63982EEB20E6DF9444F8CE1A25663880DF9E4582382FF47`; nuspec RepositoryCommit and DLL ProductVersion both exact `7027136...`, Contracts dependency `[0.1.41]`. Copied to SDK 10.0.402 FSharp/library-packs with hash parity.
+- 2026-10-27 12:49 +08:00: built final Interactive.Client 0.2.58 package SHA `E95A8DF8104257EF3AB4335EB1433628B90406C52FBD72A86FF8739D24BDCEFD`; metadata exact and dependencies Contracts `[0.1.41]`, Renderer `[0.2.58]`. Copied to SDK library-packs with hash parity.
+- 2026-10-27 12:50 +08:00: package-backed Renderer tests 113/113 and Interactive.Client tests 20/20 passed; interactive package verifier PASS entries=4.
+- 2026-10-27 12:51 +08:00: package-only BrowserDemo staging resolved Contracts0.1.41/Renderer0.2.58/Interactive.Client0.2.58 and rebuilt with 0 errors. The one WS9002 warning is the canonical demo's existing `WebSharperProject=Bundle` deprecation, unrelated to the package chain; no source project was changed to hide it.

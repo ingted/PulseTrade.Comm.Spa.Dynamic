@@ -1,10 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-724（0.2.58 owner source / package pending）
+## 2026-10-27 DYN-T-724（0.2.58 owner package / consumer pending）
 
 - 契約：inner navigator origin在accepted frame使axis relation改變後仍是`NavigatorWindow`。Same-axis event-range intent保持`ExplicitBounds`、StartOrdinal/Direction none、current coverage revision、next query generation與frozen target count；main plot及resident ordinal path不變。
 - RED：0.2.57 package-backed Renderer test呼叫canonical unconditional navigator helper得到FS0039；真18884先證resize/middle move purpose正確，再證長body drag local1201/count79→target0只送bare ui:4，settle為local1122而非0。
-- GREEN gate：Renderer source使用unconditional navigator helper，保留舊cross-axis compatibility test；fresh Renderer/Interactive tests、package metadata/hash、verifier與package-only BrowserDemo需全綠。真E2E必須同一序列settle到local0，且A/C/highlight/D無回歸。
+- GREEN：Renderer source使用unconditional navigator helper，保留舊cross-axis compatibility test。Final source `7027136ba7d957a026552addbbb28c3d4c8c25cd`；Renderer0.2.58 SHA=`09C024C3201D6D57B63982EEB20E6DF9444F8CE1A25663880DF9E4582382FF47`、Interactive0.2.58 SHA=`E95A8DF8104257EF3AB4335EB1433628B90406C52FBD72A86FF8739D24BDCEFD`，RepositoryCommit／DLL ProductVersion exact、SDK parity。Package-backed Renderer113/113、Interactive20/20、package verifier PASS；BrowserDemo exact Contracts0.1.41／Renderer0.2.58／Interactive0.2.58 build 0 errors，唯一WS9002是canonical Demo既有`Bundle` project-type警告。
+- 真E2E：同一 resize→middle move→long body drag 序列必須settle到local0；A/C/highlight/D不得回歸。C的原Frames=[]已由Daedilus證實關閉，但30秒formal correctness rerun與A仍pending。
 
 ## 2026-10-27 DYN-T-723（0.2.57 owner package / consumer pending）
 
