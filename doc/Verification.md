@@ -6,11 +6,14 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
-### DYN-VFY-069 主圖完整框選（0.3.17候選，尚待package/consumer）
+### DYN-VFY-069 主圖完整框選（0.3.17 owner package過，consumer待驗）
 
-- Baseline owner Renderer Release39 warnings/0 errors；DYN-T-707在0.3.16 exact package實跑1/0/1 RED（expected select-range/actual resize-left）。最小source修復Release同39/0，新增DYN-T-746雙向/邊界/最低根數/source wiring待fresh0.3.17 exact tests。
+- Baseline owner Renderer Release39 warnings/0 errors；DYN-T-707在0.3.16 exact package實跑1/0/1 RED（expected select-range/actual resize-left）。source `6ff0b01d8ff8a36ef1b5928fb9b57e802da00cf0`已push；fresh exact Renderer146/146、Interactive20/20、Ptcs17/17，皆0 ignored/failed/errored。746新增12個雙向/邊界/最低根數/source wiring案例；Interactive package verifier PASS/entries4，BrowserDemo Release1W0E、Ptcs LiveDemo3W0E。
 - 新verifier缺口：既有`verify-ta-main-plot-grab-pan-playwright.fsx`仍驗舊CURSOR resident relocation及單邊resize，不能用來驗本次完整框選。新增`verify-ta-main-plot-range-fixture-playwright.fsx` revision0.1：沿現有BrowserDemo隔離fixture，以真Chrome mouse驗兩界、preview/up/cancel、TA/navigator比例和CURSOR模式恢復；只做UI機制級test，不代表Research真資料/E2E。無secret、無service mutation；client script不build/spawn/stop host，output只在`temp/agent.asteer/main-chart-range/`。正式consumer驗收由daedilus的canonical Research test/r2 RED與後續matrix負責。
 - BrowserDemo作本輪owner test host，在canonical test project同步Interactive0.3.17與現有FSharp.Core10.1.402/WebSharper.FSharp10.1.7.680/UI10.1.6.680，不再複製staging checkout；其餘既有legacy scripts不宣稱已測。Renderer/Interactive0.3.16→0.3.17、Ptcs.Client0.2.4→0.2.5與active direct graph同步，public publish/真部署尚未做。
+- 三包的DLL ProductVersion及nuspec repository commit均對應6ff0b01，zip DLL/build DLL與SDK copy hash全同；SHA256：Renderer0.3.17=`2E2B5E72F05C1024823FBAC0939AC0A14181CE5A005BF42979CCD36BE0EFD5F8`，Interactive0.3.17=`137713D52304185DC1E461725D0210DA30BBE78169760709BFE3D609D25236CA`，Ptcs.Client0.2.5=`49126C65C516BC9930364336C3112B5FFBD16B7E6E425B222D49EA48C8FFA9FE`。exact paths為canonical各`src/<PackageId>/bin/Release/<PackageId>.<version>.nupkg`，已copy至`lib-packs.txt`的SDK10.0.402 library-packs；未public push。
+- Owner fixture Playwright **NOT RUN**：啟動既有BrowserDemo host的tool call遭policy拒絕，process未啟，未改別的shell/tool/agent繞過。已於`msg-fsi-a8ebdc9075e94fe0b39a57849cc9c0fc`正式交manifest與限制給daedilus，真Research正反向/相鄰矩陣仍待其原有consumer流程；不得以fixture compile或unit宣稱UI完成。Blocker見`BLK-DYN-UIHOST-20261028`；B偶發stall無exact RED、未修。PKCS既有advisory仍在。
+- Pack環境失敗已分離：04:10 wsfsc -532462766，EventLog1026為刪Renderer/websharper.log時UnauthorizedAccess，孤兒PID36852的command line與該exact log相同且parent已退出；僅停該PID，以targets既有`WebSharperStandalone=true`完成fresh pack，非產品source workaround。手工restore sources曾把https source當本機路徑；沿既有NuGet.Config（https nuget.org＋LocalCommPackages與SDK來源）正常restore全過，未新增/修改config、未停audit。
 
 ### DYN-VFY-068 原左界接續與D39真consumer closeout（2026-10-28）
 
