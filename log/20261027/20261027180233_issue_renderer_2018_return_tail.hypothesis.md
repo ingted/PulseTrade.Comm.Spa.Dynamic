@@ -45,3 +45,9 @@ Production非型別宣告預計15–35行，tests預計30–60行。若productio
 
 - 上述0.3.7 owner resolution已被真consumer反證：exact0.3.7在ActiveDetail/Loaded1491後仍Viewing1-1028，且preparationPending=false、maxVisible1500，因此cap與未完成preparation皆非根因。
 - 最早共同原因是Accepted callback選錯prepared-frame holder：render shell canonical authority為`shellPreparedFrame`，而`chartCommittedFrame`可在row-refresh path落後。0.3.8改用前者並加bounded telemetry；source `7a9a8432748156347e9108d3028feffed80c7dc8`、final SHA=`D04497...E9EE / 959B35...5500`及owner gates完成。仍須Daedilus原18884真return顯示`selected-applied`、pending=false、selection/applied1491且Viewing=ActiveDetail才consumer close。
+
+## Experiment 3: coverage generation is not ChangeTaQuery acknowledgement
+
+- 0.3.8真機反證：fresh query return的DataRevision由3前進至4，requested timeline已完整materialize為1491；但loaded-coverage QueryGeneration維持0，settlement因此永久Await。Formal長序列雖可見QueryGeneration18，那是先前coverage-window actions累積的counter，不是本次`ChangeTaQuery`回應的generation。
+- Wire也支持此區分：`TaQueryChange`沒有generation欄位；`QueryGeneration`存在於`TaCoverageWindowIntent`與`TaLoadedCoverageProjection`，供visible-range／resident coverage settlement。D30將它當`ChangeTaQuery`必要ack是錯誤authority假設。
+- 修正假設：local `IntentGeneration`仍處理newer-query supersession，DataRevision前進證明有新runtime frame；當coverage generation不前進時，只有temporal selection已為`Selected`（或query本來`NotRequested`／`Invalid`）才可settle，`NoIntersection`仍Await，避免在requested data尚未materialize時過早消耗。這不改wire或放寬consumer expected。

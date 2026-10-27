@@ -1,5 +1,13 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 coverage generation scope correction（0.3.8 falsification / 0.3.9）
+
+0.3.8 exact deployment與provenance皆正確，但fresh窄trace在requested 2026 data已materialize、Loaded/Viewing/ActiveDetail全1491時仍顯示settlement pending、`await-authoritative-frame`、DataRevision `3 -> 4`、loaded-coverage QueryGeneration `0 -> 0`。Formal長序列可見QueryGeneration18，只因先前coverage-window actions已累積counter；它不是本次`ChangeTaQuery` acknowledgement。
+
+最早錯誤是D30把coverage-window generation當成query response generation。Wire contract也能區分：`TaQueryChange`沒有generation；`QueryGeneration`存在於`TaCoverageWindowIntent`／`TaLoadedCoverageProjection`，用於visible-range與resident relocation settlement。Correct invariant是local intent generation拒絕stale query、DataRevision必須前進；generation穩定時只有prepared temporal selection已`Selected`才構成positive materialization proof，`NoIntersection`仍Await。如此不靠timer/retry，也不會把未載入資料提前判成空結果。
+
+0.3.9 owner candidate以DYN-T-733/735鎖定stable generation的Selected/NoIntersection對照；consumer/oracle/host/wire與1491 expected不變，仍待Daedilus原18884 Gate。
+
 ## 2026-10-27 prepared frame publication race（0.3.7 falsification）
 
 Daedilus以exact 0.3.7重跑原18884 return gate：response與rendered data已到DataRevision24、coverageRevision23、queryGeneration18、ActiveDetail start0/count1491，但DOM仍是Loaded1491/Viewing1-1028。這排除package、response payload與「單純等不到revision」；0.3.7 pending intent未能在已準備的render frame上消耗。

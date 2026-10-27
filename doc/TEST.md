@@ -1,5 +1,12 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-735（stable coverage generation / positive materialization）
+
+- Real RED：0.3.8 exact package/provenance/deploy皆通過；fresh窄trace為DataRevision3→4、coverage QueryGeneration0→0、requested 2026 timeline已1491，但telemetry仍`pending=true/outcome=await-authoritative-frame`。Formal序列又可短暫1491後回1028。Evidence由Daedilus direct `msg-fsi-12bd3f4c61d34ce4b0196e48c456199c`與`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0308\return-2026.json`提供。
+- Source RED：0.3.8 package-backed DYN-T-733/735要求「DataRevision前進、generation穩定、requested point已存在」回Settled Selected，實際Await；2 cases中1 failed。對照「同revision前進但NoIntersection」仍要求Await。
+- Candidate GREEN：pure gate只讓positive materialization在stable generation下settle；focused DYN-T-733/733B/735 2/2、Renderer125/125、Interactive20/20、package verifierPASS。Fresh package-only BrowserDemo exact Renderer/Interactive0.3.9、Contracts0.1.41、FSharp.Core10.1.402、WebSharper.FSharp10.1.7.680、UI10.1.6.680，僅既有WS9002 x1／0 errors；candidate package SHA=`1BF39AA49583BF7CDC089C565276C5B20EF0DEEE3367EE0C82D0A1F2282FF705 / 588F755509B1A9346EEC75AE58E5A552DF85630272D1635780E206A60F74B73D`，generated JS full/min SHA=`AA3B588B390C81DFB204E7A85F4ABAD338040D5F3E09A5D7BB7A7B4141D9ACBD / 98BEC1AA66EF9822F79A675B0D3FF13354E7F2558402EE0AAC9A9E74D76F3579`。Final source provenance與Daedilus原Gate pending。
+- 真Gate：原consumer/oracle/host與expected不改；return後需`outcome=selected-applied`、pending=false、selection/applied count1491、Viewing=Loaded=ActiveDetail1491，之後Earlier prepend與高風險回歸才可close。
+
 ## 2026-10-27 DYN-T-733B／734（shell-prepared race + bounded telemetry）
 
 - Real RED：exact 0.3.7在response DataRevision24/coverage23/query18、ActiveDetail1491且DOM Loaded1491後，Viewing仍1-1028。Evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0307\return-2026.json`。

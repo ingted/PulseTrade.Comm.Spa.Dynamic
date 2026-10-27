@@ -184,6 +184,10 @@ D24把prepared欄位選對但把frame authority認錯：實際inner navigator由
 
 0.3.7真Gate證明只revision/generation pending不足：frames與preparation可在Accepted completion前完成，而render shell已顯示新ActiveDetail；若callback之後只回查不保證每個row-refresh前進的`chartCommittedFrame`，pending可永久Await。決策是以render shell實際使用、且在topology/row-refresh/full preparation都更新的`shellPreparedFrame`作Accepted callback回查authority；後續prepared completion仍走原settlement seam。同版公開bounded last-outcome DOM telemetry，但telemetry不參與決策。不改wire、raw payload、consumer expected或host/oracle。
 
+### D32. 2026-10-27 loaded-coverage generation is not ChangeTaQuery acknowledgement
+
+0.3.8真Gate證明D30的雙counter必要條件錯置authority：fresh `ChangeTaQuery`可使DataRevision與requested prepared data前進，但loaded-coverage QueryGeneration維持0；formal長序列的18只是先前coverage-window action counter。Wire上`TaQueryChange`沒有generation，只有`TaCoverageWindowIntent`與`TaLoadedCoverageProjection`持有此欄。決策是保留local IntentGeneration與DataRevision gate；coverage generation前進時可完成positive/negative selection，generation穩定時只有`Selected` positive materialization可完成，`NoIntersection`繼續Await。D32 supersedes D30的「兩個revision皆前進」句，不改D31 shell-prepared authority、wire、consumer expected或host/oracle。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

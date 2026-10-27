@@ -1095,7 +1095,7 @@ let tests =
                 (TaQueryViewportSelection.Selected { StartIndex = 2; Count = 1 })
                 "the same query selects after the bounded patch is merged"
 
-        testCase "DYN-T-733 accepted query waits for its authoritative frame before selecting the viewport" <| fun _ ->
+        testCase "DYN-T-733/DYN-T-735 accepted query waits for authoritative or positive materialization evidence" <| fun _ ->
             let row =
                 { RowId = "base"
                   Kind = TaRowKind.Sma
@@ -1146,8 +1146,12 @@ let tests =
                 "the accepted callback must not turn the old frame's NoIntersection into a final viewport result"
             Expect.equal
                 (RendererModel.acceptedQueryViewportSettlement 19 19 24L 18L 25L 18L query document (dataFor [| 0; 1; 4 |]))
+                (TaAcceptedQueryViewportSettlement.Settled(TaQueryViewportSelection.Selected { StartIndex = 2; Count = 1 }))
+                "materialized requested data settles even when the coverage-window generation is stable"
+            Expect.equal
+                (RendererModel.acceptedQueryViewportSettlement 19 19 24L 18L 25L 18L query document (dataFor [| 0; 1 |]))
                 TaAcceptedQueryViewportSettlement.AwaitAuthoritativeFrame
-                "a data revision without the corresponding query generation is not the accepted query frame"
+                "a stable coverage-window generation must not finalize NoIntersection before the requested data materializes"
             Expect.equal
                 (RendererModel.acceptedQueryViewportSettlement 19 19 24L 18L 25L 19L query document (dataFor [| 0; 1; 4 |]))
                 (TaAcceptedQueryViewportSettlement.Settled(TaQueryViewportSelection.Selected { StartIndex = 2; Count = 1 }))

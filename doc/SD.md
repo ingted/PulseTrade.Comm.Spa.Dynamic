@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 evidence-sensitive query settlement（DYN-WBS-619 / 0.3.9）
+
+`acceptedQueryViewportSettlement`先以local `IntentGeneration`拒絕superseded response，再要求prepared frame的DataRevision大於dispatch baseline。之後只計算一次temporal selection：loaded-coverage QueryGeneration有前進時，`Selected`／`NoIntersection`／`Invalid`／`NotRequested`皆可settle；generation未前進時，`Selected`是requested range已materialize的positive proof，可settle，`NoIntersection`則保持Await。這保留negative-result authority，又不再要求coverage-specific counter替`ChangeTaQuery`背書。
+
+Production wiring不變：Accepted callback仍只對`shellPreparedFrame`建立／檢查pending，incremental/full prepared commit共用原settlement seam；telemetry仍顯示實際baseline/current generation，即使0/0也不冒充前進。沒有timer、delay、retry、poll、wire field或第二套viewport authority。
+
 ## 2026-10-27 shell-prepared query settlement（DYN-WBS-619 / 0.3.8）
 
 `shellPreparedFrame`是chart shell實際使用的`RuntimeState * TaPreparedRendererData`原子publication；topology、row refresh與full preparation成功都會更新。Accepted callback建立pending後先對該holder求settlement；若frame還沒完成，仍由incremental/full prepared path後續消耗。`chartCommittedFrame`保留原topology/chart用途，不再作為Accepted callback的latest prepared authority。

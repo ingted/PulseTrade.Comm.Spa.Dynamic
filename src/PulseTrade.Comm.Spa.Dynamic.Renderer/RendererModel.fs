@@ -2088,11 +2088,17 @@ module RendererModel =
         data =
         if intentGeneration <> latestGeneration then
             TaAcceptedQueryViewportSettlement.Settled TaQueryViewportSelection.Stale
-        elif currentDataRevision <= baselineDataRevision || currentQueryGeneration <= baselineQueryGeneration then
+        elif currentDataRevision <= baselineDataRevision then
             TaAcceptedQueryViewportSettlement.AwaitAuthoritativeFrame
         else
-            queryViewportSelection latestGeneration intentGeneration query document data
-            |> TaAcceptedQueryViewportSettlement.Settled
+            let selection = queryViewportSelection latestGeneration intentGeneration query document data
+            // Loaded-coverage QueryGeneration belongs to coverage-window settlement and does not
+            // necessarily advance for ChangeTaQuery. A selected range in a newer data revision is
+            // positive materialization evidence; a generation-stable NoIntersection is not final.
+            match selection with
+            | TaQueryViewportSelection.NoIntersection when currentQueryGeneration <= baselineQueryGeneration ->
+                TaAcceptedQueryViewportSettlement.AwaitAuthoritativeFrame
+            | _ -> TaAcceptedQueryViewportSettlement.Settled selection
 
     let tryBaseRow (document: TaWorkspaceDocument) : (string * TaRowSpec) option =
         document.BaseRowId
