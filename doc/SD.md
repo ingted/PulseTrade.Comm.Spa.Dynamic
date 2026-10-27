@@ -4,6 +4,8 @@
 
 新增pure `navigatorGestureBoundaryDirection hasGlobalResidentTrack ... pointerX trackWidth`。無GLOBAL resident track時維持既有logical `navigatorBoundaryDirection`；有GLOBAL resident track時沿用`residentNavigatorBoundaryDirection`，只有pointerX小於0或大於trackWidth才回Earlier/Later。Production finish從captured `loadedCoverageSnapshot`判定`GlobalOverview.IsSome`，pointer仍在track內便走既有`commitLocalDraft`，由`setNavigatorWindowFromPrepared`送event-time `NavigatorWindow` intent；ordinal mapping與consumer不變。
 
+Final 0.3.5 packages皆對應source `3e039739f9c0cc704062a7497c31d1a6487a7cc4`；Renderer／Interactive.Client SHA-256=`D88143F8CB89DE3740CC76E57B797F474D67F4A7390A31DAD61A89FB8A6BB95F / BEAF92F7EF57D1EFC150E2E8459970D8308907FA1556A5791B308CEE7E51F9FC`。Owner package gates complete，consumer E2E pending。
+
 DYN-T-731鎖真值`start1198/count80/rawDelta-1200/pointerX10`：preview為local0，resident-track boundary=None；pointerX=-0.1才為Earlier。這直接覆蓋真B的pixel quantization，不以更改expected或比例換算繞過。
 
 ## 2026-10-27 bounded navigator publication telemetry（DYN-WBS-616）

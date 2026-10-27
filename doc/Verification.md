@@ -6,11 +6,11 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
-### DYN-VFY-056 0.3.5 resident-track physical boundary（candidate）
+### DYN-VFY-056 0.3.5 resident-track physical boundary（owner final / consumer pending）
 
 - RED：0.3.4真18884從local1198/count80拖到視覺左邊界；pointer仍在track內、preview已clamp local0，但CSS換算raw delta -1200使requested -2，logical classifier先回Earlier，約34ms後送bare action並settle local1118。Middle action仍含`NavigatorWindow` intent，故projection/publication不是根因。
-- Owner candidate：DYN-T-731固定同一fixture，無GLOBAL resident track仍回Earlier；有GLOBAL track且pointerX=10時回None並commit local0，pointerX=-0.1才回Earlier。Renderer121/121、Interactive.Client20/20、package verifierPASS；fresh package-only BrowserDemo exact Renderer／Interactive.Client0.3.5，僅既有WS9002、0 errors。
-- Final gate：source commit後重建immutable packages並驗RepositoryCommit／ProductVersion／SDK library-packs hash parity，再由Daedilus以consumer/oracle/host不變重跑resize80→middle→target0。最後action須含`CoverageIntent.Purpose=NavigatorWindow`、QueryGeneration前進、final local0且browser/action errors為0；未達前不宣告整體修復。
+- Owner final：DYN-T-731固定同一fixture，無GLOBAL resident track仍回Earlier；有GLOBAL track且pointerX=10時回None並commit local0，pointerX=-0.1才回Earlier。Source `3e039739f9c0cc704062a7497c31d1a6487a7cc4`已push；Renderer／Interactive.Client SHA=`D88143F8CB89DE3740CC76E57B797F474D67F4A7390A31DAD61A89FB8A6BB95F / BEAF92F7EF57D1EFC150E2E8459970D8308907FA1556A5791B308CEE7E51F9FC`，RepositoryCommit／ProductVersion／SDK10.0.402 library-packs hash parity exact。Fresh final Renderer121/121、Interactive.Client20/20、package verifierPASS；fresh package-only BrowserDemo exact0.3.5，僅既有WS9002、0 errors，generated full/min SHA=`885D0B1D0A4D39C4CB38D1842A858FDA59C6ED39BC97E9BEDE49816DFD7F964D / 1565A2F4F51EE3526F2EF4DE1E64C283644CAB7A5D4EFB77C02A674D00214839`。
+- Consumer gate：Daedilus須以consumer/oracle/host不變重跑resize80→middle→target0。最後action須含`CoverageIntent.Purpose=NavigatorWindow`、QueryGeneration前進、final local0且browser/action errors為0；未達前不宣告整體修復。
 
 ### DYN-VFY-055 no-1K/5K authority與main-plot explicit mode（candidate）
 

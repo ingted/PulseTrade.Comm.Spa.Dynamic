@@ -6,6 +6,8 @@
 
 不變量是「resident track的inside edge屬於resident-local window，只有pointer實際越出track才是outside-resident request」。這與same-axis/cross-axis無關，也不授權GLOBAL 1K ordinal與active 30K ordinal相加。最早共同原因是boundary判定使用未clamp的logical delta，沒有把CSS pixel量化與physical overscroll分開。
 
+0.3.5 owner source commit `3e039739f9c0cc704062a7497c31d1a6487a7cc4`已push，immutable package與owner gates完成；真consumer是否確實送出NavigatorWindow intent並settle local0仍由Daedilus Gate B決定，未以owner test替代。
+
 ## 2026-10-27 navigator publication runtime authority（DYN-WBS-616）
 
 0.3.3 exact真B排除了cached lexical document，但pointerdown仍發bare `ui:4`，所以實際讀到的是`Some(frame, projection=None)`，不是Var未publication。只從source無法再區分：同一`ShellPreparedFrame`的document與prepared RawData是否真同generation，或另一retained mapper/renderer instance是否在valid Some之後發布None。

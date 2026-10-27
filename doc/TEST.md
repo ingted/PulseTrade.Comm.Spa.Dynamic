@@ -4,7 +4,7 @@
 
 - 契約：有GlobalOverview的navigator，pointer仍在實體track內時，raw delta即使因CSS pixel量化讓requested start成為-1/-2，也必須提交clamped local0的event-time `NavigatorWindow` intent；只有pointer越出track才可走outside-resident Earlier/Later。
 - RED/GREEN fixture：`total4500, committed=1198/count80, rawDelta=-1200, pointerX=10, trackWidth=1200`。Preview為local0；0.3.4舊production先用logical boundary得到Earlier。DYN-T-731在0.3.4 package-backed compile以FS0039 RED，0.3.5 pure selector修後focused 1/1、Renderer full 121/121；local-only仍Earlier、resident pointer inside為None、pointerX=-0.1仍Earlier。
-- Candidate package gate：Renderer／Interactive.Client 0.3.5已各pack並copy至SDK10.0.402 library-packs且hash parity；Interactive.Client20/20、package verifierPASS；fresh package-only BrowserDemo exact0.3.5僅既有WS9002、0 errors。正式provenance須待source commit後重建再驗。
+- Final owner gate：source `3e039739f9c0cc704062a7497c31d1a6487a7cc4`已push；Renderer／Interactive.Client 0.3.5 SHA=`D88143F8CB89DE3740CC76E57B797F474D67F4A7390A31DAD61A89FB8A6BB95F / BEAF92F7EF57D1EFC150E2E8459970D8308907FA1556A5791B308CEE7E51F9FC`，RepositoryCommit／ProductVersion／SDK10.0.402 library-packs hash parity exact。Fresh final Renderer121/121、Interactive.Client20/20、package verifierPASS；fresh package-only BrowserDemo exact0.3.5僅既有WS9002、0 errors，full/min SHA=`885D0B1D0A4D39C4CB38D1842A858FDA59C6ED39BC97E9BEDE49816DFD7F964D / 1565A2F4F51EE3526F2EF4DE1E64C283644CAB7A5D4EFB77C02A674D00214839`。
 - 真Gate B：resize約80→middle約1200→拖到視覺左邊界；最後action必有`CoverageIntent.Purpose=NavigatorWindow`、QueryGeneration前進、final local0、無browser/action error。A/D/highlight/Tagging/原C不回歸。
 
 ## 2026-10-27 DYN-T-730／730B（0.3.4 owner telemetry package complete / real capture pending）

@@ -40,3 +40,9 @@ Root fix預計不含type declaration約10–25行，測試約20–40行；若超
 - Source實作8個非型別宣告行左右，test 19行，未超過2x門檻。
 - DYN-T-731修前以0.3.4 package-backed compile得到FS0039 RED；0.3.5修後focused1/1、Renderer121/121，並保留local-only Earlier與physical overscroll Earlier相鄰契約。
 - Interactive.Client20/20、package verifier及fresh exact-package BrowserDemo均通過；這些只完成owner candidate，不替代Daedilus真Gate B。
+
+## Owner final
+
+- Source `3e039739f9c0cc704062a7497c31d1a6487a7cc4`已push；final Renderer／Interactive.Client packages及兩DLL provenance皆exact該commit。
+- Fresh isolated final gates：Renderer121/121、Interactive20/20、package verifierPASS、BrowserDemo WS9002 x1／0 errors。
+- 假設已由Daedilus finish telemetry與DYN-T-731收斂；剩餘驗收是同一真consumer sequence是否送出NavigatorWindow intent並settle local0，不再擴source hypothesis。
