@@ -2,7 +2,7 @@
 
 ## Current：queued event-range dispatch（0.3.15 / RFC-0036 D38）
 
-`committedCoverageReady`同時要求`pendingEventRangeSettlement.IsNone`，所有send/queue/drain沿同一gate。`LocalRange`帶captured coverage identity；`tryRefreshQueuedEventRangeAction`只在identity相同時保留原time/count/purpose並刷新explicit無ordinal/方向intent的revision與generation，跨scope或錯路徑拒絕；legacy無intent保持。Renderer/Interactive0.3.15、Ptcs.Client0.2.2同步全部active direct tests/LiveDemo；DYN-T-743/744、真rapid及左界focused為gate。
+`committedCoverageReady`同時要求`pendingEventRangeSettlement.IsNone`，所有send/queue/drain沿同一gate。`LocalRange`帶captured coverage identity；`tryRefreshQueuedEventRangeAction`只在identity相同時保留原time/count/purpose並刷新explicit無ordinal/方向intent的revision與generation，跨scope或錯路徑拒絕；legacy無intent保持。Renderer/Interactive0.3.15、Ptcs.Client0.2.3同步全部active direct tests/LiveDemo；DYN-T-743/744、真rapid及左界focused為gate。Ptcs.Client設GeneratePackageOnBuild，release須先build產fresh DLL/package並驗ProductVersion，再交consumer；單獨pack不得視為已build。
 
 ## Current：adjacent prepared settlement（0.3.14 / RFC-0036 D37）
 
