@@ -168,6 +168,10 @@ D24把prepared欄位選對但把frame authority認錯：實際inner navigator由
 
 0.3.1真B與deployed JS證D26 call已存在，但accepted rerender後第二次pointerdown仍走`currentCoverageProjection=None`的舊closure。WebSharper可保留同一navigator SVG與event listener，只更新reactive visual／attributes；因此把完整frame放在render callback lexical closure仍不足，listener本身未被替換時會永遠讀建立DOM當下的frame。決策是在renderer instance層保留唯一stable `navigatorGestureFrame` Var；實際建立navigator DOM的`ShellPreparedFrame.View` mapper算出shell document/projection後，原子發布`renderedState + document + prepared data + projection`，persistent callback每次事件發生時才讀該Var。這是render path明確發布的authority，不是重讀任意current/latest state；wire、consumer、oracle、GLOBAL ordinal與2018 tail mapping不變。
 
+### D28. 2026-10-27 retained mappers converge on the atomic frame document
+
+0.3.2真B與deployed generated JS證listener已在event invocation讀stable Var，但Var內projection仍可為None。根因是Var只有單一reader authority，publication仍有多個保留的`ShellPreparedFrame.View` mapper；每個mapper以自己的lexical cached shell `document`搭配最新prepared RawData解projection，舊mapper可在新mapper後發布None並覆寫Var。Shell cache刻意用normalized presentation忽略coverage/query counters，故lexical document不是current coverage authority。決策改為每個mapper先從atomic `renderedState.Document`取得`currentDocument`，再以同一frame的prepared RawData解projection並發布tuple；outer document只在frame暫無document時作顯式fallback。如此所有retained mapper即使並存也收斂到同一frame document/projection，不靠subscription執行順序。Wire、consumer、oracle、host與event-time intent不變。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

@@ -1,0 +1,26 @@
+# Navigator 0.3.2 real Gate B RED
+
+時間：2026-10-27 15:33:18 +08:00
+
+## Pre-work plan
+
+- 背景：Daedilus以exact Renderer／Interactive.Client0.3.2與source `70f2d1a0b901f09360e71ecda34ea4535d07f22b`重跑同一真Gate B；middle action含NavigatorWindow intent並到local1201，但accepted frame後long target0仍送bare ui:4、settle local1122。
+- 目標：定位為何renderer-instance stable gesture Var仍在第二次pointerdown提供None projection；建立會讓0.3.2舊碼RED的actual runtime/wiring gate，再交付最小修復。
+- 已證實事實：18884 health200；ProductVersion exact；canonical Research min SHA=`C93352F5CCAF2196A7B57B5D1E27FFF6378A04DA567A0510548479F318AE763E`；middle local3000→1201；long `dragLocalStart=1201`、`dragLastDelta=-1202`、`targetLocalStart=0`、preview1-79；wire action無CoverageIntent、final1122、100s timeout；browserErrors/actionFailures皆空。
+- 預期不變量：不論WebSharper保留DOM listener、保留舊View mapper或重建renderer instance，同一navigator element的event invocation必須解析到最近一次實際render發布的完整authority；舊instance／舊subscription不得覆寫或遮蔽新authority。
+- Source of truth：0.3.2 deployed generated JS、Daedilus `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0302` byte evidence、Renderer actual generated callback/publication wiring。
+- 假設：renderer-instance Var仍非DOM-lifetime authority；可能是舊mapper在新render後再發布None覆寫，或persistent listener屬於舊renderer instance、讀不到新instance Var。名稱／source contract本身不能區分兩者。
+- 最小證據：先比對generated JS中Var建立、mapper assignment與event listener closure的instance關係，再從evidence確認accepted rerender是否建立新renderer telemetry instance／DOM identity；只新增能區分instance replacement與publication order的RED gate。
+- canonical mechanism：優先讓authority與實際navigator DOM element生命週期對齊，或用跨renderer instance且以canvas/element精確keyed的renderer publication；不以consumer state、wire schema或任意`runtimeState.Value` workaround。
+- 範圍：Renderer owner source/tests與必要package/docs；不改Daedilus consumer、oracle、host、GLOBAL ordinal、2018 mapping或main plot。
+- 步驟：evidence／generated JS audit → DYN-T-729修前RED → minimal root fix → focused/full/Release/Interactive/verifier/BrowserDemo → commit/push/final packages →同一真B。
+- 驗收：0.3.2舊碼DYN-T-729 RED；owner gates全綠；Daedilus第二次long action帶NavigatorWindow CoverageIntent且final local0；既有A/D/highlight/Tagging/原C不回歸。
+- 風險：若只再鎖source字串或pure helper會第三次假綠；新gate必須涵蓋persistent listener跨publication／instance reuse的行為。
+- 停止條件：真B仍RED即不close，依新證據重建因果模型。
+
+## Operations
+
+- 15:32 +08:00：drain Daedilus direct `msg-fsi-1eae8266fb4d4bb091c7a21db5220b2f`，0.3.2 exact real B仍RED如上；以exact replyTo送receipt `msg-fsi-4a09de6c20544490b4fe2554427818b4`，明示不close且consumer/oracle/host不改。
+- 15:34–15:36 +08:00：核對canonical generated JS `G:\coldfar_py\coldfar-symbolics\temp-research-0302-agent-daedilus\wwwroot\js\PulseTrade.Comm.Spa.Dynamic.FsStl.Spaa.Research.js`（min SHA exact）。Line6866建立stable Var、9245每個mapper寫Var、9278 listener event-time讀Var；因此排除stale reader。Mapper line9244仍用各自lexical `document_1.DefaultView`搭共同最新prepared RawData，舊subscription可寫None覆蓋新writer；root收斂為multi-writer document authority。
+- 15:36 +08:00：新增DYN-T-729 production source contract；0.3.2實跑1 case為0/1 RED，失敗點正是缺少atomic frame document selection。
+- 15:37–15:40 +08:00：新增`navigatorDocumentForRenderedFrame`，navigator mapper的timeline／maximum-visible-bars／projection／gesture publication全改用renderedState.Document（None才cached fallback）；新增DYN-T-729B行為測試。Renderer／Interactive與direct tests升0.3.3。Candidate Renderer SHA=`E45246D5938F3F639A814C47C8A4BFE521C8ACF535850E39B6B39A605E4FCF48`、Interactive SHA=`96B612C8CC0B9C3F07011ACF0B9E0F11EE64A913C75C9AA4A4FFC7CA7BA4B5E6`；focused726-729B全綠、Renderer118/118、Interactive20/20、verifierPASS。Substring filter `DYN-T-729`實跑729與729B共2 cases，未誤報為單case；另以729B單獨1/1與full118/118確認。Package-only BrowserDemo exact0.3.3 chain僅既有WS9002／0 errors、3 JS、min SHA=`308D4D7F714541913DC714F859C83AD2C50D89EBF5568A2DA8823EFA251DEC80`。

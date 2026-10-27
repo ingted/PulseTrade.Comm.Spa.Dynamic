@@ -270,6 +270,9 @@ module TaWorkspaceRenderer =
             normalizeDocumentPresentation leftDocument = normalizeDocumentPresentation rightDocument
         | _ -> false
 
+    let navigatorDocumentForRenderedFrame cachedDocument (renderedState: RuntimeState) =
+        renderedState.Document |> Option.defaultValue cachedDocument
+
     let sameDocumentShell (left: RuntimeState) (right: RuntimeState) =
         left.Identity = right.Identity && sameDocumentPresentation left right
 
@@ -5952,13 +5955,14 @@ module TaWorkspaceRenderer =
                                     div [ attr.style "min-width:0;" ] [
                                         shellPreparedFrame.View
                                         |> View.Map (fun (renderedState, currentPreparedData) ->
+                                            let currentDocument = navigatorDocumentForRenderedFrame document renderedState
                                             let currentReferenceTimeline =
-                                                RendererModel.referenceTimelineForDocumentPrepared document currentPreparedData
+                                                RendererModel.referenceTimelineForDocumentPrepared currentDocument currentPreparedData
                                             let currentReferenceLength = currentReferenceTimeline.Length
                                             let currentCoverageProjection =
-                                                RendererModel.tryLoadedCoverageResolved document.DefaultView currentPreparedData.RawData
+                                                RendererModel.tryLoadedCoverageResolved currentDocument.DefaultView currentPreparedData.RawData
                                             navigatorGestureFrame.Value <-
-                                                Some(renderedState, document, currentPreparedData, currentCoverageProjection)
+                                                Some(renderedState, currentDocument, currentPreparedData, currentCoverageProjection)
                                             let overviewReferenceTimeline =
                                                 currentCoverageProjection
                                                 |> Option.bind RendererModel.tryOverviewTimeline
@@ -6000,7 +6004,7 @@ module TaWorkspaceRenderer =
                                                         let currentVisibleWindow =
                                                             RendererModel.resolveWindow
                                                                 options.MinimumVisibleBars
-                                                                (maximumVisibleBarsFor document)
+                                                                (maximumVisibleBarsFor currentDocument)
                                                                 currentReferenceLength
                                                                 currentUi.FollowLatest
                                                                 currentUi.Window

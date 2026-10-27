@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 retained navigator mapper document authority（DYN-WBS-615）
+
+0.3.2 exact真B與deployed JS排除listener未讀Var：callback確實在pointerdown執行`navigatorGestureFrame.Get()`，但Var中的projection仍是None。Generated mapper顯示每個保留subscription都用自己的outer `document_1.DefaultView`搭配共同的最新`currentPreparedData.RawData`解projection，再寫同一Var；舊document與新prepared不屬同一atomic frame時會得到None，最後寫入者決定gesture結果。
+
+最早共同原因是D27只消除stale reader，未消除stale writers。`sameDocumentPresentation`／shell cache又刻意忽略coverage/query counters，使lexical document可合理存活，不能當current coverage authority。所有mapper必須以`ShellPreparedFrame`內的rendered state document與prepared data作不可拆frame；這不是重讀任意latest state，而是完成D25 atomic frame邊界。
+
 ## 2026-10-27 persistent navigator listener authority（DYN-WBS-614）
 
 0.3.1 exact ProductVersion與canonical bundle已包含D26的document/projection參數，但真B仍是middle intent GREEN、post-middle long target0 bare/local1122。Deployed JS顯示第二次event命中的是一個捕獲`currentCoverageProjection=None`的handler；visual／attributes已reactive更新，故最早偏離不是decode或wire，而是WebSharper保留原navigator DOM listener、沒有以後續render closure替換它。

@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-729／729B（0.3.3 candidate owner gates complete / final and consumer pending）
+
+- 契約：所有retained navigator mapper須從當次`ShellPreparedFrame`的rendered state取得current document，並與同一frame prepared RawData解projection；不得用mapper lexical cached document。Persistent listener仍只在event invocation讀stable gesture Var。
+- RED：exact0.3.2真B provenance正確、middle intent GREEN，但long action bare/local1122；deployed JS證listener event-time `Get()`存在，而mapper仍以outer `document_1`解latest prepared。DYN-T-729在0.3.2 source實跑0/1 RED。
+- Candidate GREEN：DYN-T-729鎖production mapper／publication，DYN-T-729B證frame document優先與None fallback；相鄰726/727/728維持GREEN。Candidate package-backed Renderer118/118、Interactive20/20、verifierPASS；package-only BrowserDemo解析Contracts0.1.41／Renderer0.3.3／Interactive0.3.3，僅既有WS9002／0 errors。Final package須帶source commit exact provenance；Daedilus同序列第二次long action須含NavigatorWindow CoverageIntent且settle local0。
+
 ## 2026-10-27 DYN-T-728（0.3.2 owner package complete / consumer pending）
 
 - 契約：persistent navigator DOM listener不可依賴WebSharper以rerender closure替換。Renderer instance須持有唯一stable gesture-frame Var；實際DOM mapper發布`renderedState + shell document + prepared data + decoded projection`，callback每次pointerdown才讀取該值。

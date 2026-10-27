@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 retained mappers publish one frame document（DYN-WBS-615）
+
+新增純函式`navigatorDocumentForRenderedFrame cachedDocument renderedState`：有frame document時必選frame值，只有None才fallback cached shell。Navigator mapper收到`(renderedState, currentPreparedData)`後先算`currentDocument`，timeline、maximum-visible-bars、coverage decode與`navigatorGestureFrame` publication全用該document；禁止再出現`tryLoadedCoverageResolved document.DefaultView currentPreparedData.RawData`。因此多個retained mapper即使都收到同一shell frame，也會發布相同document/projection，不再由舊lexical document覆寫None。
+
+DYN-T-729鎖actual production wiring，0.3.2 source 0/1 RED；DYN-T-729B以兩個不同document證frame document優先、None才fallback。Candidate0.3.3修後DYN-T-726/727/728/729/729B全綠，package-backed Renderer118/118、Interactive20/20、verifierPASS，package-only BrowserDemo exact0.3.3僅既有WS9002／0 errors。Final commit provenance、immutable package與Daedilus同一真B仍pending。
+
 ## 2026-10-27 renderer-published persistent gesture frame（DYN-WBS-614）
 
 `renderWithProjectionCommitAndDisplayTimeZone`建立單一`navigatorGestureFrame : Var<option<RuntimeState * TaWorkspaceDocument * TaPreparedRendererData * TaLoadedCoverageProjection option>>`。既有navigator `ShellPreparedFrame.View` mapper以outer shell document解projection後，在建立DOM前發布完整tuple；pointerdown callback只在event invocation時match `navigatorGestureFrame.Value`並把同一tuple傳給`startNavigatorDrag`。Var位於renderer instance scope，不隨document branch／Doc diff重建；沒有多個`View.Sink`競寫，也不要求WebSharper替換既存listener。

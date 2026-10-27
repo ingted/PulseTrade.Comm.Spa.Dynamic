@@ -4333,7 +4333,7 @@ let tests =
             Expect.isGreaterThan endIndex startIndex "The production navigator handler body must be bounded."
             let handlerBody = source.Substring(startIndex, endIndex - startIndex)
             Expect.isTrue
-                (Text.RegularExpressions.Regex.IsMatch(source, "navigatorGestureFrame\\.Value <-\\s+Some\\(renderedState, document, currentPreparedData, currentCoverageProjection\\)"))
+                (Text.RegularExpressions.Regex.IsMatch(source, "navigatorGestureFrame\\.Value <-\\s+Some\\(renderedState, currentDocument, currentPreparedData, currentCoverageProjection\\)"))
                 "The rendered frame must atomically carry the exact document and decoded projection used by the navigator."
             Expect.isTrue
                 (Text.RegularExpressions.Regex.IsMatch(source, "startNavigatorDrag\\s+dragState\\s+dragDocument\\s+dragPreparedData\\s+dragCoverageProjection\\s+navigatorRoot\\s+rawEvent"))
@@ -4349,11 +4349,58 @@ let tests =
                 (Text.RegularExpressions.Regex.IsMatch(source, "let navigatorGestureFrame =\\s+Var\\.Create<Option<RuntimeState \\* TaWorkspaceDocument \\* TaPreparedRendererData \\* TaLoadedCoverageProjection option>> None"))
                 "A persistent DOM listener needs one renderer-instance Var whose value can advance without replacing the listener."
             Expect.isTrue
-                (Text.RegularExpressions.Regex.IsMatch(source, "navigatorGestureFrame\\.Value <-\\s+Some\\(renderedState, document, currentPreparedData, currentCoverageProjection\\)"))
+                (Text.RegularExpressions.Regex.IsMatch(source, "navigatorGestureFrame\\.Value <-\\s+Some\\(renderedState, currentDocument, currentPreparedData, currentCoverageProjection\\)"))
                 "The same mapper that produces the navigator DOM must publish its complete frame to persistent gesture authority."
             Expect.isTrue
                 (Text.RegularExpressions.Regex.IsMatch(source, "match navigatorGestureFrame\\.Value with\\s+\\| Some\\(dragState, dragDocument, dragPreparedData, dragCoverageProjection\\) ->\\s+startNavigatorDrag\\s+dragState\\s+dragDocument\\s+dragPreparedData\\s+dragCoverageProjection"))
                 "Pointerdown must dereference current gesture authority at invocation time instead of retaining render-time closure values."
+
+        testCase "DYN-T-729 retained navigator mapper publishes the atomic frame document" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.isTrue
+                (source.Contains("let currentDocument = navigatorDocumentForRenderedFrame document renderedState", StringComparison.Ordinal))
+                "A retained mapper must resolve its document from the current atomic shell frame, not its lexical cached shell."
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "tryLoadedCoverageResolved currentDocument\\.DefaultView currentPreparedData\\.RawData"))
+                "Coverage projection must pair the current frame document with that frame's prepared RawData."
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "Some\\(renderedState, currentDocument, currentPreparedData, currentCoverageProjection\\)"))
+                "The gesture publication must carry the current frame document that actually decoded the projection."
+            Expect.isFalse
+                (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView currentPreparedData.RawData", StringComparison.Ordinal))
+                "No retained navigator mapper may decode latest prepared data through its lexical cached document."
+
+        testCase "DYN-T-729B atomic frame document supersedes the cached shell document" <| fun _ ->
+            let document title =
+                { WorkspaceId = "navigator-frame-document"
+                  Title = title
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = None
+                  Rows = [||]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+            let cachedDocument = document "cached-shell"
+            let currentDocument = document "atomic-frame"
+            let identity =
+                { DocumentId = DocumentId "navigator-frame-document"
+                  CanvasInstanceId = CanvasInstanceId "navigator-frame-canvas" }
+            let renderedState =
+                { RuntimeReducer.initial identity with
+                    Document = Some currentDocument }
+
+            Expect.equal
+                (TaWorkspaceRenderer.navigatorDocumentForRenderedFrame cachedDocument renderedState)
+                currentDocument
+                "Every retained mapper must converge on the document carried by the latest atomic shell frame."
+            Expect.equal
+                (TaWorkspaceRenderer.navigatorDocumentForRenderedFrame cachedDocument (RuntimeReducer.initial identity))
+                cachedDocument
+                "A cached shell document is only the explicit fallback while no frame document exists."
     ]
 
 [<EntryPoint>]
