@@ -1,0 +1,25 @@
+# Navigator release action assembly after 0.2.59 real RED
+
+## Pre-work plan
+
+- 背景：Daedilus exact部署0.2.59（ProductVersion=`0.2.59+c843988feffdc4a5e3460cb2db0f1c94adf65408`）後重跑不變Gate B；preview為`targetLocalStart=0`且`canonicalReady=true`，但POST仍沒有`CoverageIntent`並settle local1122。
+- 目標：找出preview可建立canonical target、release action卻退化為bare visible-range action的最早分支，補可重現RED與最小root fix，再交付新immutable package供同一Gate B重驗。
+- 假設：0.2.59雖修正pointerdown projection來源，pointerup仍可能用不同的prepared/range authority或走另一個action builder；真正分歧位於frozen gesture到release action組裝之間，而非consumer serializer或count heuristic。
+- Source of truth：`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0259` action/gesture/final evidence、source commit `c843988feffdc4a5e3460cb2db0f1c94adf65408`、generated bundle與Renderer package-backed tests。
+- 不變事項：consumer／test oracle／wire schema／purpose enum／resident/main paths不改；projection、timeline、target與intent必須來自同一pointerdown-frozen committed frame；不讀current/latest state。
+- 範圍：Renderer navigator pointer release/action assembly及focused tests，必要的Renderer/Interactive stable patch versions與traceability；獨立2018 tail query-page mapping仍不併入。
+- 驗收：source RED精確重現preview canonical ready但release intent missing；修後同資料產生NavigatorWindow CoverageIntent；package-backed owner gates全綠；Daedilus同一真B settle local0且A/D/highlight/Tagging/原C不回歸。
+- 風險／停止條件：不得以consumer fallback或改expected換綠；若證據顯示serializer/host在source action之後剝field，先固定最早authoritative seam再決定owner，不跨界修改。
+
+## Operations
+
+- 2026-10-27 13:42 +08:00：收到Daedilus 0.2.59真Gate B RED。Exact min.js SHA=`C2BA8E1A56E3826911CFEB83F9478A98B3A38CB174A4739009F4E1791100FBDE`；resize4500→79與middle local3000→1201正常，long body preview target0/canonicalReady=true，POST無CoverageIntent並在100s後local1122。已exact reply確認不close且consumer/oracle不動。
+- 2026-10-27 13:43 +08:00：repo HEAD=`8c9df093930cc24ff8edc76c587bab8f67c8897f`；僅保留外部dirty `lib-packs.txt`與Ptcs test `Program.fs`，本輪尚未改source。
+- 2026-10-27 13:46 +08:00：source證明有兩個可獨立前進的authority：navigator實際由`currentPreparedData`（`shellPreparedData.View`）render，但pointerdown重新讀`chartCommittedFrame.Value`。0.2.59只改後者內部的RawData，沒有消除rendered shell frame與pointer frame的分歧。Daedilus middle evidence已`preparationPending=false`，故不能歸因於尚未完成的prepare；正確不變量是event handler直接capture exact rendered shell `(RuntimeState * PreparedData)` pair。
+- 2026-10-27 13:48 +08:00：DYN-T-726 source wiring gate先RED 0/1；唯一失敗為navigator shell未將runtime/prepared作atomic frame並交給pointerdown。Test另禁止pointerdown再讀`chartCommittedFrame.Value`，且保留prepared RawData／禁runtime Data projection assertions。既有四個FS0046 warnings，無其他failure。
+- 2026-10-27 13:51 +08:00：production將shell publication改為atomic `(RuntimeState * TaPreparedRendererData)`；navigator render closure把exact pair顯式傳入`startNavigatorDrag`，handler移除`chartCommittedFrame.Value`重讀。DYN-T-726 focused1/1、Renderer full114/114、source Release 39既有warnings／0 errors。
+- 2026-10-27 13:53 +08:00：0.3.0 candidate formal Renderer rebuild第一次再被orphan WebSharper PID16420鎖住exact Renderer log；Event1026為相同UnauthorizedAccessException，parent23980不存在，只停止該PID後重建39 warnings／0 errors。未廣泛終止compiler services。
+- 2026-10-27 13:56 +08:00：依stable rollover policy把Renderer／Interactive.Client與兩個direct test refs由0.2.59升0.3.0。Candidate Renderer SHA=`3E32A6786C34EC9F7DC07C48658673FB75DE1C8D6DDAAC9319E39F805CE53279`、Interactive SHA=`F691A2AA378B4E43AC674F53E9110F74EE40AC25C269A47091AA0CCC1945C550`；fresh exact-package Renderer114/114 PASS。
+- 2026-10-27 13:58 +08:00：Interactive test第一次restore因C:剩餘不足1MB而失敗，沒有test execution。驗證本輪三個task-local cache共約1.07GB、唯一active ref為orphan candidate compiler service；parent-dead後只停止exact PID30924，將三個可重建cache精確移至`E:\temp\agent.asteer\dynamic-0300-cache-offload\`，C:恢復約1.07GB，未碰repo／PCSL／其他agent資料。沿同candidate cache續驗Interactive20/20、package verifier PASS。
+- 2026-10-27 13:59 +08:00：package-only BrowserDemo解析candidate Renderer／Interactive0.3.0，Release 1個既有WS9002／0 errors。Candidate gates全綠；下一步sensitive/encoding/checker、source checkpoint commit/push，再重建final immutable packages。
+- 2026-10-27 14:00 +08:00：owned change sensitive scan high=0/medium=0；14個文字檔strict decode、無NUL／U+FFFD，兩個producer fsproj的既有UTF-8 BOM與HEAD一致，其餘無非預期BOM；diff-check PASS。Fresh checker session `agent.asteer-dyn0300-source-202610271400`為PASS30/WARN2/FAIL0，WARN只有shared dirty與既有全庫RFC coverage。本輪未納入`lib-packs.txt`、Ptcs test `Program.fs`、`.pcsl/**`或`temp/**`。

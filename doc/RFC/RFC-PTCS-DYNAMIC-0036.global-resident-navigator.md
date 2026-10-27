@@ -156,6 +156,10 @@ D22的purpose由producer interaction seam決定，不由每次action當下的axi
 
 D23只有在pointerdown取得projection時才生效。`chartCommittedFrame`是`RuntimeState * TaPreparedRendererData` atomic pair；navigator、timeline與coverage UI由prepared `RawData`實際render，故pointerdown也必須由同一prepared `RawData`解析loaded-coverage projection。Paired runtime `Data`可仍是未resolved envelope；用它解析失敗後降成bare `VisibleRangeChanged`會違反D22。禁止改讀較新的`runtimeState.Value`／`latestPreparedData`，也禁止由count或DOM反推；document/revision/key仍取paired runtime state，projection/timeline/range取paired prepared data。
 
+### D25. 2026-10-27 pointerdown captures the exact rendered shell frame
+
+D24把prepared欄位選對但把frame authority認錯：實際inner navigator由`ShellPrepared` view render，`chartCommittedFrame`是另一個可獨立前進的chart authority。0.2.59真B證明前者已顯示canonical target0，pointerdown重讀後者仍可解不到projection並落入bare fallback。Shell authority因此改為atomic `RuntimeState * TaPreparedRendererData` pair；每次shell publication同時更新兩半，navigator render closure把該exact pair直接capture進event handler。Pointerdown不得再讀`chartCommittedFrame.Value`、`runtimeState.Value`或`latestPreparedData`。D24的prepared-RawData要求仍有效，但由D25 rendered shell pair提供；chart frame只繼續服務chart commit/settlement，不再冒充navigator interaction authority。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

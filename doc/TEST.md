@@ -1,11 +1,19 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-725（0.2.59 owner package / consumer pending）
+## 2026-10-27 DYN-T-726（0.3.0 owner source / package pending）
+
+- 契約：inner navigator由哪個shell frame render，pointerdown就capture同一`RuntimeState * TaPreparedRendererData` pair；不得在handler內重讀`chartCommittedFrame.Value`、current runtime或latest prepared。Projection/timeline從pair prepared RawData，document/key從pair state。
+- RED：exact 0.2.59真B中preview target0、canonical event-time正確但POST無CoverageIntent/local1122；source gate證明shell只發布prepared half，handler改讀另一chart frame，0/1 RED。
+- GREEN：shell改atomic pair且render closure直接傳pair後，focused1/1、Renderer full114/114、source Release 0 errors。Final 0.3.0 packages仍須metadata/hash、package-backed Renderer/Interactive/verifier/BrowserDemo；Daedilus同序列必須帶NavigatorWindow CoverageIntent並settle local0，A/D/highlight/Tagging/原C不回歸。
+- Candidate：Renderer／Interactive0.3.0 exact chain完成114/114、20/20、verifier PASS、BrowserDemo 1個既有WS9002／0 errors；candidate SHA只作pre-commit gate，不交consumer。Final package必須重建為source commit exact。
+
+## 2026-10-27 DYN-T-725（0.2.59 owner package / consumer RED；successor DYN-T-726）
 
 - 契約：pointerdown coverage projection與timeline都來自同一`chartCommittedFrame` prepared data；runtime state只提供document/revision/key。禁止以`dragState.Data`解析失敗後送bare navigator action，也禁止改讀current/latest state。
 - RED：部署0.2.58 ProductVersion與bundle symbol正確，但真B仍無CoverageIntent/local1122；source-contract加入prepared authority後，0.2.58 package-backed Renderer 113 tests得到112 passed/1 failed，唯一失敗為pointerdown仍使用runtime envelope。
 - GREEN gate：production expression改為`dragPreparedData.RawData`，保留0.2.58 unconditional navigator purpose及全部main/resident/queue契約；fresh Renderer/Interactive/verifier/BrowserDemo及metadata/hash需通過。真B必須同序列action帶NavigatorWindow並settle local0，A/D/highlight/Tagging維持GREEN。
 - Owner GREEN：source `c843988feffdc4a5e3460cb2db0f1c94adf65408`；Renderer／Interactive.Client 0.2.59 SHA=`018CEA4BB87C302DBC43C674DAE240CF3300373097B53FD940D71544C5A825D1`／`4E618702CB310C76E69798A99BA6353254059F3B8C369F6565DAA6B7131FDAC2`，RepositoryCommit／DLL ProductVersion exact、Interactive Renderer=`[0.2.59]`、Contracts=`[0.1.41]`、SDK10.0.402 parity。Package-backed Renderer113/113、Interactive20/20、package verifier PASS；BrowserDemo exact chain 1個既有WS9002／0 errors、7 JS assets。Daedilus真B local0仍是最後acceptance，不以owner package gate代替。
+- 真E2E correction：0.2.59 exact部署後相同B仍bare ui:4/local1122；event-time正確但rendered shell與pointerdown chart frame不是同一authority，故本gate維持consumer RED並轉DYN-T-726。
 
 ## 2026-10-27 DYN-T-724（0.2.58 owner package / consumer pending）
 

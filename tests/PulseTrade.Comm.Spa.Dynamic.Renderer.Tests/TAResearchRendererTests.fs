@@ -4298,7 +4298,7 @@ let tests =
             Expect.stringContains source "RendererModel.resolveNavigatorGestureDomain" "Resident drag math must freeze one typed resident or active-local domain."
             Expect.stringContains source "RendererModel.tryNavigatorGestureCoverageIntent" "Only a typed resident-local drop may map back through a GLOBAL coverage intent."
             Expect.stringContains source "let gestureDomain =" "Pointer math must snapshot one consistent domain and committed window."
-            Expect.isTrue (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragPreparedData.RawData", StringComparison.Ordinal)) "Pointerdown coverage must use the same committed prepared data that rendered the navigator."
+            Expect.isTrue (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragPreparedData.RawData", StringComparison.Ordinal)) "Pointerdown coverage must use the exact rendered navigator prepared data."
             Expect.isFalse (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragState.Data", StringComparison.Ordinal)) "An unresolved runtime envelope must not erase the rendered navigator projection."
             Expect.stringContains source "not gestureDomain.UsesResidentAuthority && followLatest <> uiState.Value.FollowLatest" "A zero-delta active-local drop must not become an action through mismatched follow-latest domains."
             Expect.stringContains source "min timeline.Length projection.ActiveDetail.ObservationCount" "Active-detail locality must obey contract count even when a wider timeline is cached."
@@ -4314,6 +4314,14 @@ let tests =
                 "A candidate frame must not expose one asynchronously mounted row per browser frame."
             Expect.stringContains rowPreparationBody "synchronizeReaders ()" "Readers become authoritative only after every row Doc is ready."
             Expect.stringContains rowPreparationBody "preparedRowsReady.Value <-" "The ready gate is published after the complete row set is staged."
+
+        testCase "DYN-T-726 navigator pointerdown freezes the exact rendered shell frame" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.isTrue (source.Contains("let shellPreparedFrame = Var.Create(runtimeState.Value, initialPreparedData)", StringComparison.Ordinal)) "The navigator shell must publish runtime and prepared data as one atomic frame."
+            Expect.isTrue (source.Contains("shellPreparedFrame.View\n                                        |> View.Map (fun (renderedState, currentPreparedData) ->", StringComparison.Ordinal)) "The rendered navigator must expose the exact shell frame captured by its event handler."
+            Expect.isTrue (Text.RegularExpressions.Regex.IsMatch(source, "startNavigatorDrag\\s+renderedState\\s+currentPreparedData\\s+navigatorRoot\\s+rawEvent")) "Pointerdown must freeze the exact frame that rendered the navigator instead of rereading another frame authority."
+            Expect.isFalse (source.Contains("let dragState, dragPreparedData = chartCommittedFrame.Value", StringComparison.Ordinal)) "Pointerdown must not replace the rendered shell frame with a separately advancing chart frame."
     ]
 
 [<EntryPoint>]

@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 rendered shell frame authority（DYN-WBS-612）
+
+0.2.59 exact部署後真B仍bare ui:4/local1122，反證DYN-WBS-611不是完整root cause。Action event-time已對上canonical target0，但CoverageIntent absent；source再查發現inner navigator由`currentPreparedData`（`shellPreparedData.View`）render，pointerdown卻重新讀另一個`chartCommittedFrame.Value`。兩個Var可獨立前進；0.2.59雖改讀prepared RawData，仍可能讀到不是使用者按下之DOM所render的frame，snapshot None便沿明確fallback送bare action。
+
+不變量提高為「render closure就是gesture authority」：shell publication必須是atomic state/prepared pair；navigator event handler直接capture該pair，pointerdown不得重新選chart/current/latest authority。這既保證document/key與projection/timeline同frame，也消除render與gesture間的第二個authority。Consumer、wire、purpose、count與2018 tail mapping均不變。
+
 ## 2026-10-27 committed prepared projection authority（DYN-WBS-611）
 
 0.2.58已確認ProductVersion與generated bundle正確，live branch也確實含unconditional `tryNavigatorEventRangeIntent`，但真B長body drag仍產生bare ui:4；因此DYN-WBS-610只修了不可達分支，不能視為完整root cause。反向追dispatch證明queue保存完整action、count/revision/generation皆合法，最早分歧再上移到pointerdown snapshot：可見navigator從`chartCommittedFrame`的prepared `RawData`解析projection，手勢卻從paired runtime `Data`解析；後者未含resolved projection時直接落入bare `setWindow` fallback。

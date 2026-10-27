@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 navigator captures atomic rendered shell frame（DYN-WBS-612）
+
+`shellPreparedData: Var<TaPreparedRendererData>`改為`ShellPreparedFrame: Var<RuntimeState * TaPreparedRendererData>`；full initial shell、topology commit、row refresh與full/incremental accept都以同一candidate/current state和prepared data成對publication。`viewportControls`只投影pair的prepared half；inner navigator的`View.Map`同時取得`renderedState,currentPreparedData`，其DOM handler closure把兩者顯式傳給`startNavigatorDrag`。該函式不再讀`chartCommittedFrame.Value`，loaded projection與timeline仍只讀captured prepared RawData，document/key讀captured state。
+
+DYN-T-726要求atomic shell Var、render closure與四參數handler wiring存在，並禁止pointerdown內再讀chart frame；0.2.59 source為0/1 RED，修後focused1/1、Renderer full114/114、source Release 0 errors。依stable rollover政策，Renderer／Interactive.Client由0.2.59升0.3.0；Contracts維持0.1.41/schema v2，consumer與wire不變。
+
 ## 2026-10-27 navigator projection reads committed prepared data（DYN-WBS-611）
 
 `startNavigatorDrag`已凍結`let dragState, dragPreparedData = chartCommittedFrame.Value`。`loadedCoverageSnapshot`保留document與`ProjectionCommitGate.key dragState`，但projection decode改為`tryLoadedCoverageResolved document.DefaultView dragPreparedData.RawData`，與render path的`preparedDataForShell.RawData`／`currentPreparedData.RawData`一致；timeline仍取同一`dragPreparedData`。不讀`runtimeState.Value`或`latestPreparedData`，故不引入跨generation混配。

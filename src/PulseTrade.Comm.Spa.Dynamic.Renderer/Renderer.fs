@@ -2990,7 +2990,7 @@ module TaWorkspaceRenderer =
               ResolvedSeries = Map.empty }
         let chartCommittedFrame = Var.Create(runtimeState.Value, initialPreparedData)
         let mutable latestPreparedData = initialPreparedData
-        let shellPreparedData = Var.Create initialPreparedData
+        let shellPreparedFrame = Var.Create(runtimeState.Value, initialPreparedData)
         let mutable preparedDataReady = false
         let preparationPending = Var.Create true
         let initialGlobalPhase = Var.Create true
@@ -3195,10 +3195,10 @@ module TaWorkspaceRenderer =
                     | None -> ()
                 | None -> pendingBoundaryPan <- None
                 chartCommittedFrame.Value <- next, nextPreparedData
-                shellPreparedData.Value <- nextPreparedData
+                shellPreparedFrame.Value <- next, nextPreparedData
             elif refreshRows then
                 let projectionCandidateGeneration = beginProjection next
-                shellPreparedData.Value <- nextPreparedData
+                shellPreparedFrame.Value <- next, nextPreparedData
                 scheduleRowDataRefresh projectionCandidateGeneration next nextPreparedData
             latestPreparedData <- nextPreparedData
             observedDataState <- next
@@ -3224,7 +3224,8 @@ module TaWorkspaceRenderer =
             let candidate = runtimeState.Value
             let data = candidate.Data
             if initialGlobalPhase.Value then
-                shellPreparedData.Value <-
+                shellPreparedFrame.Value <-
+                    candidate,
                     { RawData = data
                       ResolvedAxes = Map.empty
                       ResolvedSeries = Map.empty }
@@ -3254,7 +3255,7 @@ module TaWorkspaceRenderer =
                             applyDocumentDefaultViewport current prepared
                             beginProjection current |> ignore
                             chartCommittedFrame.Value <- current, prepared
-                            shellPreparedData.Value <- prepared
+                            shellPreparedFrame.Value <- current, prepared
                             viewportDataReady.Value <- true
                             preparationPending.Value <- false
                             scheduleNextFrame (fun () ->
@@ -4083,7 +4084,11 @@ module TaWorkspaceRenderer =
                             (if edge = TaLoadedCoverageEdge.Start then "Loaded start requested." else "Loaded end requested."))
                 | None -> setUiState { uiState.Value with Feedback = "Loaded coverage is unavailable." })
 
-        let startNavigatorDrag (navigatorRoot: Element) (rawEvent: Event) =
+        let startNavigatorDrag
+            (dragState: RuntimeState)
+            (dragPreparedData: TaPreparedRendererData)
+            (navigatorRoot: Element)
+            (rawEvent: Event) =
             if not (isNull navigatorRoot) then
                 let event = rawEvent :?> MouseEvent
                 let setDragDiagnostic name value =
@@ -4100,7 +4105,6 @@ module TaWorkspaceRenderer =
                     setDragDiagnostic "data-drag-outcome" "disabled"
                 else
                     let bounds = navigatorRoot.GetBoundingClientRect()
-                    let dragState, dragPreparedData = chartCommittedFrame.Value
                     let localTotal =
                         dragState.Document
                         |> Option.map (fun document -> RendererModel.referenceTimelineForDocumentPrepared document dragPreparedData |> Array.length)
@@ -5371,7 +5375,7 @@ module TaWorkspaceRenderer =
         let viewportControls (document: TaWorkspaceDocument) =
             let currentViewport =
                 View.Map3
-                    (fun ui prepared retainedAuthority ->
+                    (fun ui (_, prepared) retainedAuthority ->
                         let referenceLength =
                             RendererModel.referenceTimelineForDocumentPrepared document prepared
                             |> Array.length
@@ -5394,7 +5398,7 @@ module TaWorkspaceRenderer =
                             |> Option.defaultValue (referenceLength, currentWindow)
                         referenceLength, maximumVisibleBars, loadedObservationCount, globalCurrentWindow)
                     uiState.View
-                    shellPreparedData.View
+                    shellPreparedFrame.View
                     residentNavigatorAuthority.View
 
             div [
@@ -5946,8 +5950,8 @@ module TaWorkspaceRenderer =
                                     attr.style "order:-1; min-width:0; padding:0 8px 8px; border-bottom:1px solid #d4deea; background:#f8fafc;"
                                 ] [
                                     div [ attr.style "min-width:0;" ] [
-                                        shellPreparedData.View
-                                        |> View.Map (fun currentPreparedData ->
+                                        shellPreparedFrame.View
+                                        |> View.Map (fun (renderedState, currentPreparedData) ->
                                             let currentReferenceTimeline =
                                                 RendererModel.referenceTimelineForDocumentPrepared document currentPreparedData
                                             let currentReferenceLength = currentReferenceTimeline.Length
@@ -6027,7 +6031,12 @@ module TaWorkspaceRenderer =
                                                                     navigatorCursorAfterRender <- None
                                                                     (element |> As<HTMLElement>).Style.SetProperty("cursor", cursor)
                                                                 | None -> ())
-                                                        startNavigatorDrag
+                                                        (fun navigatorRoot rawEvent ->
+                                                            startNavigatorDrag
+                                                                renderedState
+                                                                currentPreparedData
+                                                                navigatorRoot
+                                                                rawEvent)
                                                         finishNavigatorDragFromElement
                                                     timeAxisWithPalette
                                                         currentPlotPalette
