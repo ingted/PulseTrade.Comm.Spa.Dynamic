@@ -1,6 +1,6 @@
 # PulseTrade.Comm.Spa.Dynamic WBS
 
-DYN-WBS-620 current：0.3.15 owner133/133＋20/20、fresh Ptcs.Client0.2.3 17/17、Release/verifier過（DYN-VFY-064）。User原始79根左界touch＋第二pointer overflow兩步真驗過；0.3.15 rapid亦6 drops/2 actions、1003frames/0regression PASS（DYN-VFY-065）。完整formal仍pending：returned2991 left-resize694接受後未收斂，待focused最後frame/DOM；Later consumer local-only缺口交daedilus修。保留各自owner，不能將已過的左側/rapid與未過的完整formal混報。
+DYN-WBS-620 current：0.3.15 owner133/133＋20/20、fresh Ptcs.Client0.2.3 17/17與Release/verifier過；真79根雙向邊界1/1、rapid1003frames/0regression、最小returned2991→694 1/1均PASS（DYN-VFY-064～066）。Consumer50136779、focused資產d32d16fc已push。剩餘僅原full長序列ui27的歷史RED未有終點trace，owner做一次必要prefix採樣；不把最小PASS當原序列根因已解，不先改碼/出新版。user重開Chrome已更新至最新host並載入真資料。
 
 Progress 是粗略 implementation checkpoint，不代表正式驗收。
 

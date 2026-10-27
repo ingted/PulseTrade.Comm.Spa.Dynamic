@@ -2,6 +2,8 @@
 
 ## Current gate：DYN-T-743/744 queue authority（0.3.15）
 
+2026-10-28補驗：consumer50136779 Later focused11/11、真79根雙向1/1 PASS；returned2991→694最小真流程1/1 PASS、ACK/final generation及時間錨點一致。原full長序列歷史RED仍保留，只補一次必要prefix終點trace，不調oracle/timeout。最新scope及exact證據以DYN-VFY-066為準。
+
 DYN-T-743於0.3.14 source wiring重現1 failed：shared dispatch gate漏pending event-range；DYN-T-744驗同coverage identity刷新revision/generation但保留UTC/count/purpose，以及跨identity、ordinal、direction、provider-open、typed無projection拒絕和legacy不變。0.3.15 exact-package133/133＋20/20、fresh Ptcs.Client0.2.3 17/17，0 ignored/failed/errored；verifier/LiveDemo Release過。0.3.14真79根左界touch＋第二pointer overflow保寬/接點accepted，0.3.15 rapid6 drops/2actions、1003frames/0regression PASS。完整formal仍在後續returned2991 left-resize694處RED，Later consumer另有拒絕；各gate分開記DYN-VFY-065，hash/provenance見DYN-VFY-064。
 
 ## Current gate：DYN-T-741/742 接點settlement（0.3.14）

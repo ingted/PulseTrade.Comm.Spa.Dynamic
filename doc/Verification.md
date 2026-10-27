@@ -6,7 +6,12 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
-### DYN-VFY-063 續載接點與ACK/prepared先後（0.3.14 / owner PASS，真UI pending）
+### DYN-VFY-066 雙向consumer與最小returned resize（2026-10-28）
+
+- Research consumer source `50136779af6b4f9534a3476be618fe07e6d01719`已push；Later contract限定no-ordinal/Later/ExplicitBounds/NavigatorWindow，沿active-axis接點處理。owner focused11/11（修前10/1 RED）、clean Release127 warnings/0 errors，R7雙向真案例1/1 PASS。已程式讀取 `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0315-laterfix-r7\later-4500-80.json`：rev8、loaded4500/visible79、local start3277、resident start1388055、ready=true/pending=false、無action/browser errors。DYN-VFY-065所列Later缺口已關閉。
+- 最小returned2991→694驗收腳本source `d32d16fc1d6ba269d2fe0d2416e3c80f00bc79a4`已push，1/1 PASS（35.29s）。已讀r5 JSON：ACK protocol sdui-runtime.v2、BaseDataRevision4→5、transport7；final Viewing798-1491/local797/count694、coverage rev4/gen2、settlement selected-applied、pending空、request與visible first皆2026-05-08T08:00+08。evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\returned2991-left-resize694-r5\returned2991-left-resize694.json`與`resize-ack-frame.json`。
+- 此PASS不覆蓋原full ui27缺失終點的RED。r5腳本直接query2026-05-01..07-15，未包含原full的2018/global/rapid歷史。只請owner再做一次有最後ACK/DOM採樣的必要原prefix，定位序列差異；暫不改產品或重新pack。續作plan/hypothesis見`log/20261028/20261028001000.returned_resize_sequence.log`及同timestamp issue檔。
+- Chrome page4已在consumer50136779部署後重新load/Run，00:14觀察Loaded4500/Viewing3001-4500、nav count4500、console error0；URL仍http://localhost:18884/。
 
 ### DYN-VFY-065 左界雙步與rapid真UI（已驗範圍PASS，完整formal仍RED）
 
@@ -15,7 +20,11 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 - 完整formal仍RED於後續returned2991的left-handle約700收斂：ui27 count694/gen25/rev27 accepted、1 frame；既有evidence.json不是失敗終點，已要求owner僅補該focused最後frame/DOM，不憑1frame猜根因。另一Later ui7實際wire為ExplicitBounds/Direction Later（非LoadedResident），consumer local-only resolver拒絕，已交Research owner修，未越界代改。
 - 使用者要求重開的Chrome page4已在0.3.15部署後ignore-cache reload並Run，URL=`http://localhost:18884/`，Loaded4500/Viewing3001-4500，console error0。保留此可操作視窗。
 
+### DYN-VFY-064 source gate snapshot（真UI後續見065/066）
+
 DYN-VFY-064（0.3.15 / owner PASS，真rapid pending）：DYN-T-743修前1 failed；DYN-T-744驗typed queued event-range refresh與拒絕邊界。正式 exact-package Renderer133/133、Interactive20/20、PtcsTaClient17/17，皆0 ignored/failed/errored；verifier PASS、fresh PTCS/LiveDemo Release 0 errors。Renderer/Interactive source `fe213fc5e348bbc564ecfd2294d186866f353d8a`，SHA256分別`00896A5CF7DF4A3B4253658CAD7CFCFD8407F082B0BBD542F2405840D63D4E0C`／`7F694329BAFBBFD922D9E19F5BB28B0762BF6B24AA5D4F05C5FF85199410E63E`；Ptcs.Client0.2.3 source `35ae990650d6fa6bd6a6075e4b79770a30ffce80`、SHA256 `85D3C848EBEF1DF2ACAE49C6F534A942AB0468D2CED03B889AE1F0738092FCDD`。三者DLL ProductVersion與source對應、SDK copy parity。0.2.1/0.2.2的PTCS包因單獨pack未build而含舊DLL，provenance拒絕，最新closure只採0.2.3。真0.3.14初始Earlier/resize過，rapid仍RED；獨立79根左界首步accepted且visible79/new localStart1499、無action/browser error，evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0314-consumerfix-r3`，第二次越界與0.3.15真rapid未驗完，不宣告全部完成。
+
+### DYN-VFY-063 續載接點與ACK/prepared先後（0.3.14 / owner PASS，真UI pending）
 
 DYN-T-741修前1 failed（tail evicted時None）；DYN-T-742指定generation、missing join與ACK/frame先後不變量。0.3.14正式 exact-package Renderer131/131、Interactive20/20、PtcsTaClient17/17，皆0 ignored/failed/errored；package verifier PASS，LiveDemo Release 0 errors。Source `ab591ac86e8bc42b388ca8b1feeda1b89c18cd61`；Renderer SHA256 `D2CE9CC6DBA14529FF69DE7062F739C8954436275ECBE1A142722A51DD2366DA`，Interactive SHA256 `C0DAA516DFF4EF0886E495A5967FD3F20376B06B80298B23C324D0F2F3FA20AC`，Ptcs.Client0.2.1 SHA256 `18AB669F2011A6B3E20F8BD5D8BBEFB74C73563142443F6DBD1356F28AFAE5E9`，皆複製 SDK10.0.402/FSharp/library-packs 並驗hash。Research owner已回consumer directional focused10/10及0.3.12真Earlier accepted，惟resize仍RED；0.3.14與其consumerfix共同真UI驗證pending，未宣告user issue完成。
 

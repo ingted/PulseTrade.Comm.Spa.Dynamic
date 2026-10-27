@@ -1,0 +1,18 @@
+# Returned resize sequence investigation
+
+## Pre-work plan
+
+- 背景：原user左界接續與79根雙向續載已在Renderer/Interactive0.3.15＋Research consumer50136779真路徑通過；rapid1003frames/0regression亦過。完整formal曾在returned2991左handle約700處RED，但owner最小focused r5同anchor/count694於35.29s通過。
+- 目標：補足原長序列唯一失敗終點的ACK frame與DOM證據，區分序列遺留state與test讀取/settle判定；不憑未落盤資料猜修。
+- 假設：最小流程的ACK generation與精確時間錨點正確；差異可能來自前段操作留下的pending/draft/非同步工作，或formal量測時點/對象。尚未證實任何新產品根因。
+- 步驟：盤點canonical HEAD/dirty → owner以必要前置序列重現並在resize前後、ACK後及timeout時留bounded欄位 → 對齊request/coverage/committed frame/UI window → 有反證才補test/改碼；未定位不出新版。
+- 範圍：Dynamic canonical `C:\Users\Administrator\test_gemini\PulseTrade.Comm.Spa.Dynamic` branch `20260915_033.ptcs_group_support`，HEAD5c098e8、Renderer sourcefe213fc、Ptcs.Client source35ae990；Research/tests由daedilus持有。保留lib-packs、Ptcs.Tests Program.fs、generated LiveDemo JS與所有外部WIP，不代改consumer。
+- 驗收：request時間/count/generation對應同一ACK與final frame；找出最早不變量偏離，或明確證明驗收器錯誤。維持已過左/右邊界及rapid；完整formal未過不宣稱全部完成。
+- 風險：縮短前置歷史可能消除真正觸發條件；故只允許一次有新增終點採樣的原序列，非無因重跑。若無足夠證據維持未定位，不調timeout、oracle或host validator。
+
+## Operations
+
+- 2026-10-28 00:08 +08:00 收daedilus `msg-fsi-86337043dd294ed9a77dd5bc117a6669`：r5 focused1/1 PASS、ACK唯一coverage patch rev4/gen2，final Loaded2991/Viewing798-1491(count694)、start時間exact match、pending全空/ready=true。原full ui27最後DOM未存，不能將此新PASS直接覆蓋舊RED。沿用正式0.3.15，不重build。
+- 2026-10-28 00:17:46 +08:00 已程式讀r5 JSON並確認ACK revision/transport與final694/anchor；讀consumer source50136779及focused資產d32d16fc。r5腳本217–219直接query2026-05-01..07-15，未含原2018/global/rapid歷史；請owner一次instrumented必要prefix，timeout也留終點。DYN-VFY-066記錄雙向R7及r5 PASS範圍；最新Chrome已重新Run至4500、console error0。跨日checker使用真實新log-dir20261028，不改舊state或舊log；source不變。
+- 2026-10-28 00:20:53 +08:00 新日scope checker PASS28/WARN2/FAIL0；dirty與既有RFC traceability可解釋。整理Verification 063–066標題邊界，未改證據內容。只提交current文件與兩份新log/hypothesis，產品不重build；敏感與text gate後push，後續前景等必要prefix結果。
+
