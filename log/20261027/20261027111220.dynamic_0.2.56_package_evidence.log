@@ -1,0 +1,35 @@
+# Dynamic 0.2.56 post-commit package evidence
+
+## Pre-work plan
+
+- 背景：DYN-WBS-608 source/docs/tests commit `02fb0f5526adf20e05c4e4664624c266b3ac0995`已push；candidate Renderer113/113、Interactive20/20全綠。
+- 目標：從exact commit建立immutable Renderer／Interactive.Client 0.2.56 packages，驗RepositoryCommit/ProductVersion、exact dependency、fresh tests/verifier/BrowserDemo與SDK parity，再交Daedilus Gate A重驗。
+- Source of truth：Git HEAD/upstream `02fb0f5...`、兩個fsproj、fresh restore caches、SDK10.0.402 library-packs readback hash。
+- 不變事項：Contracts0.1.40、WebSharper versions、wire shape與consumer source不變；外部dirty `lib-packs.txt`、Ptcs.Tests、`.pcsl/`不碰。
+- 步驟：fresh final packs → metadata/hash → Renderer113/113 → Interactive20/20 → verifier → package-only BrowserDemo → SDK copy/readback → checker → evidence commit/push → COMM handoff。
+- 驗收：RepositoryCommit/ProductVersion exact、Interactive Renderer `[0.2.56]`、local/SDK hashes一致、owner gates全綠；A真workspace action/settlement由Daedilus另驗。
+- 風險：WebSharper orphan lock、same-version candidate cache與shared cache污染；final每個consumer使用新的restore root，僅停止parent不存在且log path精確屬本專案的compiler service。
+- 停止條件：evidence push與Daedilus exact handoff完成；Gate A若RED即續修，不宣告全修完。
+
+## Operations
+
+- 2026-10-27 11:12 +08:00：確認HEAD/upstream皆`02fb0f5526adf20e05c4e4664624c266b3ac0995`；開始post-commit final package gates。
+
+- 2026-10-27 11:18 +08:00：final Renderer／Interactive.Client packages完成；SHA-256分別為`D9736149C5783E79AC070FAB313E2C443784795743ECC4340FE132CD6C5F2EC4`／`16946F6A8A9F07B69EC1169995F5B19F28D917FBE4DF7AFFA30CA5246347278A`。兩包version=`0.2.56`、RepositoryCommit=`02fb0f5526adf20e05c4e4664624c266b3ac0995`、ProductVersion=`0.2.56+02fb0f...`；Client dependencies為FSharp.Core `[10.1.402]`、Contracts `[0.1.40]`、Renderer `[0.2.56]`、WebSharper.FSharp `10.1.7.680`、WebSharper.UI `10.1.6.680`。
+- 2026-10-27 11:18 +08:00：fresh final package restore驗Renderer113/113、Interactive.Client20/20；package verifier PASS entries=4，Client SHA與final package一致。
+- 2026-10-27 11:20 +08:00：第一次package-only BrowserDemo rebuild 0 errors但有staging direct dependency downgrade warnings；第二次rebuild由parent已退出、command line精確指向本次staging `websharper.log`的orphan compiler service持鎖，重現`UnauthorizedAccessException`／`wsfsc.exe -532462766`。只停止該orphan PID 34260，並在temp staging同步FSharp.Core/WebSharper direct versions後，exact Client／Renderer 0.2.56 rebuild為0 warnings／0 errors；source BrowserDemo未改。
+- 2026-10-27 11:21 +08:00：兩包以explicit paths複製到`C:\Program Files\dotnet\sdk\10.0.402\FSharp\library-packs`，SDK readback SHA-256與final-feed逐包一致；未修改`lib-packs.txt`。
+- 2026-10-27 11:22 +08:00：canonical checker首次結果PASS=25/WARN=3/FAIL=0；本輪可修WARN為log缺假設／範圍，已補。其餘dirty為既有`lib-packs.txt`、Ptcs.Tests與`.pcsl/`，traceability為repo既有基線，均不納入本次commit。
+- 2026-10-27 11:23 +08:00：Plan補充假設：final pack只接受RepositoryCommit等於source commit，package consumer必須由隔離cache解析0.2.56，不沿用candidate cache。範圍：Renderer／Interactive.Client 0.2.56 pack、owner tests、package verifier、temp package-only BrowserDemo、SDK10.0.402 local feed與Daedilus Gate A handoff；不修改Daedilus consumer／host source。
+- 2026-10-27 11:24 +08:00：第二次checker因上述Plan欄位插入在既有bytes中而判`log_readonly_modify` FAIL；已移除中段插入並只在Operations尾端追加補充，恢復原prefix不變後重驗。
+
+## Plan Correction
+
+- 假設：final pack只接受RepositoryCommit等於source commit，package consumer必須由隔離cache解析0.2.56，不沿用candidate cache。
+- 範圍：Renderer／Interactive.Client 0.2.56 pack、owner tests、package verifier、temp package-only BrowserDemo、SDK10.0.402 local feed與Daedilus Gate A handoff；不修改Daedilus consumer／host source。
+
+## Operations continued
+
+- 2026-10-27 11:26 +08:00：修復active log prefix後canonical checker PASS=34/WARN=5/FAIL=0，`active_log_append_only` PASS；WARN為RFC/KM本輪未改、外部dirty與既有traceability基線，無本輪衝突。
+- 2026-10-27 11:27 +08:00：changed evidence paths敏感掃描files=4、High=0、Medium=0、Info=308；四檔strict UTF-8、無BOM／NUL／U+FFFD，`git diff --check`通過。
+

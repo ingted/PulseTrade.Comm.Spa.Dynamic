@@ -1,9 +1,9 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-722（0.2.56 candidate / consumer pending）
+## 2026-10-27 DYN-T-722（0.2.56 owner package / consumer pending）
 
 - 契約：main CURSOR pan超出captured timeline頭／尾時要導向typed adjacent coverage，保留visible count與signed delta。cross-axis resident的target以ActiveDetail start + delta，不可把local resident offset重複加入；same-axis與in-range exact event-time path不變。
-- RED/GREEN：0.2.55真Gate A的`local3150/count1215 @ timeline4500 + delta340`無action；pure 0.2.55得target53580，期望50430而DYN-T-722 0/1 RED。model改以cross-axis ActiveDetail50090為基準，live `commitMainPlotPan` 只在pure boundary classifier得Earlier/Later時呼叫既有`requestAdjacentCoverage`；focused1/1、Renderer113/113、Interactive20/20 GREEN。
+- RED/GREEN：0.2.55真Gate A的`local3150/count1215 @ timeline4500 + delta340`無action；pure 0.2.55得target53580，期望50430而DYN-T-722 0/1 RED。model改以cross-axis ActiveDetail50090為基準，live `commitMainPlotPan` 只在pure boundary classifier得Earlier/Later時呼叫既有`requestAdjacentCoverage`。Final source `02fb0f5526adf20e05c4e4664624c266b3ac0995`；Renderer／Interactive SHA=`D9736149...EC4`／`16946F6A...278A`、RepositoryCommit/ProductVersion exact、Client Renderer `[0.2.56]`、SDK parity；focused1/1、fresh Renderer113/113、Interactive20/20、verifier、package-only BrowserDemo 0 warnings／0 errors。
 - 真E2E：Gate A ui action應為Later、StartOrdinal50430、count1215、query+1；server accepted後active start50430且main local reanchor1645，無額外重複delta。
 
 ## 2026-10-27 DYN-T-721（0.2.55 owner package / consumer pending）
