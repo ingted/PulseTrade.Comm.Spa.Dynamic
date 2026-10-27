@@ -11,12 +11,14 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 - 0.3.9真RED：query settlement已GREEN；failure-drop pointerdown projection=Some、coverage25/20/start0/count1491、前一action已settled。Pointerup新增ui:30卻是bare current range，frame1，Loaded/Viewing仍1491，決定性排除stale/pending並定位ordinal0 local reapply。
 - 0.3.10 candidate：Earlier active-local改用exact adjacent event range＋directional no-ordinal NavigatorWindow intent，fetch cap與visible count分離；blocked action進既有viewport queue，snapshot mismatch仍reject。DYN-T-7361/1、Renderer126/126、Interactive20/20、verifierPASS。
 - Candidate packages：Renderer／Interactive SHA=`8D9D97...C739 / E0A1DF...3444`，SDK10.0.402 library-packs parity；fresh package-only BrowserDemo exact0.3.10 chain、WS9002 x1／0 errors，generated JS markers存在，full/min SHA=`803C9C...1117 / 0C908E...C2F7`。Candidate ProductVersion仍指pre-source-commit HEAD，只作owner gate；final provenance與Daedilus原formal return-Earlier gate pending，不宣稱consumer close。
+- Owner final：source `4ce7e49915726f627f58f213e32085b888506ea2`已push；final Renderer／Interactive SHA=`78D848...C151 / F30E63...A243`，RepositoryCommit/ProductVersion、Interactive Renderer `[0.3.10]`與SDK10.0.402 cache hash parity exact。Fresh final Renderer126/126、Interactive20/20、verifierPASS；final package-only BrowserDemo exact0.3.10、WS9002 x1／0 errors，full/min SHA=`32541A...078D / 4F9BC1...9F3C`。Daedilus原formal return-Earlier gate pending，不宣稱consumer close。
 
-### DYN-VFY-060 0.3.9 positive materialization settlement（owner final / consumer pending）
+### DYN-VFY-060 0.3.9 positive materialization settlement（complete）
 
 - 0.3.8真RED：DataRevision3→4且requested data已1491，coverage QueryGeneration仍0→0；telemetry永久Await，formal後續可回1028。Package、source、deploy provenance皆exact，排除發錯包。
 - 0.3.9 candidate：generation-stable `Selected`可settle，generation-stable `NoIntersection`仍Await；DYN-T-733/733B/735 2/2、Renderer125/125、Interactive20/20、verifierPASS。Candidate SHA=`1BF39A...F705 / 588F75...B73D`；fresh package-only BrowserDemo exact0.3.9 chain、WS9002 x1／0 errors。Final provenance與Daedilus真Gate pending，不宣稱consumer close。
 - Owner final：source `3878ca5a3642629e8846d08a7eb853cc43435d41`已push；final Renderer／Interactive SHA=`4F8909...36F6 / FC39D9...5FC5`，RepositoryCommit/ProductVersion、Interactive Renderer `[0.3.9]`與SDK10.0.402 cache hash parity exact。Fresh final Renderer125/125、Interactive20/20、verifierPASS；final package-only BrowserDemo exact0.3.9、WS9002 x1／0 errors。Daedilus真Gate仍pending，不宣稱consumer close。
+- Consumer final：0.3.9 clean formal證`pending=false`、`selected-applied`、selection/applied/local/ActiveDetail/Loaded/Viewing皆1491，DataRevision24→25且coverage generation19→19。後續Earlier overscroll RED屬DYN-VFY-061，不回退本settlement gate。
 
 ### DYN-VFY-059 0.3.8 latest shell-prepared settlement（owner final / consumer pending）
 

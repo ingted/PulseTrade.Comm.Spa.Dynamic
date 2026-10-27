@@ -8,6 +8,8 @@
 
 Active-local pointerup先驗snapshot commit key，再走`sendOrQueueNavigatorAdjacentCoverage`；pending action／boundary、未committed coverage或remote-disabled時只保存direction/delta/count，ready後由既有single-slot queue重建current action。Resident-authority branch仍用GLOBAL ordinal intent；snapshot mismatch仍走stale reject，不由queue掩蓋。
 
+Final 0.3.10 Renderer／Interactive.Client的RepositoryCommit與ProductVersion皆為`4ce7e49915726f627f58f213e32085b888506ea2`，Interactive exact Renderer dependency=`[0.3.10]`；source與package wire shape未新增欄位。
+
 ## 2026-10-27 evidence-sensitive query settlement（DYN-WBS-619 / 0.3.9）
 
 `acceptedQueryViewportSettlement`先以local `IntentGeneration`拒絕superseded response，再要求prepared frame的DataRevision大於dispatch baseline。之後只計算一次temporal selection：loaded-coverage QueryGeneration有前進時，`Selected`／`NoIntersection`／`Invalid`／`NotRequested`皆可settle；generation未前進時，`Selected`是requested range已materialize的positive proof，可settle，`NoIntersection`則保持Await。這保留negative-result authority，又不再要求coverage-specific counter替`ChangeTaQuery`背書。

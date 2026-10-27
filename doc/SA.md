@@ -6,7 +6,7 @@
 
 最早錯誤是active-local boundary共用了ordinal coverage window：query-relative `ActiveDetail.StartObservationOrdinal=0`的Earlier target被clamp回0，`applyLoadedCoverageIntent`便判為in-active local window，將同一range重送。正確不變量是跨axis或query-relative active-local未載入相鄰頁只能由exact event-time range定位；Direction是materialization/eviction hint，不得猜GLOBAL ordinal。Fetcher cap1500與visible count1491亦是兩個獨立量。
 
-0.3.10以directional no-ordinal NavigatorWindow intent修正，並讓同一boundary intent在action pending時進既有viewport queue；snapshot key mismatch仍fail closed。Candidate DYN-T-736 1/1、Renderer126/126、Interactive20/20、package verifier與fresh exact-package BrowserDemo build皆通過；consumer/oracle/host不改，真formal return-Earlier gate仍待final package驗收。
+0.3.10以directional no-ordinal NavigatorWindow intent修正，並讓同一boundary intent在action pending時進既有viewport queue；snapshot key mismatch仍fail closed。Source `4ce7e49915726f627f58f213e32085b888506ea2`已push；final DYN-T-736 1/1、Renderer126/126、Interactive20/20、package verifier與fresh exact-package BrowserDemo build皆通過。Renderer／Interactive SHA=`78D8484A35222215820450D0FDB95FCC3DB8CE51CEA56EFBBC71076D3205C151 / F30E63E9C5858B8448EECFE409711AAC51D7E76CE2D4E5AA88A31FF2B82FA243`；consumer/oracle/host不改，真formal return-Earlier gate仍待驗收。
 
 ## 2026-10-27 coverage generation scope correction（0.3.8 falsification / 0.3.9）
 
