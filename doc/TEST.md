@@ -1,10 +1,10 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-727（0.3.1 owner source/candidate / final package pending）
+## 2026-10-27 DYN-T-727（0.3.1 owner package complete / consumer pending）
 
 - 契約：inner navigator pointerdown接收實際render closure的`renderedState + outer shell document + currentPreparedData + currentCoverageProjection`。State只供identity／commit key；document、timeline與projection不得在handler由另一document envelope重解，也不得改讀current/latest。
 - RED：exact 0.3.0真B中middle intent GREEN，但post-middle long target0仍bare/local1122；generated JS證D25已編入。Source-contract鎖production call與handler no-redecode，0.3.0 source 0/1 RED。
-- Candidate GREEN：handler顯式接收shell document／decoded projection；DYN-T-726、727各1/1，Renderer full115/115，Interactive20/20，package verifier PASS；package-only BrowserDemo resolved Contracts0.1.41／Renderer0.3.1／Interactive0.3.1／FSharp.Core10.1.402／WebSharper.FSharp10.1.7.680，0 warnings／0 errors。Final package須post-commit重建並驗metadata/hash；Daedilus同序列必須送NavigatorWindow CoverageIntent且settle local0，A/D/highlight/Tagging/原C不得回歸。
+- Owner GREEN：handler顯式接收shell document／decoded projection；source `168de8b15f3b0d477cbec40ba0c582ada975d870`。Final Renderer／Interactive.Client0.3.1 SHA=`D12D2D41FDD80ED0F774F9072CF76F6A836576F8F11CAE83528A15B8F266DE5C`／`16E1D7A726E79F4CD2215A31061DC5B2699422A4DCDEF18055D9302A90EB0DE7`，RepositoryCommit／DLL ProductVersion exact、Interactive Renderer=`[0.3.1]`、Contracts=`[0.1.41]`、SDK10.0.402 parity。DYN-T-726、727各1/1，final package-backed Renderer115/115、Interactive20/20、verifier PASS；package-only BrowserDemo resolved Contracts0.1.41／Renderer0.3.1／Interactive0.3.1／FSharp.Core10.1.402／WebSharper.FSharp10.1.7.680，0 warnings／0 errors、3 JS assets。Daedilus同序列必須送NavigatorWindow CoverageIntent且settle local0，A/D/highlight/Tagging/原C不得回歸。
 
 ## 2026-10-27 DYN-T-726（0.3.0 owner package complete / consumer pending）
 
