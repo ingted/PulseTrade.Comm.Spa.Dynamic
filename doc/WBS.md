@@ -1,6 +1,6 @@
 # PulseTrade.Comm.Spa.Dynamic WBS
 
-DYN-WBS-620 current：0.3.15修rapid ACK/prepared dispatch gap及同scope queued authority（RFC D38、DYN-T-743/744），owner133/133＋20/20、fresh Ptcs.Client0.2.3 17/17、Release/verifier過，hash/provenance見DYN-VFY-064。0.3.14真79根左界第一步accepted且保寬/接點，第二次越界尚待；rapid在0.3.14仍RED，0.3.15已交owner重驗。維持pending，部分真UI/owner PASS不等於整體完成。
+DYN-WBS-620 current：0.3.15 owner133/133＋20/20、fresh Ptcs.Client0.2.3 17/17、Release/verifier過（DYN-VFY-064）。User原始79根左界touch＋第二pointer overflow兩步真驗過；0.3.15 rapid亦6 drops/2 actions、1003frames/0regression PASS（DYN-VFY-065）。完整formal仍pending：returned2991 left-resize694接受後未收斂，待focused最後frame/DOM；Later consumer local-only缺口交daedilus修。保留各自owner，不能將已過的左側/rapid與未過的完整formal混報。
 
 Progress 是粗略 implementation checkpoint，不代表正式驗收。
 
