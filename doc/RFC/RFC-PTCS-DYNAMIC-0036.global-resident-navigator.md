@@ -152,6 +152,10 @@ Purpose不替代StartOrdinal／Direction／RangeAuthority：有ordinal/direction
 
 D22的purpose由producer interaction seam決定，不由每次action當下的axis equality重新推論。Accepted navigator materialization可能改變Global／Active axis關係；後續同一inner navigator的resize、move或長body drag仍須附`NavigatorWindow`。Same/cross-axis只選擇exact prepared event timeline及ordinal是否可安全使用；它不得把typed origin降成`CoverageIntent=None`。Event-time range繼續作位置authority，same-axis navigator event-range亦為`ExplicitBounds`、`StartObservationOrdinal=None`、`Direction=None`。Main plot、resident ordinal與adjacent boundary path不變，禁止count fallback。
 
+### D24. 2026-10-27 rendered navigator projection comes from prepared frame data
+
+D23只有在pointerdown取得projection時才生效。`chartCommittedFrame`是`RuntimeState * TaPreparedRendererData` atomic pair；navigator、timeline與coverage UI由prepared `RawData`實際render，故pointerdown也必須由同一prepared `RawData`解析loaded-coverage projection。Paired runtime `Data`可仍是未resolved envelope；用它解析失敗後降成bare `VisibleRangeChanged`會違反D22。禁止改讀較新的`runtimeState.Value`／`latestPreparedData`，也禁止由count或DOM反推；document/revision/key仍取paired runtime state，projection/timeline/range取paired prepared data。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

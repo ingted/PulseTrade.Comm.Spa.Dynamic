@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 navigator projection reads committed prepared data（DYN-WBS-611）
+
+`startNavigatorDrag`已凍結`let dragState, dragPreparedData = chartCommittedFrame.Value`。`loadedCoverageSnapshot`保留document與`ProjectionCommitGate.key dragState`，但projection decode改為`tryLoadedCoverageResolved document.DefaultView dragPreparedData.RawData`，與render path的`preparedDataForShell.RawData`／`currentPreparedData.RawData`一致；timeline仍取同一`dragPreparedData`。不讀`runtimeState.Value`或`latestPreparedData`，故不引入跨generation混配。
+
+DYN-T-725在既有P0 source-contract gate同時要求prepared expression存在且`dragState.Data` expression不存在；0.2.58為112/113 RED。Renderer／Interactive升0.2.59，Contracts仍0.1.41/schema v2；wire、queue、consumer、count classifier及DYN-WBS-610 unconditional purpose builder不變。
+
 ## 2026-10-27 navigator event-range origin survives axis settlement（DYN-WBS-610）
 
 RendererModel新增`tryNavigatorEventRangeIntent projection targetWindow`，無條件以既有`tryEventRangeIntent`建立`Purpose=NavigatorWindow`、no-ordinal/no-direction `ExplicitBounds` intent；舊`tryCrossAxisNavigatorEventRangeIntent`保留相容surface及predicate，只委派新builder。`Renderer.setNavigatorWindowFromPrepared`改用unconditional helper，因該函式本身就是navigator-origin boundary；range仍由pointerdown frozen prepared data、projection與`navigatorVisibleEventRangePrepared`取得，main plot／resident ordinal／boundary producers不變。

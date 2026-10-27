@@ -1,0 +1,22 @@
+# Navigator uses the committed prepared projection
+
+## Pre-work plan
+
+- Context: immutable Renderer/Interactive.Client 0.2.58 is deployed and the generated bundle contains `tryNavigatorEventRangeIntent`, but the formal long body drag still emits `ui:4` without `CoverageIntent`.
+- 目標: make the actual pointerdown-frozen navigator path use the same loaded-coverage projection authority that rendered the navigator, then produce a new immutable package for the unchanged real B gate.
+- 假設: the visible navigator is rendered from `chartCommittedFrame` prepared `RawData`, while `loadedCoverageSnapshot` decodes only the paired runtime state's unresolved `Data`. When the projection exists only in prepared data, the option is `None` and release falls through to bare `setWindow`.
+- Source of truth: 0.2.58 consumer action/gesture/final evidence under `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0258`, the atomic `(RuntimeState * TaPreparedRendererData)` committed frame, and Renderer source at `7027136ba7d957a026552addbbb28c3d4c8c25cd`.
+- Invariant: pointerdown gesture geometry, prepared timeline, loaded-coverage projection, event-time range and purpose come from one committed prepared frame. Runtime envelope data must not replace prepared/resolved data for a rendered interaction.
+- Scope: Renderer source/test, Renderer/Interactive versions and direct tests, RFC/SA/SD/WBS/TEST/DevLog/log, package/build/test evidence. Consumer source/count heuristic remain out of scope.
+- Acceptance: source RED proves unresolved runtime data plus resolved prepared data; release produces a navigator-purpose intent from prepared authority; package-backed Renderer/Interactive/verifier/BrowserDemo pass; Daedilus same real B sequence reaches local0 without A/D/highlight/Tagging regression.
+- 風險: using a newer runtime projection would mix generations; the fix must read only the pointerdown-frozen `dragPreparedData.RawData`, never `runtimeState.Value` or `latestPreparedData`.
+
+## Operations
+
+- 2026-10-27 13:09 +08:00: Daedilus verified the 0.2.58 ProductVersion/bundle symbol and reproduced byte-semantically identical B RED: middle move typed, long body drag target local0 emitted bare ui:4 and settled local1122.
+- 2026-10-27 13:10 +08:00: replied with exact `replyToMessageId`, withdrew the incomplete cross-axis-only root-cause claim, and preserved consumer/count/A/D/highlight/Tagging boundaries.
+- 2026-10-27 13:11 +08:00: queue inspection showed `TaQueuedViewportIntent.LocalRange` retains the full `SduiAction`; no merge/serializer field stripping exists. The generated 0.2.58 bundle also calls `tryNavigatorEventRangeIntent` in the intended branch.
+- 2026-10-27 13:12 +08:00: located the earlier branch divergence. Rendered coverage uses `preparedDataForShell.RawData` / `currentPreparedData.RawData`, but pointerdown `loadedCoverageSnapshot` calls `tryLoadedCoverageResolved ... dragState.Data`. If that unresolved envelope lacks the projection, release takes the `None -> setWindow` fallback and serializes exactly the observed bare action.
+- 2026-10-27 13:14 +08:00: DYN-T-725 RED against package-backed Renderer 0.2.58: 113 executed, 112 passed/1 failed; only failure says pointerdown coverage did not use committed prepared data. Initial failure output exceeded the 20 KiB guard because `Expect.stringContains` rendered the complete source; raw capture was not read, assertion was changed to boolean `Contains`, and the bounded rerun produced the exact single failure.
+- 2026-10-27 13:15 +08:00: changed the one production expression from `dragState.Data` to `dragPreparedData.RawData`; bumped Renderer/Interactive.Client and their direct tests to exact 0.2.59. Renderer source build succeeded with 0 errors; existing WebSharper warnings remain.
+- 2026-10-27 13:16 +08:00: added RFC-0036 D24, SA/SD, DYN-WBS-611, DYN-T-725, and append-only DevLog correction. DYN-WBS-610 remains as a real but insufficient predecessor; no historical evidence was rewritten.

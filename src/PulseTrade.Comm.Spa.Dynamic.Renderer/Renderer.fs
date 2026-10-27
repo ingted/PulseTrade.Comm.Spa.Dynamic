@@ -4111,7 +4111,7 @@ module TaWorkspaceRenderer =
                     let loadedCoverageSnapshot =
                         match dragState.Document with
                         | Some document ->
-                            RendererModel.tryLoadedCoverageResolved document.DefaultView dragState.Data
+                            RendererModel.tryLoadedCoverageResolved document.DefaultView dragPreparedData.RawData
                             |> Option.map (fun projection ->
                                 document,
                                 dragPreparedData,

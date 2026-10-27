@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 committed prepared projection authority（DYN-WBS-611）
+
+0.2.58已確認ProductVersion與generated bundle正確，live branch也確實含unconditional `tryNavigatorEventRangeIntent`，但真B長body drag仍產生bare ui:4；因此DYN-WBS-610只修了不可達分支，不能視為完整root cause。反向追dispatch證明queue保存完整action、count/revision/generation皆合法，最早分歧再上移到pointerdown snapshot：可見navigator從`chartCommittedFrame`的prepared `RawData`解析projection，手勢卻從paired runtime `Data`解析；後者未含resolved projection時直接落入bare `setWindow` fallback。
+
+不變量是atomic committed frame的兩半各司其職：runtime envelope持有document/revision/identity，prepared half持有實際rendered/resolved data與timeline。任何從已render UI起始的pointer gesture，其projection、timeline、range與purpose都必須從同一prepared snapshot取得；不得改用current/latest runtime data補洞，也不得因runtime envelope缺projection而送出語意較弱的remote action。
+
 ## 2026-10-27 post-settlement navigator purpose continuity（DYN-WBS-610）
 
 0.2.57真Gate B證明第一次cross-axis resize／middle move皆帶`NavigatorWindow`並正確settle；accepted frame之後的長body drag從resident-local `1201/79`到`0/79`，卻只送沒有`CoverageIntent`的`VisibleRangeChanged`，最後只到`1122/79`。最早偏離不是consumer total match、count或pointer geometry，而是producer以「當下Global/Active axis是否不同」決定是否保留purpose：accepted materialization可讓axis equality改變，但gesture origin仍是navigator。

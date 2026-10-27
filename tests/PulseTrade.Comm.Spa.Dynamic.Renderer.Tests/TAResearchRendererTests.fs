@@ -4298,6 +4298,8 @@ let tests =
             Expect.stringContains source "RendererModel.resolveNavigatorGestureDomain" "Resident drag math must freeze one typed resident or active-local domain."
             Expect.stringContains source "RendererModel.tryNavigatorGestureCoverageIntent" "Only a typed resident-local drop may map back through a GLOBAL coverage intent."
             Expect.stringContains source "let gestureDomain =" "Pointer math must snapshot one consistent domain and committed window."
+            Expect.isTrue (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragPreparedData.RawData", StringComparison.Ordinal)) "Pointerdown coverage must use the same committed prepared data that rendered the navigator."
+            Expect.isFalse (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragState.Data", StringComparison.Ordinal)) "An unresolved runtime envelope must not erase the rendered navigator projection."
             Expect.stringContains source "not gestureDomain.UsesResidentAuthority && followLatest <> uiState.Value.FollowLatest" "A zero-delta active-local drop must not become an action through mismatched follow-latest domains."
             Expect.stringContains source "min timeline.Length projection.ActiveDetail.ObservationCount" "Active-detail locality must obey contract count even when a wider timeline is cached."
 
