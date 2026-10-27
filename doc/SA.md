@@ -12,6 +12,8 @@
 
 0.3.11以projection authority分流：只有`GlobalOverview=None`的returned active-local才走directional adjacent event range；`GlobalOverview=Some`但無resident ordinal mapping的initial cross-axis狀態，改回clamped local draft並由prepared timeline exact event range materialize。GLOBAL ordinal仍不猜、snapshot key仍先驗。DYN-T-737修前package-backed FS0039 RED；修後DYN-T-736/737各1/1、Renderer127/127、Interactive20/20、package verifier與fresh package-only BrowserDemo皆GREEN。Candidate Renderer／Interactive SHA=`D7D7AF39AACE1E3C24D19C7EE5D8751F6E0011349F540821125AF41A56F67C76 / 5ED321459E948774FE8D497F2E6D51157944413E1CFFDC87CBA65C9FB03B7E83`；source-commit provenance與Daedilus原formal重驗pending。
 
+Final source `b6a283fb8376c95d3543a42b375a25593dd38458`已push；final Renderer／Interactive SHA=`10E22BC42673CBD44BD8084231D14C8D8ED4234529688E2F44B906C87FC4F865 / 6FA9A99280356C7B65A059E3B54F642CD79C0BCF55E4E2E0FF1D9D9204AF56EC`，RepositoryCommit/ProductVersion與SDK cache exact。Fresh isolated owner gates維持Renderer127/127、Interactive20/20、verifier與package-only BrowserDemo GREEN；Daedilus完整原formal仍是唯一consumer驗收。
+
 ## 2026-10-27 coverage generation scope correction（0.3.8 falsification / 0.3.9）
 
 0.3.8 exact deployment與provenance皆正確，但fresh窄trace在requested 2026 data已materialize、Loaded/Viewing/ActiveDetail全1491時仍顯示settlement pending、`await-authoritative-frame`、DataRevision `3 -> 4`、loaded-coverage QueryGeneration `0 -> 0`。Formal長序列可見QueryGeneration18，只因先前coverage-window actions已累積counter；它不是本次`ChangeTaQuery` acknowledgement。

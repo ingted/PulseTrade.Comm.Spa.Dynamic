@@ -14,6 +14,8 @@ Final 0.3.10 Renderer／Interactive.Client的RepositoryCommit與ProductVersion�
 
 兩路共用pointerdown frozen projection與commit-key stale gate。Global-backed branch只在同snapshot key時local commit；no-global branch仍要求action allowlist並保留single-slot queue。Resident-authority GLOBAL ordinal path、returned no-ordinal Direction intent、pending settlement、wire shape、consumer/oracle/host皆不變。
 
+Final 0.3.11 Renderer／Interactive.Client的RepositoryCommit與ProductVersion皆為`b6a283fb8376c95d3543a42b375a25593dd38458`，Interactive exact Renderer dependency=`[0.3.11]`；package wire shape與0.3.10相同。
+
 ## 2026-10-27 evidence-sensitive query settlement（DYN-WBS-619 / 0.3.9）
 
 `acceptedQueryViewportSettlement`先以local `IntentGeneration`拒絕superseded response，再要求prepared frame的DataRevision大於dispatch baseline。之後只計算一次temporal selection：loaded-coverage QueryGeneration有前進時，`Selected`／`NoIntersection`／`Invalid`／`NotRequested`皆可settle；generation未前進時，`Selected`是requested range已materialize的positive proof，可settle，`NoIntersection`則保持Await。這保留negative-result authority，又不再要求coverage-specific counter替`ChangeTaQuery`背書。
