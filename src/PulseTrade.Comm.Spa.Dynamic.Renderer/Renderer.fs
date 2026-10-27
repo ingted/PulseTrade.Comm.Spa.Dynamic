@@ -3881,10 +3881,12 @@ module TaWorkspaceRenderer =
                 match runtimeState.Value.Document with
                 | Some document ->
                     let maximumVisibleBars = maximumVisibleBarsFor document
+                    let requestObservationCount, viewportObservationCount =
+                        RendererModel.navigatorAdjacentObservationCounts maximumVisibleBars observationCount
                     match
                         RendererModel.tryAdjacentCoverageRange
                             direction
-                            (min DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints (max 1 maximumVisibleBars))
+                            requestObservationCount
                             document
                             latestPreparedData,
                         RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data
@@ -3893,7 +3895,7 @@ module TaWorkspaceRenderer =
                         match
                             RendererModel.tryNavigatorAdjacentEventRangeIntent
                                 direction
-                                (max 1 (min maximumVisibleBars observationCount))
+                                requestObservationCount
                                 projection
                         with
                         | Some intent ->
@@ -3914,13 +3916,13 @@ module TaWorkspaceRenderer =
                                   IntentTimeline = timeline
                                   IntentWindow = currentWindow
                                   TargetStartObservationOrdinal = None
-                                  ObservationCount = effectiveIntent.ObservationCount
+                                  ObservationCount = viewportObservationCount
                                   QueryGeneration = effectiveIntent.QueryGeneration }
                             let action =
                                 SduiAction.VisibleRangeChanged(
                                     currentCanvasId (),
                                     { range with
-                                        MaximumBasePoints = min DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints (max 1 maximumVisibleBars)
+                                        MaximumBasePoints = requestObservationCount
                                         CoverageIntent = Some effectiveIntent })
                             startCoverageWindowAction action pending successText
                         | None -> rejectNavigatorDraft "Adjacent navigator coverage intent is invalid."

@@ -1,6 +1,6 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 active-local adjacent navigator dispatch（DYN-WBS-620 / 0.3.10-0.3.11）
+## 2026-10-27 active-local adjacent navigator dispatch（DYN-WBS-620 / 0.3.10-0.3.12）
 
 `tryNavigatorAdjacentEventRangeIntent`只建立directional event-range materialization contract：ExpectedCoverageRevision=current、QueryGeneration+1、StartObservationOrdinal=None、ObservationCount=current visible width、RangeAuthority=ExplicitBounds、Purpose=NavigatorWindow。它不讀GLOBAL total，也不把active ordinal0轉成whole-series ordinal。
 
@@ -15,6 +15,14 @@ Final 0.3.10 Renderer／Interactive.Client的RepositoryCommit與ProductVersion�
 兩路共用pointerdown frozen projection與commit-key stale gate。Global-backed branch只在同snapshot key時local commit；no-global branch仍要求action allowlist並保留single-slot queue。Resident-authority GLOBAL ordinal path、returned no-ordinal Direction intent、pending settlement、wire shape、consumer/oracle/host皆不變。
 
 Final 0.3.11 Renderer／Interactive.Client的RepositoryCommit與ProductVersion皆為`b6a283fb8376c95d3543a42b375a25593dd38458`，Interactive exact Renderer dependency=`[0.3.11]`；package wire shape與0.3.10相同。
+
+0.3.11真host反證D33原本的「intent count保留visible width」不符合directional coverage contract。0.3.12新增pure `navigatorAdjacentObservationCounts`：request count為bounded document maximum，viewport count為`min request gestureWidth`。`dispatchNavigatorAdjacentCoverageNow`用request count建立range、directional intent與action `MaximumBasePoints`，但pending `ObservationCount`只存viewport count；因此host fetch 1500點而settlement仍以1491寬度reanchor，兩種責任不再共享欄位。
+
+Research provider historical authority以`DateTimeOffset.UnixEpoch`作內部validation floor，`withQueryDocument`會把它正規化到`query.fromUtc`；host明載它不是authored range。`tryAdjacentCoverageRange`因此把blank或exact normalized `1970-01-01T00:00:00.0000000`視為provider-open earlier，產生loaded-head雙anchor與`ProviderOpenEarlier` intent；其他parseable explicit start仍保持原值。Host仍以`HasProviderHistoricalAuthority`作最終授權，Renderer不新增wire flag、不放寬validator。
+
+0.3.12只改Renderer planning／dispatch與exact Interactive dependency；Contracts、host、consumer expected、single-slot queue、generation/revision gates與initial GlobalOverview branch不變。Candidate package SHA=`FB7A72...DE74 / DF4149...BEA3`；source-commit provenance與true-host formal pending。
+
+Repository active-consumer closure另外同步Dynamic.Ptcs0.2.1與Ptcs.Client0.2.0的exact graph；這是dependency-only變更，adapter source/wire/runtime behavior不變。Ptcs.Tests的既有intent fixture補上現行`Purpose=NavigatorWindow`；該檔外部空白行WIP保留並在commit時只stage owned hunk。兩個adapter candidate SHA=`3206D1...B6FB / 2A652B...C4D7`；tests15/15＋17/17、LiveDemo Release0 errors。Transitive PKCS audit warning獨立列Blocker，不改D35設計。
 
 ## 2026-10-27 evidence-sensitive query settlement（DYN-WBS-619 / 0.3.9）
 

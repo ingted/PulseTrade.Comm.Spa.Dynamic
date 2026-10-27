@@ -2176,6 +2176,20 @@ let tests =
             Expect.stringContains source "TaQueuedViewportIntent.NavigatorAdjacentCoverage" "an active-local overscroll must survive an already-pending action"
             Expect.stringContains source "sendOrQueueNavigatorAdjacentCoverage" "the live drop path must use the queue-aware directional event-range seam"
 
+        testCase "DYN-T-739 returned navigator separates directional fetch capacity from viewport width" <| fun _ ->
+            Expect.equal
+                (RendererModel.navigatorAdjacentObservationCounts 1500 1491)
+                (1500, 1491)
+                "the Research host receives the full directional fetch capacity while settlement preserves the gesture width"
+            Expect.equal
+                (RendererModel.navigatorAdjacentObservationCounts 100 130)
+                (100, 100)
+                "viewport settlement cannot exceed the bounded request capacity"
+            Expect.equal
+                (RendererModel.navigatorAdjacentObservationCounts 0 0)
+                (1, 1)
+                "both counts remain valid at the lower bound"
+
         testCase "DYN-T-737 initial global-backed active-local overscroll keeps the local event-time route" <| fun _ ->
             let projection : TaLoadedCoverageProjection =
                 { CoverageIdentity = "coverage:initial-global-backed"
@@ -4326,6 +4340,29 @@ let tests =
                 (openEarlier.CoverageIntent |> Option.map _.RangeAuthority)
                 (Some TaCoverageRangeAuthority.ProviderOpenEarlier)
                 "An open-left request must explicitly delegate the earlier boundary to the provider."
+
+            let providerHistoricalDocument =
+                { document with
+                    DefaultView =
+                        Map [
+                            "query.fromUtc", SduiValue.Text "1970-01-01T00:00:00.0000000+00:00"
+                            "query.toUtcExclusive", SduiValue.Text "2026-10-01T00:00:00.0000000+00:00"
+                        ] }
+            let providerHistoricalEarlier =
+                RendererModel.tryAdjacentCoverageRange
+                    TaCoverageDirection.Earlier
+                    4000
+                    providerHistoricalDocument
+                    prepared
+                |> Option.get
+            Expect.equal
+                providerHistoricalEarlier.StartEventTimeUtc
+                providerHistoricalEarlier.EndEventTimeExclusiveUtc
+                "DYN-T-738 provider historical Unix epoch is an internal open boundary and must use the loaded-head anchor."
+            Expect.equal
+                (providerHistoricalEarlier.CoverageIntent |> Option.map _.RangeAuthority)
+                (Some TaCoverageRangeAuthority.ProviderOpenEarlier)
+                "DYN-T-738 provider historical Unix epoch must retain provider-open authority."
 
         testCase "prepared row gate requires the current generation row count" <| fun _ ->
             Expect.isFalse (RendererModel.arePreparedRowsReady 3 0) "No row from the new generation is not ready."

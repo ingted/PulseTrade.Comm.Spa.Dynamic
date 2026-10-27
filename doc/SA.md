@@ -1,6 +1,6 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 returned-query left overscroll authority（0.3.9 / 0.3.10 falsification / 0.3.11）
+## 2026-10-27 returned-query left overscroll authority（0.3.9 / 0.3.10-0.3.11 falsification / 0.3.12）
 
 0.3.9真formal已證query settlement本身GREEN：pending=false、selected-applied、ActiveDetail／Loaded／Viewing皆1491。其後returned-2026左overscroll的pointerdown frozen projection為Some，state/prepared coverage皆`ref-present/some:25:20:0:1491`，且前一action已在pointerdown前1177ms完成；pointerup同毫秒新增的ui:30卻仍是當前`2026-05-29..07-14` bare range、CoverageIntent=None、frameCount1，Loaded/Viewing不變。這排除stale frame與pending競態。
 
@@ -13,6 +13,14 @@
 0.3.11以projection authority分流：只有`GlobalOverview=None`的returned active-local才走directional adjacent event range；`GlobalOverview=Some`但無resident ordinal mapping的initial cross-axis狀態，改回clamped local draft並由prepared timeline exact event range materialize。GLOBAL ordinal仍不猜、snapshot key仍先驗。DYN-T-737修前package-backed FS0039 RED；修後DYN-T-736/737各1/1、Renderer127/127、Interactive20/20、package verifier與fresh package-only BrowserDemo皆GREEN。Candidate Renderer／Interactive SHA=`D7D7AF39AACE1E3C24D19C7EE5D8751F6E0011349F540821125AF41A56F67C76 / 5ED321459E948774FE8D497F2E6D51157944413E1CFFDC87CBA65C9FB03B7E83`；source-commit provenance與Daedilus原formal重驗pending。
 
 Final source `b6a283fb8376c95d3543a42b375a25593dd38458`已push；final Renderer／Interactive SHA=`10E22BC42673CBD44BD8084231D14C8D8ED4234529688E2F44B906C87FC4F865 / 6FA9A99280356C7B65A059E3B54F642CD79C0BCF55E4E2E0FF1D9D9204AF56EC`，RepositoryCommit/ProductVersion與SDK cache exact。Fresh isolated owner gates維持Renderer127/127、Interactive20/20、verifier與package-only BrowserDemo GREEN；Daedilus完整原formal仍是唯一consumer驗收。
+
+0.3.11真formal證D34 initial gate已修正：initial action accepted且settle；但returned tail仍送`Direction=Earlier / ObservationCount=1491 / MaximumBasePoints=1500`，Research host依既有`SPAA-ACTION-COVERAGE-WINDOW`契約拒絕directional intent count不等於maximum。該action range仍為Unix epoch至loaded head，故即使放寬count也會把provider的內部floor誤作56年explicit materialization；host不應放寬，consumer package／DLL／ProductVersion parity與fresh Release build皆已排除stale install。
+
+最早共同原因有二，且都在Renderer action construction：fetch capacity與settled viewport width被同一`ObservationCount`欄位耦合；`tryAdjacentCoverageRange`只把blank from-bound視為provider-open，卻未辨識Research host對`WorkspaceQuoteAuthority.ProviderHistorical`使用的normalized Unix-epoch內部floor。Host source明載該floor不是authored FSSTL range，並以`HasProviderHistoricalAuthority`限制`ProviderOpenEarlier`。
+
+0.3.12以pure count plan分離outbound request=1500與pending viewport=1491；directional intent與`MaximumBasePoints`同為request count，pending settlement保留gesture width。Earlier query bound為blank或exact normalized Unix epoch時，range改以loaded-head雙anchor並保留`ProviderOpenEarlier`；其他explicit bound不變。DYN-T-738修前實得epoch start，DYN-T-739修前為FS0039；candidate修後DYN-T-73 family 10/10、epoch focused 1/1、Renderer128/128、Interactive20/20、package verifier與fresh exact0.3.12 BrowserDemo皆GREEN。Candidate Renderer／Interactive SHA=`FB7A7272F2D9B17B5995778CDD9F57AEF84A198A96CBDDB1DA56AF404CA0DE74 / DF4149A19169345A32706CED5D41D52EB69BAFA4CF5491E6F94A640AA453BEA3`；source provenance與Daedilus完整formal仍pending。
+
+Active-consumer audit確認canonical solution內的Dynamic.Ptcs與Ptcs.Client不是legacy。Dependency-only同步為Dynamic.Ptcs0.2.1（Contracts0.1.41）及Ptcs.Client0.2.0（Renderer0.3.12、Contracts0.1.41、FSharp.Core10.1.402與current WebSharper/PTCS）；direct tests/live demo亦exact pin。Candidate package SHA=`3206D1DB09E0196438B25C384988BB1983A0467F7F8FC1777FEC366D186AB6FB / 2A652BD8D761BA551A792B2ED283AFDAFDB1E7AF3A55F2E9C8822CB40D2BC4D7`，tests15/15＋17/17、LiveDemo Release0 errors。NuGet audit的transitive PKCS NU1902/NU1903另列`Blocker.md`，不冒充已修復或security-clean rollout。
 
 ## 2026-10-27 coverage generation scope correction（0.3.8 falsification / 0.3.9）
 

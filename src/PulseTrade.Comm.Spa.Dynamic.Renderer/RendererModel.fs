@@ -3620,6 +3620,12 @@ module RendererModel =
     let requiresNavigatorAdjacentEventRangeMaterialization (projection: TaLoadedCoverageProjection) =
         projection.GlobalOverview.IsNone
 
+    let navigatorAdjacentObservationCounts maximumVisibleBars observationCount =
+        let requestObservationCount =
+            min DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints (max 1 maximumVisibleBars)
+        let viewportObservationCount = max 1 (min requestObservationCount observationCount)
+        requestObservationCount, viewportObservationCount
+
     let requiresCrossAxisNavigatorEventRangeMaterialization projection =
         projection.GlobalOverview
         |> Option.exists (fun overview -> overview.AxisRef <> projection.ActiveDetail.BaseAxisRef)
@@ -3897,9 +3903,12 @@ module RendererModel =
             |> Option.bind (fun baseRow ->
                 let timeline = referenceTimelineForDocumentPrepared document prepared
                 let query = queryDraft document.DefaultView
+                let providerHistoricalOpenEarlier =
+                    String.IsNullOrWhiteSpace query.FromUtc
+                    || tryUtcTimestamp query.FromUtc = Some "1970-01-01T00:00:00.0000000"
                 let candidate =
                     match direction, Array.tryHead timeline, Array.tryLast timeline with
-                    | TaCoverageDirection.Earlier, Some loadedFirst, _ when String.IsNullOrWhiteSpace query.FromUtc ->
+                    | TaCoverageDirection.Earlier, Some loadedFirst, _ when providerHistoricalOpenEarlier ->
                         Some(loadedFirst, loadedFirst, true)
                     | TaCoverageDirection.Earlier, Some loadedFirst, _ ->
                         Some(query.FromUtc, loadedFirst, false)

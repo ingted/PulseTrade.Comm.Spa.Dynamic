@@ -1,0 +1,31 @@
+# Renderer returned-tail host contract
+
+## Pre-work plan
+
+- 背景：Daedilus 以 Research true host 驗證 Renderer/Interactive.Client 0.3.11。initial global-backed edge drag 已恢復 GREEN，但 returned tail 的 earlier gesture 仍送出 `Direction=Earlier`、`ObservationCount=1491`、`MaximumBasePoints=1500`，被 host 以 `SPAA-ACTION-COVERAGE-WINDOW` 拒絕；action range 亦仍由 Unix epoch 起算。
+- 已證實事實：0.3.11 canonical package 與 consumer 安裝 DLL SHA、ProductVersion 完全一致；consumer fresh Release build 為 0 errors。故本輪不以 stale package 或安裝偏差為候選根因。
+- 預期不變量：directional coverage action 的 `ObservationCount` 必須等於 `MaximumBasePoints`；returned-tail fetch contract 與 settled viewport width 必須分離；provider-open earlier 不得把 normalized Unix epoch 當成實際 explicit start；initial global-backed gesture 仍須 local commit，不能回歸 adjacent fetch。
+- Source of truth：Research host `WorkspaceRuntime.fs` 的 `validateCoverageIntent`／`boundedVisibleRange`／provider authority；Renderer 的 adjacent range/action/pending settlement；DYN-T-736/737 focused tests；Daedilus 18884 true-host evidence。
+- 最早偏離點候選：Renderer 在建立 adjacent action 時將可視寬度 1491 同時當成 fetch intent count；`tryAdjacentCoverageRange` 將 normalized epoch query start 當成 explicit lower bound，而非 provider-open sentinel。
+- 最小區分證據：只讀核對 `HasProviderHistoricalAuthority` 的建立來源、`queryDraft` 的 default/normalized start，以及 Renderer action count 與 pending viewport count 的資料流；先補 failing focused contract test，再做最小修復。
+- 既有 canonical mechanism：Research host 的 `ProviderOpenEarlier` range authority；Renderer pending adjacent request 的 settlement/reanchor；既有 DYN-T-736/737 runner。
+- 步驟：host/Renderer bounded inspection → DYN-T-738/739 RED → 最小實作與版本同步 → focused/full tests → candidate package → source commit → final provenance package → checker/sensitive/encoding → commit/push → Daedilus formal handoff。
+- 範圍：只改 Renderer、Interactive.Client、其 direct test projects與 RFC/SA/SD/WBS/Test/Verification/DevLog/log；不動 Daedilus consumer、Research host validator、外部 dirty `lib-packs.txt`、Ptcs.Tests `Program.fs`、`.pcsl/` 或 `temp/`。
+- 驗收：directional action count=max=1500、pending viewport count=1491；epoch-backed returned earlier 使用 provider-open authority；initial DYN-T-737 保持 GREEN；full Renderer/Interactive tests與 fresh package-only build通過；Daedilus true-host returned-tail 實測 Loaded=2991、Viewing width=1491。
+- 風險：若 epoch 可能代表使用者明確指定 1970，不能僅靠字串猜 sentinel；須先以 host authority/state contract 定位 canonical 判別欄位。若缺少可觀察 authority，停止實作並回報 contract 缺口。
+- Stop：未證明 authority/sentinel 契約前不改 production code；true-host 未驗收前不宣稱修復完成。
+
+## Operations
+
+- 2026-10-27 21:24 +08:00：`Foreground-Handoff -Who agent.asteer -TimeoutSeconds 1` 收到 Daedilus installed proof；18884 health ok，Renderer/Interactive DLL SHA 與 0.3.11 nupkg exact parity，ProductVersion 均指向 source `b6a283fb8376c95d3543a42b375a25593dd38458`，consumer fresh Release build 125 warnings/0 errors。此證據排除 stale install，但不消除 returned-tail RED。
+- 2026-10-27 21:25 +08:00：以公版 `drain-codex-foreground-handoff.ps1 -ParticipantId agent.asteer` drain exact handoff；無額外輸出。
+- 2026-10-27 21:26 +08:00：確認 canonical repo HEAD/upstream 均為 `ec252885e75689093593e72e278bb560b340fa49`；外部 dirty 僅 `lib-packs.txt`、Ptcs.Tests `Program.fs`、`.pcsl/`、`temp/`，本輪保留且不 stage。
+- 2026-10-27 21:27 +08:00：Research host bounded inspection確認ProviderHistorical唯一設`HasProviderHistoricalAuthority=true`並以`DateTimeOffset.UnixEpoch`作internal floor；註解明載非authored range。`withQueryDocument`將authority from bound正規化至`query.fromUtc`；directional host intent count必須等於MaximumBasePoints，ProviderOpenEarlier須該authority且允許loaded-head雙anchor。
+- 2026-10-27 21:28 +08:00：一次合併讀取三段tests超過guard（30,595 bytes）；未讀raw，改以各段bounded `sed`。DYN-T-738先在0.3.11 package取得1 failed：actual epoch start、expected loaded-head。
+- 2026-10-27 21:29 +08:00：DYN-T-739先引用pure count planner，package-backed build取得FS0039三處。實作前兩個RED均已成立。
+- 2026-10-27 21:30 +08:00：最小修復加入`navigatorAdjacentObservationCounts`，directional action request/intent=1500而pending viewport=1491；exact normalized epoch/blank Earlier改成loaded-head ProviderOpenEarlier。Renderer/Interactive與direct tests升0.3.12。
+- 2026-10-27 21:31 +08:00：Renderer candidate pack成功；SHA=`FB7A7272F2D9B17B5995778CDD9F57AEF84A198A96CBDDB1DA56AF404CA0DE74`，複製SDK10.0.402 library-packs後hash parity。DYN-T-73 family 10/10、epoch focused 1/1。
+- 2026-10-27 21:32 +08:00：Interactive candidate pack成功；SHA=`DF4149A19169345A32706CED5D41D52EB69BAFA4CF5491E6F94A640AA453BEA3`，SDK cache parity。Renderer full128/128、Interactive full20/20、package verifierPASS。
+- 2026-10-27 21:33 +08:00：同一COMM handoff因drain default state不符repo bridge path而重現；讀取公版script參數後，以`-StateDir G:\PulseTrade.fs\temp\agent.asteer\comm-bridge -HandoffOnly`正確drain exact message。未重複當新訊息處理。
+- 2026-10-27 21:34 +08:00：一次合併讀取六份current docs超過guard（41,225 bytes）；未讀raw，停止合併，改逐份最小片段。另一次`rg | head`遇Windows broken-pipe，後續改exact path/glob且不截斷producer。
+- 2026-10-27 21:35 +08:00：fresh scratch package-only BrowserDemo exact解析Contracts0.1.41、Renderer/Interactive0.3.12、FSharp.Core10.1.402、WebSharper.FSharp10.1.7.680、UI10.1.6.680；build WS9002 x1／0 errors，generated JS含count planner／ProviderOpenEarlier，full/min SHA=`CCAA968DA84110A6342D5D1D31EE8FC1114EF7B9AB82AF1392BBA76BFF0BC07B / D2C0A2CD56AEF3885381B17675060C64A889EADAE9C6297640EB4A7B1A43159F`。

@@ -6,7 +6,7 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
-### DYN-VFY-061 0.3.11 scoped active-local Earlier authority（owner final / consumer pending）
+### DYN-VFY-061 0.3.12 scoped active-local Earlier authority（owner candidate / consumer pending）
 
 - 0.3.9真RED：query settlement已GREEN；failure-drop pointerdown projection=Some、coverage25/20/start0/count1491、前一action已settled。Pointerup新增ui:30卻是bare current range，frame1，Loaded/Viewing仍1491，決定性排除stale/pending並定位ordinal0 local reapply。
 - 0.3.10 candidate：Earlier active-local改用exact adjacent event range＋directional no-ordinal NavigatorWindow intent，fetch cap與visible count分離；blocked action進既有viewport queue，snapshot mismatch仍reject。DYN-T-7361/1、Renderer126/126、Interactive20/20、verifierPASS。
@@ -15,6 +15,9 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 - 0.3.10 consumer RED：installed Renderer/Interactive DLL hash與ProductVersion exact，但原formal第一個initial4500 gate已送`1970..2026-02-24`並被durable-window validator拒絕。該state為QueryGeneration0、ActiveDetail99189/1500、local3000/1500且有cross-axis GlobalOverview；0.3.10錯把它與returned no-global active-local合流。
 - 0.3.11 candidate：`GlobalOverview=None`才走directional adjacent materialization；global-backed non-resident-authority改走clamped local prepared-event-range。DYN-T-736/737各1/1、Renderer127/127、Interactive20/20、verifierPASS；candidate SHA=`D7D7AF...7C76 / 5ED321...7E83`且SDK parity。Fresh package-only BrowserDemo exact0.3.11 chain、WS9002 x1／0 errors，full/min SHA=`723BC3...2147 / ACC847...DD84`。Final source provenance與Daedilus完整原formal pending，不宣稱consumer close。
 - 0.3.11 owner final：source `b6a283fb8376c95d3543a42b375a25593dd38458`已push；final Renderer／Interactive SHA=`10E22B...F865 / 6FA9A9...4AF5`，RepositoryCommit/ProductVersion、Interactive Renderer `[0.3.11]`與SDK10.0.402 cache parity exact。Fresh isolated Renderer127/127、Interactive20/20、verifierPASS；fresh final package-only BrowserDemo exact0.3.11 graph、WS9002 x1／0 errors，full/min SHA=`723BC3...2147 / ACC847...DD84`。Daedilus完整原formal pending，不宣稱consumer close。
+- 0.3.11 consumer RED：initial gate已accepted／settled；returned directional action則以intent1491/max1500被Research host `SPAA-ACTION-COVERAGE-WINDOW`拒絕，range亦仍由Unix epoch開始。Exact package/DLL/ProductVersion parity與consumer fresh Release build皆通過，排除stale install。
+- 0.3.12 candidate：directional request intent count與MaximumBasePoints同為1500，pending viewport count獨立保留1491；normalized provider historical Unix epoch改為loaded-head雙anchor＋ProviderOpenEarlier。DYN-T-738修前1 failed、DYN-T-739修前FS0039；修後focused 10/10＋1/1、Renderer128/128、Interactive20/20、verifierPASS。Candidate SHA=`FB7A72...DE74 / DF4149...BEA3`且SDK parity；fresh package-only BrowserDemo exact0.3.12、WS9002 x1／0 errors，JS full/min=`CCAA96...C07B / D2C0A2...159F`。Source provenance與Daedilus true-host final仍pending。
+- Active consumers：Dynamic.Ptcs0.2.1與Ptcs.Client0.2.0 exact consume current Contracts/Renderer graph；package SHA=`3206D1...B6FB / 2A652B...C4D7`，SDK parity，tests15/15＋17/17、LiveDemo0 errors。Transitive PKCS NU1902/NU1903為`Blocker.md` open；不阻擋Renderer true-host gate，但阻擋PTCS adapter security-clean/public rollout宣稱。
 
 ### DYN-VFY-060 0.3.9 positive materialization settlement（complete）
 

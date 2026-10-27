@@ -1,0 +1,22 @@
+# Renderer returned-tail host contract closeout
+
+## Pre-work plan
+
+- 背景：0.3.12 candidate已完成source、package、focused/full tests、verifier與fresh package-only BrowserDemo；第一次closeout checker在本批尚未完全凍結時建立baseline，後續補舊log欄位造成`log_readonly_modify`。
+- 目標：恢復舊log exact baseline，以本新log承接closeout；完成active-consumer分類、source commit/push、final provenance package與Daedilus true-host handoff。
+- 假設：產品根因修復已由owner gates支持；剩餘風險是active consumer版本一致性、final package provenance及true-host E2E，而非host validator。
+- 步驟：restore舊log baseline → 判定Ptcs.Client ownership/active status → checker/sensitive → exact-path source commit/push → final packages/gates → evidence commit/push → Daedilus formal。
+- 範圍：延續DYN-WBS-620 0.3.12 owned paths；外部dirty `lib-packs.txt`、Ptcs.Tests `Program.fs`、`.pcsl/`、其他`temp/`不stage。若Ptcs.Client是active consumer，依版本政策同步其direct dependency並跑對應build/test；若為明示legacy，記理由不盲修。
+- 驗收：checker FAIL=0、High=0；source與final package provenance/hash exact；Renderer128/128、Interactive20/20、verifier、fresh package-only build持續GREEN；Daedilus true-host returned action count=max=1500、ProviderOpenEarlier、Loaded2991、Viewing1-1491。
+- 風險：checker baseline已將舊log視為immutable；本輪不再修改該檔。True-host未通過前不宣稱consumer complete。
+
+## Operations
+
+- 2026-10-27 21:37 +08:00：candidate source與docs完成；Renderer128/128、Interactive20/20、verifierPASS、fresh exact0.3.12 BrowserDemo WS9002 x1／0 errors。Candidate SHA=`FB7A7272F2D9B17B5995778CDD9F57AEF84A198A96CBDDB1DA56AF404CA0DE74 / DF4149A19169345A32706CED5D41D52EB69BAFA4CF5491E6F94A640AA453BEA3`。
+- 2026-10-27 21:38 +08:00：strict UTF-8/NUL/U+FFFD檢查全通過；Renderer/Interactive fsproj既有UTF-8 BOM保留，其餘changed text無BOM。Sensitive scan files=12、High=0、Medium=0。
+- 2026-10-27 21:39 +08:00：首次checker PASS27/WARN3/FAIL0，指出最新log缺精確「目標／假設」欄名；其餘WARN為dirty與repo-wide RFC traceability。
+- 2026-10-27 21:41 +08:00：補舊log欄位後同session checker正確FAIL `log_readonly_modify`；另WARN Ptcs.Client Renderer `[0.1.131]`未同步。未刪state／未弱化gate；恢復舊log exact baseline並開本closeout log承接。
+- 2026-10-27 21:42 +08:00：inventory確認Ptcs.Client列canonical slnx且有direct Expecto/LiveDemo，非legacy。升級前baseline：Ptcs.Client build0 errors（既有NU1902/NU1903）、PtcsTaClient.Tests17/17；Dynamic.Ptcs.Tests15/15。
+- 2026-10-27 21:44 +08:00：dependency-only同步Dynamic.Ptcs0.2.1與Ptcs.Client0.2.0及direct consumers。Candidate package SHA=`3206D1DB09E0196438B25C384988BB1983A0467F7F8FC1777FEC366D186AB6FB / 2A652BD8D761BA551A792B2ED283AFDAFDB1E7AF3A55F2E9C8822CB40D2BC4D7`，SDK cache parity。
+- 2026-10-27 21:45 +08:00：Contracts0.1.41使兩個committed legacy intent fixtures缺`Purpose`而FS0764；Ptcs.Tests他人dirty僅不同位置空白行，故只補owned `NavigatorWindow`欄並計畫partial stage。修後Ptcs.Tests15/15、PtcsTaClient.Tests17/17、PTCS LiveDemo Release0 errors。
+- 2026-10-27 21:46 +08:00：四條PTCS restore/build路徑均揭露transitive `System.Security.Cryptography.Pkcs 9.0.18` NU1902/NU1903。建立`Blocker.md`；不抑制warning、不把local sync包視為security-clean/public rollout。

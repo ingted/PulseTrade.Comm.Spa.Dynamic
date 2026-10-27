@@ -312,7 +312,8 @@ let tests =
                         StartObservationOrdinal = Some 250L
                         ObservationCount = 250
                         Direction = Some TaCoverageDirection.Earlier
-                        RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds }
+                        RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds
+                        Purpose = TaCoverageWindowPurpose.NavigatorWindow }
                   RuntimeClientFrame.Action(
                       SduiAction.VisibleRangeChanged(
                           canvasId,

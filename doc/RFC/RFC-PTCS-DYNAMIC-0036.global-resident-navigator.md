@@ -200,6 +200,12 @@ Active-local boundary不得用query-relative ordinal表示未載入的相鄰頁�
 
 決策是以frozen projection的GlobalOverview presence分流。`GlobalOverview=None`表示returned/no-global active-local，維持D33 directional no-ordinal adjacent materialization；`GlobalOverview=Some`但resident mapping不可用表示global-backed local domain，snapshot key相同後clamp local draft並以prepared timeline exact event range materialize，不讀query sentinel、不猜GLOBAL ordinal。真正resident-authority仍用原GLOBAL intent，stale snapshot仍拒絕。D34限縮D33 live dispatch scope，不改D33 contract、wire、queue、settlement、consumer/oracle/host。
 
+### D35. 2026-10-27 directional request capacity is distinct from settled viewport width
+
+0.3.11真formal證D34 initial routing已GREEN，但returned directional action以`ObservationCount=1491 / MaximumBasePoints=1500`被Research host既有`SPAA-ACTION-COVERAGE-WINDOW`拒絕；同一action range仍從Unix epoch開始。Host contract要求有Direction的intent count等於MaximumBasePoints；Research的ProviderHistorical authority則以Unix epoch作內部validation floor，明載不是authored range，且只在`HasProviderHistoricalAuthority`時接受`ProviderOpenEarlier`。
+
+決策是把outbound request capacity與local settlement width分開：directional action intent與MaximumBasePoints皆使用bounded document maximum（本例1500），pending settlement獨立保存gesture viewport width（本例1491）。Earlier query start為blank或exact normalized Unix epoch時，以loaded-head作相同start/end anchor並標`ProviderOpenEarlier`；其他explicit bounds保持原值。D35 supersedes D33「intent count=current visible width」一句，不改D34 projection分流、wire shape、host validator、single-slot queue、revision/generation gate或consumer expected。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.
