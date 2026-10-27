@@ -1,0 +1,22 @@
+# Dynamic purpose contract post-commit package evidence
+
+## Pre-work plan
+
+- 背景／上下文：DYN-WBS-609 source/docs/tests commit `da94f34286e6947c0ebf61b24f0f0a3308939bb6`已push；candidate2 v2 schema owner gates全綠。
+- 目標：從exact commit建立Contracts0.1.41、Renderer／Interactive0.2.57、Tagging.Client0.1.12 immutable packages並交Daedilus consumer integration。
+- 假設：只有RepositoryCommit/ProductVersion等於`da94f34...`且fresh caches解析同一final feed的packages可作交付authority。
+- 計畫步驟：fresh final packs → metadata/hash → four test suites → verifier／BrowserDemo → SDK10.0.402 copy/readback → checker → evidence commit/push → COMM handoff。
+- 範圍：上述四包、本repo owner tests、package-only BrowserDemo與SDK local feed；不public NuGet push，不修改Daedilus consumer／host source。
+- 驗收：WindowIntentSchema v2、purpose typed wire、exact dependency chain、four package SHA parity、51/51＋113/113＋20/20＋9/9、verifier與BrowserDemo全綠。
+- 風險：same-version candidate cache污染、WebSharper orphan lock、C:容量；final使用新restore roots，僅停止parent不存在且path精確屬本任務的compiler service。
+- Source of truth：Git commit `da94f34...`、四個fsproj、final feed nupkg metadata/hash、SDK readback。
+- 停止條件：packages/evidence push與Daedilus exact handoff；真B未綠則續修，不宣告全部完成。
+
+## Operations
+
+- 2026-10-27 12:01 +08:00：候選驗收後，確認`temp/agent.asteer/dynamic-0257`=6.269GB、無reparse，5個相關wsfscservice parent皆不存在；停止orphans並精確刪除可重建candidate/candidate2 caches，C: free由1.707GB回到7.998GB。候選證據已進commit/log；temp刪除不可復原但可由exact commit重建，未碰其他agent或正式資料。
+- 2026-10-27 12:05 +08:00：exact commit final pack完成。初次Tagging nupkg nuspec RepositoryCommit雖exact，但package DLL ProductVersion仍是pre-commit `0.1.12+54946f9...`；根因是該project `GeneratePackageOnBuild=true`而direct pack重用舊Release DLL。改走`dotnet build -t:Rebuild -p:PublishNuGetPackage=false -p:PackageOutputPath=<final-feed>` canonical path後，package DLL為`0.1.12+da94f34...`；舊Tagging hash作廢。
+- 2026-10-27 12:06 +08:00：final hashes：Contracts=`C6A17D3789A6AB6FAD67E42BA88333C1D03AE7FD67E789B653D423167C4DFD32`、Renderer=`5947094530796091D06771EECAD37B2D405D85DF264AE7F896DDAC71CB6A25B2`、Interactive=`BE851444481D5477C616A0E51BC93AE9EA34C74885F2A61B7F5B2147C380C6B1`、Tagging=`DB368F9833165CB2676C09BF503F1315B8EE90D85610B92CF8520152C9CDA6D8`。四包version／RepositoryCommit=`da94f34286e6947c0ebf61b24f0f0a3308939bb6`，package DLL ProductVersion分別為`0.1.41+da94f34...`／`0.2.57+da94f34...`／`0.2.57+da94f34...`／`0.1.12+da94f34...`；dependency chain exact。
+- 2026-10-27 12:09 +08:00：fresh final tests Contracts51/51、Renderer113/113、Interactive20/20、Tagging9/9；Interactive package verifier PASS entries=4；package-only BrowserDemo解析Contracts0.1.41／Renderer0.2.57／Interactive0.2.57，0 warnings／0 errors。
+- 2026-10-27 12:10 +08:00：四包已以explicit paths複製到SDK10.0.402 `FSharp/library-packs`，逐包readback SHA parity=true；未修改`lib-packs.txt`，未public push。
+- 2026-10-27 12:10 +08:00：canonical checker PASS=41/WARN=7/FAIL=0；WARN為本輪第二次checker中的SA/SD/RFC/KM unchanged、dirty、既有traceability與legacy Ptcs/Ptcs.Client old pins，version bump／DevLog／WBS priority皆PASS。final evidence敏感掃描High=0／Medium=0，四檔strict UTF-8、無BOM／NUL／U+FFFD。

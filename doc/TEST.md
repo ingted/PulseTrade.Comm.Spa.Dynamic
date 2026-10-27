@@ -1,9 +1,9 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-723（0.2.57 candidate / consumer pending）
+## 2026-10-27 DYN-T-723（0.2.57 owner package / consumer pending）
 
 - 契約：每個`TaCoverageWindowIntent`都帶required purpose。main plot in-range／boundary／provider-open皆為MainPlotPan；cross-axis navigator move／resize及resident action為NavigatorWindow。有StartOrdinal／Direction的overscroll仍以既有materialization authority處理，purpose不取代range authority。
-- RED/GREEN：0.2.56 surface對`.Purpose`／`TaCoverageWindowPurpose`得到8 compiler errors（4 unique）；0.2.57新增DU/field、typed JSON round-trip與resident invalid-purpose rejection。candidate Contracts51/51、Renderer113/113、Interactive20/20、Tagging9/9；Interactive package verifierPASS，package-only BrowserDemo exact Contracts0.1.41／Renderer0.2.57／Client0.2.57為0 warnings／0 errors。
+- RED/GREEN：0.2.56 surface對`.Purpose`／`TaCoverageWindowPurpose`得到8 compiler errors（4 unique）；0.2.57新增DU/field、window schema v2、typed JSON round-trip與resident invalid-purpose rejection。Final source `da94f34286e6947c0ebf61b24f0f0a3308939bb6`；Contracts／Renderer／Interactive／Tagging SHA=`C6A17D37...FD32`／`59470945...25B2`／`BE851444...C6B1`／`DB368F98...A6D8`，RepositoryCommit/ProductVersion exact、SDK parity。fresh Contracts51/51、Renderer113/113、Interactive20/20、Tagging9/9；Interactive package verifierPASS，package-only BrowserDemo exact Contracts0.1.41／Renderer0.2.57／Client0.2.57為0 warnings／0 errors。
 - 真E2E：Daedilus consumer total match Purpose；NavigatorWindow resize1500→79後再move79不得搬resident，MainPlotPan仍要求count等於visible並relocate together；不得保留count fallback。Gate C accepted但Frames=[]為host owner獨立缺口。
 
 ## 2026-10-27 DYN-T-722（0.2.56 owner package / consumer pending）
