@@ -71,6 +71,7 @@ type TaQueryViewportSettlementDiagnostics =
 type TaQueuedViewportIntent =
     | LocalRange of SduiAction
     | AdjacentCoverage of PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection * int
+    | NavigatorAdjacentCoverage of PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection * int * int * string
     | CoverageWindow of int64 * int * string
     | ResidentGesture of string * float * string
 
@@ -2890,6 +2891,8 @@ module TaWorkspaceRenderer =
         let mutable queuedViewportIntent: TaQueuedViewportIntent option = None
         let mutable flushQueuedViewportIntent = ignore
         let mutable dispatchAdjacentCoverage = fun (_: PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection) (_: int) -> ()
+        let mutable dispatchNavigatorAdjacentCoverage =
+            fun (_: PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection) (_: int) (_: int) (_: string) -> ()
         let mutable dispatchCoverageWindow = fun (_: int64) (_: int) (_: string) -> ()
         let mutable dispatchResidentGesture = fun (_: string) (_: float) (_: string) -> ()
         let mutable settlePendingCoverageProjection = fun () -> false
@@ -3033,6 +3036,14 @@ module TaWorkspaceRenderer =
                 setUiState { uiState.Value with Feedback = "Loaded coverage request queued." }
             else
                 dispatchCoverageWindow targetStart targetCount successText
+        let sendOrQueueNavigatorAdjacentCoverage direction delta observationCount successText =
+            recordViewportDispatch "navigator-adjacent" None (Some observationCount) None
+            if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
+                queuedViewportIntent <-
+                    Some(TaQueuedViewportIntent.NavigatorAdjacentCoverage(direction, delta, observationCount, successText))
+                setUiState { uiState.Value with Feedback = "Adjacent navigator coverage request queued." }
+            else
+                dispatchNavigatorAdjacentCoverage direction delta observationCount successText
         let queueResidentGestureWhenBlocked drag deltaRatio successText =
             if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
                 recordViewportDispatch "resident-gesture" None None (Some deltaRatio)
@@ -3050,6 +3061,8 @@ module TaWorkspaceRenderer =
                     startVisibleRangeAction action
                 | TaQueuedViewportIntent.AdjacentCoverage(direction, delta) ->
                     dispatchAdjacentCoverage direction delta
+                | TaQueuedViewportIntent.NavigatorAdjacentCoverage(direction, delta, observationCount, successText) ->
+                    dispatchNavigatorAdjacentCoverage direction delta observationCount successText
                 | TaQueuedViewportIntent.CoverageWindow(targetStart, targetCount, successText) ->
                     dispatchCoverageWindow targetStart targetCount successText
                 | TaQueuedViewportIntent.ResidentGesture(drag, deltaRatio, successText) ->
@@ -3863,6 +3876,64 @@ module TaWorkspaceRenderer =
 
         dispatchAdjacentCoverage <- dispatchAdjacentCoverageNow
 
+        let dispatchNavigatorAdjacentCoverageNow direction delta observationCount successText =
+            if actionAllowed "visible-range-changed" && preparedRowsReady.Value && not (localViewportDisabled runtimeState.Value.Poll) then
+                match runtimeState.Value.Document with
+                | Some document ->
+                    let maximumVisibleBars = maximumVisibleBarsFor document
+                    match
+                        RendererModel.tryAdjacentCoverageRange
+                            direction
+                            (min DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints (max 1 maximumVisibleBars))
+                            document
+                            latestPreparedData,
+                        RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data
+                    with
+                    | Some range, Some projection ->
+                        match
+                            RendererModel.tryNavigatorAdjacentEventRangeIntent
+                                direction
+                                (max 1 (min maximumVisibleBars observationCount))
+                                projection
+                        with
+                        | Some intent ->
+                            let effectiveIntent =
+                                match range.CoverageIntent with
+                                | Some providerOpen when providerOpen.RangeAuthority = TaCoverageRangeAuthority.ProviderOpenEarlier ->
+                                    { providerOpen with
+                                        ExpectedCoverageRevision = intent.ExpectedCoverageRevision
+                                        QueryGeneration = intent.QueryGeneration
+                                        ObservationCount = intent.ObservationCount
+                                        Purpose = TaCoverageWindowPurpose.NavigatorWindow }
+                                | _ -> intent
+                            let timeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
+                            let currentWindow = resolvedWindow uiState.Value
+                            let pending =
+                                { Direction = direction
+                                  LegacyDelta = delta
+                                  IntentTimeline = timeline
+                                  IntentWindow = currentWindow
+                                  TargetStartObservationOrdinal = None
+                                  ObservationCount = effectiveIntent.ObservationCount
+                                  QueryGeneration = effectiveIntent.QueryGeneration }
+                            let action =
+                                SduiAction.VisibleRangeChanged(
+                                    currentCanvasId (),
+                                    { range with
+                                        MaximumBasePoints = min DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints (max 1 maximumVisibleBars)
+                                        CoverageIntent = Some effectiveIntent })
+                            startCoverageWindowAction action pending successText
+                        | None -> rejectNavigatorDraft "Adjacent navigator coverage intent is invalid."
+                    | _ ->
+                        rejectNavigatorDraft
+                            (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then
+                                "Earlier coverage is outside the configured query boundary."
+                             else
+                                "Later coverage is outside the configured query boundary.")
+                | None -> rejectNavigatorDraft "Loaded coverage document is unavailable."
+
+        dispatchNavigatorAdjacentCoverage <- dispatchNavigatorAdjacentCoverageNow
+
         let requestAdjacentCoverage direction delta =
             if actionAllowed "visible-range-changed" && preparedRowsReady.Value && not (localViewportDisabled runtimeState.Value.Poll) then
                 if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
@@ -4638,44 +4709,18 @@ module TaWorkspaceRenderer =
                                     else
                                         setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
                                         draftWindow.Value <- None
-                                | Some direction, Some(document, preparedData, timeline, projection, snapshotKey)
+                                | Some direction, Some(_, _, _, _, snapshotKey)
                                     when ProjectionCommitGate.key runtimeState.Value = snapshotKey
-                                         && actionAllowed "visible-range-changed"
-                                         && uiState.Value.PendingActionId.IsNone
-                                         && not (remoteDisabled runtimeState.Value.Poll) ->
-                                    let adjacentIntent =
-                                        match projection.GlobalOverview with
-                                        | Some _ when gestureDomain.UsesResidentAuthority ->
-                                            RendererModel.tryResidentAdjacentCoverageIntent
-                                                direction
-                                                (maximumVisibleBarsNow ())
-                                                committed
-                                                projection
-                                        | None ->
-                                            RendererModel.tryAdjacentCoverageIntent
-                                                direction
-                                                (maximumVisibleBarsNow ())
-                                                total
-                                                committed
-                                                projection
-                                        | Some _ -> None
-                                    match adjacentIntent with
-                                    | Some intent ->
-                                        setDragDiagnostic
-                                            "data-drag-outcome"
-                                            (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "request-earlier" else "request-later")
-                                        draftWindow.Value <- None
-                                        applyLoadedCoverageIntent
-                                            document
-                                            preparedData
-                                            timeline
-                                            localCommitted
-                                            projection
-                                            intent
-                                            "Loaded coverage requested."
-                                    | None ->
-                                        setDragDiagnostic "data-drag-outcome" "coverage-boundary"
-                                        draftWindow.Value <- None
+                                         && actionAllowed "visible-range-changed" ->
+                                    setDragDiagnostic
+                                        "data-drag-outcome"
+                                        (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "request-earlier" else "request-later")
+                                    draftWindow.Value <- Some draft
+                                    sendOrQueueNavigatorAdjacentCoverage
+                                        direction
+                                        latestRawDelta
+                                        committed.Count
+                                        "Loaded coverage requested."
                                 | Some _, Some _ ->
                                     setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
                                     draftWindow.Value <- None

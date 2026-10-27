@@ -1,5 +1,13 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 active-local adjacent navigator dispatch（DYN-WBS-620 / 0.3.10）
+
+`tryNavigatorAdjacentEventRangeIntent`只建立directional event-range materialization contract：ExpectedCoverageRevision=current、QueryGeneration+1、StartObservationOrdinal=None、ObservationCount=current visible width、RangeAuthority=ExplicitBounds、Purpose=NavigatorWindow。它不讀GLOBAL total，也不把active ordinal0轉成whole-series ordinal。
+
+`dispatchNavigatorAdjacentCoverageNow`以current document＋latest prepared data呼叫既有`tryAdjacentCoverageRange`取得query bound到loaded edge的exact UTC range；action的MaximumBasePoints使用document fetch cap，intent count保留visible width。Provider-open Earlier仍保留ProviderOpenEarlier range authority，只以current revision/generation/count/purpose補齊。Pending settlement保存原signed delta、timeline/window與TargetStart=None，沿既有`coverageExtended`＋`tryReanchorWindow`完成prepend/append。
+
+Active-local pointerup先驗snapshot commit key，再走`sendOrQueueNavigatorAdjacentCoverage`；pending action／boundary、未committed coverage或remote-disabled時只保存direction/delta/count，ready後由既有single-slot queue重建current action。Resident-authority branch仍用GLOBAL ordinal intent；snapshot mismatch仍走stale reject，不由queue掩蓋。
+
 ## 2026-10-27 evidence-sensitive query settlement（DYN-WBS-619 / 0.3.9）
 
 `acceptedQueryViewportSettlement`先以local `IntentGeneration`拒絕superseded response，再要求prepared frame的DataRevision大於dispatch baseline。之後只計算一次temporal selection：loaded-coverage QueryGeneration有前進時，`Selected`／`NoIntersection`／`Invalid`／`NotRequested`皆可settle；generation未前進時，`Selected`是requested range已materialize的positive proof，可settle，`NoIntersection`則保持Await。這保留negative-result authority，又不再要求coverage-specific counter替`ChangeTaQuery`背書。

@@ -6,6 +6,12 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
+### DYN-VFY-061 0.3.10 returned active-local Earlier authority（owner candidate / consumer pending）
+
+- 0.3.9真RED：query settlement已GREEN；failure-drop pointerdown projection=Some、coverage25/20/start0/count1491、前一action已settled。Pointerup新增ui:30卻是bare current range，frame1，Loaded/Viewing仍1491，決定性排除stale/pending並定位ordinal0 local reapply。
+- 0.3.10 candidate：Earlier active-local改用exact adjacent event range＋directional no-ordinal NavigatorWindow intent，fetch cap與visible count分離；blocked action進既有viewport queue，snapshot mismatch仍reject。DYN-T-7361/1、Renderer126/126、Interactive20/20、verifierPASS。
+- Candidate packages：Renderer／Interactive SHA=`8D9D97...C739 / E0A1DF...3444`，SDK10.0.402 library-packs parity；fresh package-only BrowserDemo exact0.3.10 chain、WS9002 x1／0 errors，generated JS markers存在，full/min SHA=`803C9C...1117 / 0C908E...C2F7`。Candidate ProductVersion仍指pre-source-commit HEAD，只作owner gate；final provenance與Daedilus原formal return-Earlier gate pending，不宣稱consumer close。
+
 ### DYN-VFY-060 0.3.9 positive materialization settlement（owner final / consumer pending）
 
 - 0.3.8真RED：DataRevision3→4且requested data已1491，coverage QueryGeneration仍0→0；telemetry永久Await，formal後續可回1028。Package、source、deploy provenance皆exact，排除發錯包。

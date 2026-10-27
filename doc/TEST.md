@@ -1,5 +1,12 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-736（returned active-local Earlier overscroll）
+
+- Real RED：0.3.9 query settlement先GREEN；clean failure-drop的ui:30在pointerup同毫秒送出，但仍是當前range、MaximumBasePoints1500、CoverageIntent=None，frameCount1，Loaded1491/Viewing1-1491不變。Pointerdown projection=Some、state/prepared=`ref-present/some:25:20:0:1491`，前一response早1177ms，排除publication/pending假設。Evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0309-failure-drop\returned-earlier-drop.json`。
+- Source RED：0.3.9 package-backed DYN-T-736引用directional navigator event-range seam，build為FS0039；現行live branch會把Earlier target clamp回ordinal0並重套local window。
+- Contract：Earlier intent必須StartObservationOrdinal=None、Direction=Earlier、ExpectedCoverageRevision24、QueryGeneration20、ObservationCount1491、ExplicitBounds、NavigatorWindow；action MaximumBasePoints仍1500。Pending action時須保存同一direction/delta/count並在ready後排送；snapshot mismatch不得排送。
+- Candidate GREEN：focused1/1、Renderer126/126、Interactive20/20、package verifierPASS。Fresh package-only BrowserDemo exact Contracts0.1.41、Renderer/Interactive0.3.10、FSharp.Core10.1.402、WebSharper.FSharp10.1.7.680、UI10.1.6.680，僅既有WS9002 x1／0 errors；generated JS含`navigator-adjacent`／`NavigatorAdjacentCoverage`／`tryNavigatorAdjacentEventRangeIntent`，full/min SHA=`803C9C9A2F3C4064871869D1C61720496D29C0F1A73D0A90A9698D1DD2551117 / 0C908EFF991671F2F08922ECF07EE0E2E1D6BDEAA2676CFFF14341853E50C2F7`。Candidate package SHA=`8D9D97439EC6880B8B8D8DCD5082BA1347F596CEDE03F989C963F2081EE8C739 / E0A1DF27B3EDCDF1C4542D36BDF11D4B396529F14A87ABC2F830578DE14E3444`；source-commit provenance與Daedilus原formal gate pending。
+
 ## 2026-10-27 DYN-T-735（stable coverage generation / positive materialization）
 
 - Real RED：0.3.8 exact package/provenance/deploy皆通過；fresh窄trace為DataRevision3→4、coverage QueryGeneration0→0、requested 2026 timeline已1491，但telemetry仍`pending=true/outcome=await-authoritative-frame`。Formal序列又可短暫1491後回1028。Evidence由Daedilus direct `msg-fsi-12bd3f4c61d34ce4b0196e48c456199c`與`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0308\return-2026.json`提供。

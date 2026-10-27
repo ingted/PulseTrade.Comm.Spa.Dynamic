@@ -188,6 +188,12 @@ D24把prepared欄位選對但把frame authority認錯：實際inner navigator由
 
 0.3.8真Gate證明D30的雙counter必要條件錯置authority：fresh `ChangeTaQuery`可使DataRevision與requested prepared data前進，但loaded-coverage QueryGeneration維持0；formal長序列的18只是先前coverage-window action counter。Wire上`TaQueryChange`沒有generation，只有`TaCoverageWindowIntent`與`TaLoadedCoverageProjection`持有此欄。決策是保留local IntentGeneration與DataRevision gate；coverage generation前進時可完成positive/negative selection，generation穩定時只有`Selected` positive materialization可完成，`NoIntersection`繼續Await。D32 supersedes D30的「兩個revision皆前進」句，不改D31 shell-prepared authority、wire、consumer expected或host/oracle。
 
+### D33. 2026-10-27 returned active-local boundary uses directional event-time authority
+
+0.3.9真formal先證query settlement已GREEN，再於returned 2026 active detail `startOrdinal=0/count=1491`左overscroll送出bare `VisibleRangeChanged`；request仍是當前`2026-05-29..07-14`、無CoverageIntent，Loaded/Viewing維持1491。Pointerdown frozen projection為Some且state/prepared皆`ref-present/some:25:20:0:1491`，排除stale publication與pending queue；最早偏離是active-local boundary把Earlier ordinal clamp回0，`applyLoadedCoverageIntent`遂誤判target仍完整位於active detail並重套本地window。
+
+Active-local boundary不得用query-relative ordinal表示未載入的相鄰頁。它改以`tryAdjacentCoverageRange`產生exact event-time半開range作位置authority，另附`Direction=Earlier/Later`、`StartObservationOrdinal=None`、next QueryGeneration、current visible count與`Purpose=NavigatorWindow`的ExplicitBounds intent；`MaximumBasePoints`仍獨立使用fetch cap。Matching settlement沿既有TargetStart=None timeline-extension/reanchor seam。若drop時已有action、boundary settlement或projection尚未committed，保存direction/delta/count進既有viewport queue；只有同snapshot key才可排送，真正stale snapshot仍拒絕。Same-axis resident ordinal、GLOBAL relocation、main plot、wire shape、consumer/oracle/host均不變。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

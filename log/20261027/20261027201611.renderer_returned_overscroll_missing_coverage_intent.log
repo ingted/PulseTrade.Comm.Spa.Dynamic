@@ -1,0 +1,27 @@
+# Renderer returned-viewport overscroll missing coverage intent
+
+## Pre-work plan
+
+- Background: Daedilus clean 0.3.9 formal rerun proved query-settlement GREEN, then returned-2026 left overscroll failed to request Earlier coverage within 30 seconds.
+- 目標: Restore one authoritative Earlier materialization request for the returned active-local boundary without changing consumer, oracle, host, or GLOBAL ordinal safety.
+- 假設: The bare current-range request comes from either a stale/pending gesture authority or an active-local boundary target that collapses back inside the current detail; bounded pointerdown/drop evidence will distinguish them.
+- 風險: Reusing GLOBAL ordinals across axes or weakening stale/pending guards could move the viewport to the wrong history page; the fix must retain exact event-time authority and existing snapshot gates.
+- Confirmed evidence: final `ui:29` is action case 8, range `2026-05-29T11:00:00+08:00..2026-07-14T12:01:00+08:00`, `MaximumBasePoints=1500`, `hasCoverageIntent=false`; prior adjacent requests `ui:3..27` carried coverage intent, expected revision, query generation, and observation count.
+- Invariant: a user pan/overscroll at a materialized left boundary must use the canonical adjacent-coverage intent path; prepared-frame materialization must not silently replace that intent.
+- Source of truth: Daedilus real-data request/result capture plus Renderer action construction and boundary-pan state transition.
+- Scope/owner: only `PulseTrade.Comm.Spa.Dynamic` Renderer behavior, its focused tests, package evidence, and related current docs/logs; preserve external dirty `lib-packs.txt`, PTCS test WIP, `.pcsl`, and unrelated `temp`.
+- Steps: map action case 8 and the exact `ui:29` call site; establish earliest state divergence from the previous intent-bearing requests; add a failing focused test; implement the smallest root fix; run Renderer/Interactive/package-only verification; send exact handoff to Daedilus.
+- Acceptance: a returned viewport left-boundary overscroll emits Direction=Earlier with coverage intent and bounded request parameters; existing query-settlement and adjacent-pan tests remain green; no consumer/host/oracle weakening.
+- Stop condition: root cause and fix are proven locally and handed off for the same real-data formal case, or a precisely evidenced external blocker prevents further progress.
+
+## Operations
+
+- 2026-10-27 20:16 +08:00: Confirmed branch `20260915_033.ptcs_group_support`, HEAD/upstream `2ed7b93ff587ec5859bfd6275e66f4d1aa363a37`; only pre-existing external dirty paths and ignored evidence/temp are present.
+- 2026-10-27 20:16 +08:00: Narrowly projected Daedilus request/result capture. `ui:29` is the sole late action-case-8 request without coverage intent; it returned HTTP 200 with one frame. Earlier boundary requests carried coverage intent and returned 1 or 52 frames. Full large JSON objects were not loaded into conversation.
+- 2026-10-27 20:18–20:27 +08:00: Mapped the live navigator branch and asked Daedilus for bounded pointerdown/drop telemetry. A clean rerun proved the prior response completed 1177ms before pointerdown; frozen projection was Some with state/prepared `ref-present/some:25:20:0:1491`. Pointerup emitted a new bare ui:30 in the same millisecond. This rejects stale-publication and pending-action hypotheses.
+- 2026-10-27 20:27 +08:00: Root cause confirmed: active-local Earlier target was clamped to query-relative ordinal 0; `applyLoadedCoverageIntent` then classified it as already in active detail and resent the local event range. The missing authority is a direction-bearing, no-ordinal navigator intent over the exact adjacent event-time range.
+- 2026-10-27 20:28–20:33 +08:00: Added DYN-T-736. The 0.3.9 package-backed build failed at the missing `tryNavigatorAdjacentEventRangeIntent` seam. Implemented directional event-time dispatch and a queue-specific `NavigatorAdjacentCoverage` intent while retaining snapshot-key stale rejection. Focused 1/1, Renderer full 126/126, Interactive.Client 20/20, and package verifier passed.
+- 2026-10-27 20:33 +08:00: Candidate Renderer/Interactive 0.3.10 package SHA-256=`8D9D97439EC6880B8B8D8DCD5082BA1347F596CEDE03F989C963F2081EE8C739 / E0A1DF27B3EDCDF1C4542D36BDF11D4B396529F14A87ABC2F830578DE14E3444`; SDK10.0.402 library-packs parity confirmed. Fresh package-only BrowserDemo resolved exact Contracts0.1.41, Renderer/Interactive0.3.10, FSharp.Core10.1.402, WebSharper.FSharp10.1.7.680, UI10.1.6.680; build had only the existing WS9002 warning and zero errors. Generated JS full/min SHA=`803C9C9A2F3C4064871869D1C61720496D29C0F1A73D0A90A9698D1DD2551117 / 0C908EFF991671F2F08922ECF07EE0E2E1D6BDEAA2676CFFF14341853E50C2F7`.
+- 2026-10-27 20:28–20:30 +08:00: Two Renderer pack/build attempts hit the known dead-parent compiler-service log lock. Exact owners PID42060/PPID38016 and PID26940/PPID40164 had absent parents and command lines bound to the Renderer `websharper.log`; only those PIDs were stopped, after which builds passed.
+- 2026-10-27 20:35 +08:00: Changed-path sensitive scan found High=0/Medium=0; 16 owned text files strict-decoded as UTF-8 with NUL/U+FFFD=0, and the two source fsproj files retained their existing UTF-8 BOM. `git diff --check` passed.
+- 2026-10-27 20:40 +08:00: Source checker `asteer-dyn0310-202610272040-source` returned PASS=28/WARN=2/FAIL=0. Warnings are the expected dirty worktree and legacy repository-wide RFC traceability gaps; WBS/Test missing counts remain zero.

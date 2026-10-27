@@ -1,5 +1,13 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 returned-query left overscroll authority（0.3.9 falsification / 0.3.10）
+
+0.3.9真formal已證query settlement本身GREEN：pending=false、selected-applied、ActiveDetail／Loaded／Viewing皆1491。其後returned-2026左overscroll的pointerdown frozen projection為Some，state/prepared coverage皆`ref-present/some:25:20:0:1491`，且前一action已在pointerdown前1177ms完成；pointerup同毫秒新增的ui:30卻仍是當前`2026-05-29..07-14` bare range、CoverageIntent=None、frameCount1，Loaded/Viewing不變。這排除stale frame與pending競態。
+
+最早錯誤是active-local boundary共用了ordinal coverage window：query-relative `ActiveDetail.StartObservationOrdinal=0`的Earlier target被clamp回0，`applyLoadedCoverageIntent`便判為in-active local window，將同一range重送。正確不變量是跨axis或query-relative active-local未載入相鄰頁只能由exact event-time range定位；Direction是materialization/eviction hint，不得猜GLOBAL ordinal。Fetcher cap1500與visible count1491亦是兩個獨立量。
+
+0.3.10以directional no-ordinal NavigatorWindow intent修正，並讓同一boundary intent在action pending時進既有viewport queue；snapshot key mismatch仍fail closed。Candidate DYN-T-736 1/1、Renderer126/126、Interactive20/20、package verifier與fresh exact-package BrowserDemo build皆通過；consumer/oracle/host不改，真formal return-Earlier gate仍待final package驗收。
+
 ## 2026-10-27 coverage generation scope correction（0.3.8 falsification / 0.3.9）
 
 0.3.8 exact deployment與provenance皆正確，但fresh窄trace在requested 2026 data已materialize、Loaded/Viewing/ActiveDetail全1491時仍顯示settlement pending、`await-authoritative-frame`、DataRevision `3 -> 4`、loaded-coverage QueryGeneration `0 -> 0`。Formal長序列可見QueryGeneration18，只因先前coverage-window actions已累積counter；它不是本次`ChangeTaQuery` acknowledgement。

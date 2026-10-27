@@ -3602,6 +3602,21 @@ module RendererModel =
     let tryNavigatorEventRangeIntent projection targetWindow =
         tryEventRangeIntent TaCoverageWindowPurpose.NavigatorWindow projection targetWindow
 
+    let tryNavigatorAdjacentEventRangeIntent
+        (direction: TaCoverageDirection)
+        (observationCount: int)
+        (projection: TaLoadedCoverageProjection) =
+        let contractDirection =
+            match direction with
+            | TaCoverageDirection.Earlier -> PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier
+            | TaCoverageDirection.Later -> PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later
+        TaLoadedCoverageCodec.tryWindowIntent
+            (Some contractDirection)
+            (Some projection.CoverageRevision)
+            (projection.QueryGeneration + 1L)
+            None
+            observationCount
+
     let requiresCrossAxisNavigatorEventRangeMaterialization projection =
         projection.GlobalOverview
         |> Option.exists (fun overview -> overview.AxisRef <> projection.ActiveDetail.BaseAxisRef)

@@ -2134,6 +2134,45 @@ let tests =
                 "the live main-plot release must classify an out-of-range pan"
             Expect.stringContains source "requestAdjacentCoverage direction delta" "the live boundary path must reuse typed adjacent coverage dispatch"
 
+        testCase "DYN-T-736 returned active-local overscroll keeps event-time authority and queues one directional navigator request" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:return-2026-active-local"
+                  CoverageRevision = 24L
+                  QueryGeneration = 19L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "axis.active.30k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 0L
+                      ObservationCount = 1491
+                      BaseAxisRef = "axis.active.30k" }
+                  GlobalOverview = None }
+
+            let intent =
+                RendererModel.tryNavigatorAdjacentEventRangeIntent
+                    TaCoverageDirection.Earlier
+                    1491
+                    projection
+                |> Option.get
+
+            Expect.isNone intent.StartObservationOrdinal "a returned query-relative ordinal zero cannot locate earlier bars"
+            Expect.equal
+                intent.Direction
+                (Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier)
+                "the exact event-time range keeps an Earlier materialization hint"
+            Expect.equal intent.ObservationCount 1491 "the visible width is preserved independently from the 1,500-point fetch cap"
+            Expect.equal intent.ExpectedCoverageRevision (Some 24L) "the request remains revision guarded"
+            Expect.equal intent.QueryGeneration 20L "the request advances the coverage generation exactly once"
+            Expect.equal intent.RangeAuthority TaCoverageRangeAuthority.ExplicitBounds "event time remains the position authority"
+            Expect.equal intent.Purpose TaCoverageWindowPurpose.NavigatorWindow "the consumer retains navigator semantics"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains source "TaQueuedViewportIntent.NavigatorAdjacentCoverage" "an active-local overscroll must survive an already-pending action"
+            Expect.stringContains source "sendOrQueueNavigatorAdjacentCoverage" "the live drop path must use the queue-aware directional event-range seam"
+
         testCase "resident navigator drag remains local and requests coverage only after explicit overscroll" <| fun _ ->
             let projection : TaLoadedCoverageProjection =
                 { CoverageIdentity = "coverage:global-drag"
