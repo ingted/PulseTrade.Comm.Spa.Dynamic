@@ -835,8 +835,12 @@ module DynamicActionValidation =
               | _ -> ()
               if relocation.ObservationCount <= 0 then
                   yield RuntimeValidation.error "invalid-observation-count" "action.residentCoverage.relocation.observationCount" "ObservationCount must be positive."
-              if relocation.Direction.IsSome || relocation.RangeAuthority <> TaCoverageRangeAuthority.ExplicitBounds then
-                  yield RuntimeValidation.error "invalid-resident-relocation" "action.residentCoverage.relocation" "Resident relocation requires explicit bounds without a direction hint." ]
+              if
+                  relocation.Direction.IsSome
+                  || relocation.RangeAuthority <> TaCoverageRangeAuthority.ExplicitBounds
+                  || relocation.Purpose <> TaCoverageWindowPurpose.NavigatorWindow
+              then
+                  yield RuntimeValidation.error "invalid-resident-relocation" "action.residentCoverage.relocation" "Resident relocation requires navigator-purpose explicit bounds without a direction hint." ]
         | SduiAction.PollDelta(canvas, revision) ->
             [ yield! canvasErrors "action.canvasInstanceId" canvas
               if revision < 0L then

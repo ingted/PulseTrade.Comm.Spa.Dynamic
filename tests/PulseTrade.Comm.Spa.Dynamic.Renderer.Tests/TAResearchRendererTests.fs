@@ -573,6 +573,7 @@ let tests =
                 |> Option.get
 
             Expect.equal intent.RangeAuthority TaCoverageRangeAuthority.ExplicitBounds "event time owns both requested bounds"
+            Expect.equal intent.Purpose TaCoverageWindowPurpose.NavigatorWindow "cross-axis navigator materialization must identify its origin"
             Expect.isNone intent.StartObservationOrdinal "cross-axis event-time relocation must not invent a GLOBAL ordinal"
             Expect.isNone intent.Direction "cross-axis relocation is not an adjacent-boundary request"
             Expect.equal intent.ExpectedCoverageRevision (Some 5L) "materialization remains revision guarded"
@@ -2237,6 +2238,7 @@ let tests =
                 Expect.equal intent.ObservationCount next.Count "The typed event-range action preserves the target visible width."
                 Expect.isNone intent.Direction "Main CURSOR pan is not an adjacent-boundary request."
                 Expect.equal intent.RangeAuthority TaCoverageRangeAuthority.ExplicitBounds "The typed event range explicitly owns both bounds."
+                Expect.equal intent.Purpose TaCoverageWindowPurpose.MainPlotPan "Main CURSOR pan must identify its origin."
             | None -> failtest "A bounded formal-base pan must produce one exact target visible window."
             Expect.isNone
                 (RendererModel.tryMainPlotPanWindow formalBaseTimeline.Length committed -6)

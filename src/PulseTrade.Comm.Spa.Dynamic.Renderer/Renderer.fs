@@ -3598,20 +3598,23 @@ module TaWorkspaceRenderer =
                         let projection = RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data
                         let count = max 1 (min maximumVisibleBars window.Count)
                         let coverageIntent =
-                            match change.CoverageIntent with
-                            | Some seed when seed.RangeAuthority = TaCoverageRangeAuthority.ProviderOpenEarlier ->
-                                match projection with
-                                | Some coverage ->
-                                    TaLoadedCoverageCodec.tryProviderOpenEarlierWindowIntent
-                                        (Some coverage.CoverageRevision)
-                                        (coverage.QueryGeneration + 1L)
-                                        count
-                                | None ->
-                                    TaLoadedCoverageCodec.tryProviderOpenEarlierWindowIntent None 0L count
-                            | _ ->
-                                projection
-                                |> Option.bind (fun coverage ->
-                                    RendererModel.tryMainPlotPanCoverageIntent maximumVisibleBars timeline.Length window delta coverage)
+                            (match change.CoverageIntent with
+                             | Some seed when seed.RangeAuthority = TaCoverageRangeAuthority.ProviderOpenEarlier ->
+                                 match projection with
+                                 | Some coverage ->
+                                     TaLoadedCoverageCodec.tryProviderOpenEarlierWindowIntent
+                                         (Some coverage.CoverageRevision)
+                                         (coverage.QueryGeneration + 1L)
+                                         count
+                                 | None ->
+                                     TaLoadedCoverageCodec.tryProviderOpenEarlierWindowIntent None 0L count
+                             | _ ->
+                                 projection
+                                 |> Option.bind (fun coverage ->
+                                     RendererModel.tryMainPlotPanCoverageIntent maximumVisibleBars timeline.Length window delta coverage))
+                            |> Option.map (fun intent ->
+                                { intent with
+                                    Purpose = TaCoverageWindowPurpose.MainPlotPan })
                         let targetStart = coverageIntent |> Option.bind _.StartObservationOrdinal
                         let queryGeneration = coverageIntent |> Option.map _.QueryGeneration |> Option.defaultValue 0L
                         let request =

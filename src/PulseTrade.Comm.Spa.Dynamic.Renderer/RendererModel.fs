@@ -3005,7 +3005,10 @@ module RendererModel =
                 (Some projection.CoverageRevision)
                 (projection.QueryGeneration + 1L)
                 (Some targetStart)
-                count)
+                count
+            |> Option.map (fun intent ->
+                { intent with
+                    Purpose = TaCoverageWindowPurpose.MainPlotPan }))
 
     let tryCoverageIntentReanchorWindow
         minimumVisibleBars
@@ -3526,13 +3529,17 @@ module RendererModel =
         else
             None
 
-    let tryMainPlotEventRangeIntent (projection: TaLoadedCoverageProjection) targetWindow =
+    let tryEventRangeIntent purpose (projection: TaLoadedCoverageProjection) targetWindow =
         TaLoadedCoverageCodec.tryWindowIntent
             None
             (Some projection.CoverageRevision)
             (projection.QueryGeneration + 1L)
             None
             targetWindow.Count
+        |> Option.map (fun intent -> { intent with Purpose = purpose })
+
+    let tryMainPlotEventRangeIntent projection targetWindow =
+        tryEventRangeIntent TaCoverageWindowPurpose.MainPlotPan projection targetWindow
 
     let requiresCrossAxisNavigatorEventRangeMaterialization projection =
         projection.GlobalOverview
@@ -3540,7 +3547,7 @@ module RendererModel =
 
     let tryCrossAxisNavigatorEventRangeIntent (_activeTimeline: string array) projection targetWindow =
         if requiresCrossAxisNavigatorEventRangeMaterialization projection then
-            tryMainPlotEventRangeIntent projection targetWindow
+            tryEventRangeIntent TaCoverageWindowPurpose.NavigatorWindow projection targetWindow
         else
             None
 

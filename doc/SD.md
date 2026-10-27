@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 explicit coverage-window purpose（DYN-WBS-609）
+
+Contracts新增qualified DU `TaCoverageWindowPurpose = MainPlotPan | NavigatorWindow`，並把required `Purpose`加入`TaCoverageWindowIntent`；required wire改變使`WindowIntentSchema`由v1升v2。`TaLoadedCoverageCodec.tryWindowIntent`／resident relocation的generic default是NavigatorWindow；`DynamicActionValidation`拒絕以MainPlotPan purpose送`ResidentCoverageChanged`。BrowserRuntimeCodec沿用typed JSON，Contracts test直接驗purpose round-trip，不新增第二套DTO或optional compatibility fallback。
+
+RendererModel以`tryEventRangeIntent purpose`集中no-ordinal exact-event-range建構；`tryMainPlotEventRangeIntent`固定MainPlotPan，`tryCrossAxisNavigatorEventRangeIntent`固定NavigatorWindow。main boundary ordinal intent與provider-open fallback也在main producer boundary覆寫MainPlotPan；StartOrdinal／Direction／RangeAuthority語意不變。版本鏈為Contracts0.1.41 → Renderer0.2.57 → Interactive.Client0.2.57；active Tagging.Client同步Contracts0.1.41並升0.1.12。Daedilus consumer必須total match Purpose：MainPlotPan保visible count並relocate together；NavigatorWindow只更新fixed resident內active span。
+
 ## 2026-10-26 axis-bound navigator domain與main-plot mode（DYN-WBS-598）
 
 `tryResidentNavigatorWindow`要求`GlobalOverview.AxisRef = ActiveDetail.BaseAxisRef`才走ordinal mapping。0.2.41真remote settlement證明accepted GLOBAL target也不能建立cross-axis `TaResidentNavigatorAuthority`：normalized 1K ordinal與30K rendered slots不在同一domain。0.2.42保留相容型別/函式surface但builder永遠回`None`、legacy retained value永不match；`tryResidentNavigatorWindowWithAuthority`只委派same-axis resolver。`resolveNavigatorGestureDomain`因此在cross-axis固定使用clamped active-local domain，render/draft亦用active timeline ratios；release以`setWindow`送event-time `VisibleRangeChanged(CoverageIntent=None)`，不合成ordinal。GLOBAL navigator／resident strip維持原typed resident intent；0.2.43起main-plot CURSOR改走formal-base event range及可區分的Some/no-ordinal typed intent，不再使用GLOBAL resident intent。

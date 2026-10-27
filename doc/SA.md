@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 coverage-window purpose authority（DYN-WBS-609）
+
+Gate B真wire證明cross-axis main pan與navigator move／resize都可形成`StartObservationOrdinal=None`、`Direction=None`、`RangeAuthority=ExplicitBounds`。第一次resize可用count變化猜中navigator，但下一次等寬move的count會等於current visible count，立即被同一heuristic誤判main pan並搬動resident。最早偏離不是range authority或axis mapping，而是shared intent沒有producer purpose；count、目前window或action順序都不是穩定authority。
+
+不變量是origin必須在producer boundary明示且隨typed wire round-trip：main plot只送`MainPlotPan`，cross-axis navigator event-range只送`NavigatorWindow`。`Purpose`不取代range authority；有StartOrdinal／Direction的overscroll仍是唯一materialization path，consumer先按該authority處理。Resident relocation只能是NavigatorWindow。舊package不具此field，故Contracts／Renderer／Interactive與active Tagging consumer同步升版，不做missing-field或count fallback。
+
 ## 2026-10-26 no-1K/5K axis authority與main-plot explicit mode（DYN-WBS-598）
 
 真consumer只保留30K/60K rows時，local navigator三個gesture皆得到正確`0/1491 -> 200/1291 -> 200/1091 -> 100/1091`，但第一次resize後GLOBAL從bootstrap `start=2,995,494,count=1,500`換成formal `start=2,952,345,count=44,649`，隨後把local index直接加到該GLOBAL start並送出`2,952,445/count1,291`等action。最早偏離不是pointer delta，而是axis authority：formal projection的GLOBAL是1K，active rendered domain是30K；二者即使start ordinal數值碰巧相同，也不能在沒有typed retained authority時視為同一index domain。

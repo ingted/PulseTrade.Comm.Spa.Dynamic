@@ -24,7 +24,7 @@ module TaLoadedCoverageCodec =
     let MaximumOverviewAnchors = 8000
 
     [<Literal>]
-    let WindowIntentSchema = "ta-coverage-window.v1"
+    let WindowIntentSchema = "ta-coverage-window.v2"
 
     let error code field message =
         { Code = code
@@ -407,7 +407,8 @@ module TaLoadedCoverageCodec =
                   StartObservationOrdinal = startOrdinal
                   ObservationCount = observationCount
                   Direction = direction
-                  RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds }
+                  RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds
+                  Purpose = TaCoverageWindowPurpose.NavigatorWindow }
 
     let tryResidentRelocationIntent expectedRevision queryGeneration startOrdinal observationCount =
         if queryGeneration < 0L
@@ -422,7 +423,8 @@ module TaLoadedCoverageCodec =
                   StartObservationOrdinal = Some startOrdinal
                   ObservationCount = observationCount
                   Direction = None
-                  RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds }
+                  RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds
+                  Purpose = TaCoverageWindowPurpose.NavigatorWindow }
 
     let tryProviderOpenEarlierWindowIntent expectedRevision queryGeneration observationCount =
         tryWindowIntent

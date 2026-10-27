@@ -142,6 +142,12 @@ D14的one-to-one overview validation只決定navigator event-time range是否改
 
 main CURSOR pan在captured formal-base timeline內仍用exact UTC半開range；當signed delta明確越過timeline頭／尾時，不得一律fail closed，必須沿既有adjacent-coverage path發typed intent並保留visible count與實際delta。cross-axis resident frame的absolute active ordinal以`ActiveDetail.StartObservationOrdinal + delta`計算；local window start是resident buffer offset，不可再加到active start。same-axis仍沿用active start + local start + delta。delta=0、空timeline或非boundary invalid state不送action，也不用GLOBAL sampled anchor。
 
+### D22. 2026-10-27 coverage window carries explicit producer purpose
+
+no-ordinal／no-direction／`ExplicitBounds`只描述range authority，不能區分main pan與cross-axis navigator window；ObservationCount也不能作分類，因navigator resize後的等寬move會與current visible count相同。`TaCoverageWindowIntent`新增required `Purpose: TaCoverageWindowPurpose`，值只允許`MainPlotPan`或`NavigatorWindow`，`WindowIntentSchema`同步由v1升v2。main plot event-range、boundary ordinal及provider-open producer固定MainPlotPan；cross-axis navigator event-range與resident navigation固定NavigatorWindow。
+
+Purpose不替代StartOrdinal／Direction／RangeAuthority：有ordinal/direction的overscroll仍按既有materialization path處理。Consumer不得由count、axis或missing purpose推論；升級時total match此DU，MainPlotPan保visible count並同步平移resident+visible，NavigatorWindow只套用fixed resident內durable visible window。Contracts wire round-trip、resident action validation與兩個Renderer origin tests為owner gate。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

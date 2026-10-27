@@ -204,9 +204,23 @@ let tests =
                 (DynamicActionValidation.requestErrors request)
                 "Resident relocation must not inherit the 4,000-detail limit."
             Expect.equal
+                relocation.Purpose
+                TaCoverageWindowPurpose.NavigatorWindow
+                "Resident relocation is always navigator-owned."
+            Expect.equal
                 (request |> BrowserRuntimeCodec.encodeActionRequest |> BrowserRuntimeCodec.decodeActionRequest)
                 (Ok request)
                 "The additive resident action must round-trip through the typed browser codec."
+            let invalidPurposeRequest =
+                { request with
+                    Action =
+                        SduiAction.ResidentCoverageChanged(
+                            identity.CanvasInstanceId,
+                            "price",
+                            { relocation with Purpose = TaCoverageWindowPurpose.MainPlotPan }) }
+            Expect.isNonEmpty
+                (DynamicActionValidation.requestErrors invalidPurposeRequest)
+                "A main-plot purpose cannot be smuggled through the resident-relocation action."
             Expect.isNone
                 (TaLoadedCoverageCodec.tryResidentRelocationIntent (Some 11L) 10L -1L 4_500)
                 "A negative resident start must fail closed."
@@ -421,9 +435,13 @@ let tests =
                 "A stripe outside the authoritative overview timeline must fail with an explicit code."
 
         testCase "DYN-T-647 coverage window intent is versioned and rejects stale-shaped bounds" <| fun _ ->
-            Expect.equal TaLoadedCoverageCodec.WindowIntentSchema "ta-coverage-window.v1" "The adjacent-page intent has a stable version."
+            Expect.equal TaLoadedCoverageCodec.WindowIntentSchema "ta-coverage-window.v2" "The required purpose discriminator advances the window-intent schema."
             let intent = TaLoadedCoverageCodec.tryWindowIntent (Some TaCoverageDirection.Earlier) (Some 7L) 4L (Some 999_500L) 250
             Expect.isSome intent "A bounded versioned adjacent-page intent must be constructible."
+            Expect.equal
+                intent.Value.Purpose
+                TaCoverageWindowPurpose.NavigatorWindow
+                "General coverage navigation must carry an explicit navigator-window purpose."
 
             let request =
                 { RequestId = "coverage-earlier"
@@ -437,6 +455,11 @@ let tests =
                           MaximumBasePoints = 250
                           CoverageIntent = intent }) }
             Expect.isEmpty (DynamicActionValidation.requestErrors request) "A valid ordinal window intent must pass action validation."
+            let roundTripped =
+                request
+                |> BrowserRuntimeCodec.encodeActionRequest
+                |> BrowserRuntimeCodec.decodeActionRequest
+            Expect.equal roundTripped (Ok request) "The purpose discriminator must survive the typed browser wire round-trip."
             Expect.isNone
                 (TaLoadedCoverageCodec.tryWindowIntent None (Some -1L) 4L (Some 0L) 250)
                 "A negative expected coverage revision must fail closed."
@@ -462,6 +485,10 @@ let tests =
                 openEarlier.RangeAuthority
                 TaCoverageRangeAuthority.ProviderOpenEarlier
                 "Range-less BARS must use an explicit provider-authoritative open-left intent."
+            Expect.equal
+                openEarlier.Purpose
+                TaCoverageWindowPurpose.NavigatorWindow
+                "The generic provider-open helper must remain navigator-purpose until an origin overrides it."
             Expect.isEmpty
                 (DynamicActionValidation.requestErrors openEarlierRequest)
                 "A provider-open Earlier anchor request must pass without inventing an earliest timestamp."

@@ -1,0 +1,23 @@
+# Coverage window purpose discriminator
+
+## Pre-work plan
+
+- 背景／上下文：Daedilus Gate B證實cross-axis main pan與navigator move／resize目前都送no-ordinal／no-direction／ExplicitBounds，consumer無法由count可靠分類；A的0.2.56已獨立交付。
+- 目標：在shared contract加入explicit purpose，讓Renderer每個origin明確送`MainPlotPan`或`NavigatorWindow`，消除consumer heuristic。
+- 假設：ambiguity是最早共同原因；新增required DU field並同步所有producer／tests會讓漏標在compile time失敗。
+- 計畫步驟：建RED contract／routing tests → 最小Contracts與Renderer實作 → bump Contracts0.1.41、Renderer／Interactive0.2.57及direct tests → focused/full build/tests → exact packages/consumer handoff。
+- 範圍：本repo Contracts、Renderer、Interactive.Client與其direct tests、RFC-0036／WBS／TEST／DevLog；不修改Daedilus WorkspaceRuntime／host source，不改0.2.56 Gate A語意。
+- 驗收：main pan intent Purpose=`MainPlotPan`；cross-axis navigator move／resize Purpose=`NavigatorWindow`；StartOrdinal/Direction overscroll仍走既有materialization；owner tests/package metadata與package-only consumer gates全綠。
+- 風險：record field為source-breaking、Contracts serialization wire變更、active consumer未同步；以compile fail、wire roundtrip與exact package tests守住。
+- Source of truth：Daedilus messages `msg-fsi-4eb4a0c9be774eef8af5762ce441dfd4`／`msg-fsi-bcf0bae12eb9458ba346d09d692ff4f6`、Contracts `RuntimeTypes.fs`、RendererModel／Renderer call sites。
+- 停止條件：0.2.57 owner package交Daedilus後等待consumer integration；若purpose仍不能區分真wire，保留RED並重查contract，不用count workaround。
+
+## Operations
+
+- 2026-10-27 11:30 +08:00：建立standard development log；0.2.56 A package已交Daedilus，B另開purpose discriminator slice。
+- 2026-10-27 11:33 +08:00：Contracts RED如預期：0.2.56 surface缺`Purpose`／`TaCoverageWindowPurpose`，build 0 warnings／8 compiler errors（4 unique duplicated於summary）。
+- 2026-10-27 11:38 +08:00：candidate Contracts首次pack在restore明確失敗：C: free約1MB，`There is not enough space on the disk`。確認本agent已完成的`temp/agent.asteer/dynamic-0255`=4.047GB、`dynamic-0256`=4.768GB，兩root及子項皆無reparse，相關5個wsfscservice parent皆不存在；停止orphan後精確刪除兩個可重建cache，C: free回到8.846GB。正式packages已在SDK library-packs且source/evidence已push；刪除的temp cache不可復原但可由commit/packages重建，未碰其他agent/temp/正式資料。
+- 2026-10-27 11:40 +08:00：disk恢復後Contracts pack首次重試重現既知WebSharper orphan lock；只停止parent不存在且command line精確指向Contracts `websharper.log`的PID21272，第二次pack成功。
+- 2026-10-27 11:49 +08:00：candidate packages：Contracts0.1.41 SHA=`75A9986D...65C6`、Renderer0.2.57=`7B2FF944...40B4`、Interactive0.2.57=`E21076A1...F68F`、Tagging.Client0.1.12=`70C49D0D...84D6`。Contracts51/51、Renderer113/113、Interactive20/20、Tagging9/9；Interactive verifier PASS entries=4，package-only BrowserDemo解析Contracts0.1.41／Renderer0.2.57／Client0.2.57且0 warnings／0 errors。
+- 2026-10-27 11:58 +08:00 Correction：required purpose field是wire schema改變，`WindowIntentSchema`已由v1升v2；前一組candidate packages視為retired且不交付。以全新candidate2 feed/caches重建：Contracts SHA=`2C0E87412F57BB701F410B86FBD39740786790D0A53B6FAF08AE0B07D865F682`、Renderer=`ECDF22BEBADDC07C780FCA338931CAEE9BD2DDCADE35AF5054444540B361CB09`、Interactive=`15DDCCB7D6DDFCA3D1521D77E64428A8FEAB52484721D7FD83A8863D86FBE426`、Tagging=`249F814EED3BE57E94A5C0CE5A4696192338BA54FD4269301BDC2D08E2959F80`。fresh Contracts51/51、Renderer113/113、Interactive20/20、Tagging9/9、verifier及BrowserDemo 0/0再次GREEN。
+- 2026-10-27 12:00 +08:00：敏感掃描8 evidence files，High=0／Medium=0／Info=318；21 changed files strict UTF-8且無NUL／U+FFFD，DevLog無BOM。canonical checker PASS=43/WARN=4/FAIL=0；WARN為KM未改、dirty、既有traceability與legacy Ptcs/Ptcs.Client舊版pins。Renderer／Interactive／active Tagging已同步current Contracts；legacy mismatch已有既存WBS priority，不納入本slice盲修。

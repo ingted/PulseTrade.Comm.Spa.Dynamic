@@ -430,13 +430,19 @@ type TaCoverageRangeAuthority =
     | ExplicitBounds
     | ProviderOpenEarlier
 
+[<RequireQualifiedAccess>]
+type TaCoverageWindowPurpose =
+    | MainPlotPan
+    | NavigatorWindow
+
 type TaCoverageWindowIntent =
     { ExpectedCoverageRevision: int64 option
       QueryGeneration: int64
       StartObservationOrdinal: int64 option
       ObservationCount: int
       Direction: TaCoverageDirection option
-      RangeAuthority: TaCoverageRangeAuthority }
+      RangeAuthority: TaCoverageRangeAuthority
+      Purpose: TaCoverageWindowPurpose }
 
 type VisibleRangeChange =
     { BaseRowId: string

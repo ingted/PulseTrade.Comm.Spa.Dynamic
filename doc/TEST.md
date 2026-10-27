@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-723（0.2.57 candidate / consumer pending）
+
+- 契約：每個`TaCoverageWindowIntent`都帶required purpose。main plot in-range／boundary／provider-open皆為MainPlotPan；cross-axis navigator move／resize及resident action為NavigatorWindow。有StartOrdinal／Direction的overscroll仍以既有materialization authority處理，purpose不取代range authority。
+- RED/GREEN：0.2.56 surface對`.Purpose`／`TaCoverageWindowPurpose`得到8 compiler errors（4 unique）；0.2.57新增DU/field、typed JSON round-trip與resident invalid-purpose rejection。candidate Contracts51/51、Renderer113/113、Interactive20/20、Tagging9/9；Interactive package verifierPASS，package-only BrowserDemo exact Contracts0.1.41／Renderer0.2.57／Client0.2.57為0 warnings／0 errors。
+- 真E2E：Daedilus consumer total match Purpose；NavigatorWindow resize1500→79後再move79不得搬resident，MainPlotPan仍要求count等於visible並relocate together；不得保留count fallback。Gate C accepted但Frames=[]為host owner獨立缺口。
+
 ## 2026-10-27 DYN-T-722（0.2.56 owner package / consumer pending）
 
 - 契約：main CURSOR pan超出captured timeline頭／尾時要導向typed adjacent coverage，保留visible count與signed delta。cross-axis resident的target以ActiveDetail start + delta，不可把local resident offset重複加入；same-axis與in-range exact event-time path不變。
