@@ -138,6 +138,10 @@ event-range settlement的projection authority與prepared timeline必須來自同
 
 D14的one-to-one overview validation只決定navigator event-time range是否改由overview anchors取得，不應決定server是否需要materialize。只要`GlobalOverview.AxisRef <> ActiveDetail.BaseAxisRef`，navigator已從任一exact prepared timeline取得UTC半開range後，就必須附D16的no-ordinal `ExplicitBounds` intent；overview substitution不可用時沿用exact active prepared timeline，仍不得省略intent。same-axis仍維持既有local／resident path，禁止比例插值或推測GLOBAL ordinal。
 
+### D21. 2026-10-27 main-plot boundary pan uses active-detail authority
+
+main CURSOR pan在captured formal-base timeline內仍用exact UTC半開range；當signed delta明確越過timeline頭／尾時，不得一律fail closed，必須沿既有adjacent-coverage path發typed intent並保留visible count與實際delta。cross-axis resident frame的absolute active ordinal以`ActiveDetail.StartObservationOrdinal + delta`計算；local window start是resident buffer offset，不可再加到active start。same-axis仍沿用active start + local start + delta。delta=0、空timeline或非boundary invalid state不送action，也不用GLOBAL sampled anchor。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

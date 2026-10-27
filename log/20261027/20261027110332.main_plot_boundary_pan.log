@@ -1,0 +1,22 @@
+# Main-plot boundary pan
+
+## Pre-work plan
+
+- 背景：Daedilus hardened 0.2.55 Gate A 顯示 setup 後 local `3150/1215`、active start `50090`、timeline 4500；CURSOR delta `+340` 後 before/after 完全相同且沒有 ui:5 action。
+- 已證實事實：`3150+340 > 4500-1215`，`tryMainPlotPanWindow` 在 event-range resolution 前即回 None；0.2.54 setup 尚在local1645，所以同一delta可形成ui:5。0.2.55的setup materialization使local正確映到resident尾端，暴露既有boundary no-op。
+- 預期不變量：main CURSOR pan 超出 captured formal-base 尾／頭時，必須沿既有 adjacent-coverage canonical path送出保留count與實際delta的typed intent；不得採GLOBAL sampled anchor，也不得只標committed後no-op。
+- Source of truth：`tryMainPlotPanCoverageIntent`、`requestAdjacentCoverage`、coverage projection的ActiveDetail start/revision/generation，以及Daedilus真workspace action/settlement。
+- 最早偏離點：`commitMainPlotPan` 對 `tryMainPlotPanWindow=None` 一律 fail closed，未區分真正boundary pan。
+- 假設：將明確 earlier/later boundary導向`requestAdjacentCoverage`，並在cross-axis projection以ActiveDetail start作typed ordinal基準，可產生target `50090+340=50430`、count1215、query+1，accepted後reanchor回預期local1645。
+- 步驟：新增pure boundary/intent RED；最小model與live routing；focused/full Renderer；再升版、package、交Daedilus Gate A重驗。
+- 範圍：RendererModel、Renderer、owner tests與RFC/WBS/Test/DevLog；不改consumer。
+- 風險：同axis local start仍須保留；delta0/invalid timeline不送action；cross-axis只能用ActiveDetail typed authority，不推測GLOBAL ordinal。
+- 停止條件：owner tests全綠且Daedilus真ui action有target50430/count1215並settle local1645；若server拒絕或target不同，先更新因果模型。
+
+## Operations
+
+- 2026-10-27 11:03 +08:00：建立第二假設；前一atomic pointer實驗已精確回退並以DevLog Correction保留證據。
+- 2026-10-27 11:04 +08:00：DYN-T-722以0.2.55 package重現exact A shape，期望target50430，實際53580，focused 0/1 RED。
+- 2026-10-27 11:07 +08:00：`tryMainPlotPanCoverageIntent`在cross-axis改以ActiveDetail start為current start；新pure boundary classifier只將明確Earlier/Later導向既有`requestAdjacentCoverage`。candidate Renderer0.2.56 focused1/1、full113/113 PASS，SHA=`B5EE909A...03E6`。
+- 2026-10-27 11:08 +08:00：candidate Interactive.Client0.2.56 pack PASS（exact Renderer[0.2.56]），SHA=`F2C328BA...6889`；fresh Interactive tests20/20 PASS。
+

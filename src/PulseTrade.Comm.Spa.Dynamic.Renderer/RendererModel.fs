@@ -2981,7 +2981,12 @@ module RendererModel =
     let tryMainPlotPanCoverageIntent maximumVisibleBars activeReferenceLength activeWindow delta projection =
         let local = clampWindow 1 maximumVisibleBars activeReferenceLength activeWindow
         let count = max 1 (min maximumVisibleBars local.Count)
-        let currentStart = projection.ActiveDetail.StartObservationOrdinal + int64 local.StartIndex
+        let currentStart =
+            match projection.GlobalOverview with
+            | Some overview when overview.AxisRef <> projection.ActiveDetail.BaseAxisRef ->
+                projection.ActiveDetail.StartObservationOrdinal
+            | _ ->
+                projection.ActiveDetail.StartObservationOrdinal + int64 local.StartIndex
         let domainCount = navigationDomainCount projection
         let maximumStart = max 0L (domainCount - int64 count)
         let targetStart = max 0L (min maximumStart (currentStart + int64 delta))
@@ -3507,6 +3512,19 @@ module RendererModel =
             None
         else
             Some { bounded with StartIndex = requestedStart }
+
+    let mainPlotPanBoundaryDirection referenceLength activeWindow delta =
+        let bounded = clampWindow 1 Int32.MaxValue referenceLength activeWindow
+        let requestedStart = bounded.StartIndex + delta
+        let maximumStart = viewportMaximumStart referenceLength bounded
+        if referenceLength <= 0 || bounded.Count <= 0 || delta = 0 then
+            None
+        elif requestedStart < 0 then
+            Some TaCoverageDirection.Earlier
+        elif requestedStart > maximumStart then
+            Some TaCoverageDirection.Later
+        else
+            None
 
     let tryMainPlotEventRangeIntent (projection: TaLoadedCoverageProjection) targetWindow =
         TaLoadedCoverageCodec.tryWindowIntent

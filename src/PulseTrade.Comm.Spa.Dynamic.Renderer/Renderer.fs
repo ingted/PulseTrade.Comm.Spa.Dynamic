@@ -3693,8 +3693,11 @@ module TaWorkspaceRenderer =
                 | Some intent -> setWindowFromPrepared document prepared (Some intent) followLatest next
                 | None -> draftWindow.Value <- None
             | _ ->
-                draftWindow.Value <- None
-                setUiState { uiState.Value with Feedback = "Main-plot pan is outside the captured formal-base range." }
+                match RendererModel.mainPlotPanBoundaryDirection timeline.Length committed delta with
+                | Some direction -> requestAdjacentCoverage direction delta
+                | None ->
+                    draftWindow.Value <- None
+                    setUiState { uiState.Value with Feedback = "Main-plot pan is outside the captured formal-base range." }
 
         let consumeMainPlotClickSuppression () =
             let suppress = suppressNextMainPlotClick

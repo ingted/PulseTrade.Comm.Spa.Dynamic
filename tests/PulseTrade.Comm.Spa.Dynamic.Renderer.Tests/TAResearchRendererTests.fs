@@ -1968,6 +1968,58 @@ let tests =
                 (Some 999_952L, Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later)
                 "The typed end-edge intent targets the loaded tail."
 
+        testCase "DYN-T-722 cross-axis main-plot boundary pan uses active-detail authority" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:main-boundary-cross-axis"
+                  CoverageRevision = 5L
+                  QueryGeneration = 2L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident.30k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 50_090L
+                      ObservationCount = 1_215
+                      BaseAxisRef = "axis.active.30k" }
+                  GlobalOverview =
+                    Some
+                        { TotalObservationCount = 2_996_994L
+                          AxisRef = "axis.global.1k"
+                          Anchors = [||]
+                          ResidentStartObservationOrdinal = 1_387_905L
+                          ResidentObservationCount = 134_906 } }
+            let intent =
+                RendererModel.tryMainPlotPanCoverageIntent
+                    1500
+                    4500
+                    { StartIndex = 3150; Count = 1215 }
+                    340
+                    projection
+                |> Option.get
+
+            Expect.equal intent.StartObservationOrdinal (Some 50_430L) "cross-axis local offset must not be added to the active-detail ordinal"
+            Expect.equal intent.ObservationCount 1215 "the boundary request preserves the visible width"
+            Expect.equal intent.Direction (Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later) "the positive drag requests later coverage"
+            Expect.equal intent.QueryGeneration 3L "the boundary request advances the frozen generation once"
+            Expect.equal
+                (RendererModel.mainPlotPanBoundaryDirection 4500 { StartIndex = 3150; Count = 1215 } 340)
+                (Some PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Later)
+                "the exact Gate A geometry is a later boundary request"
+            Expect.isNone
+                (RendererModel.mainPlotPanBoundaryDirection 4500 { StartIndex = 1645; Count = 1215 } 340)
+                "the same delta remains an in-range event-time pan from the earlier setup position"
+            Expect.isNone
+                (RendererModel.mainPlotPanBoundaryDirection 4500 { StartIndex = 3150; Count = 1215 } 0)
+                "a zero-delta gesture never requests coverage"
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains
+                source
+                "RendererModel.mainPlotPanBoundaryDirection timeline.Length committed delta"
+                "the live main-plot release must classify an out-of-range pan"
+            Expect.stringContains source "requestAdjacentCoverage direction delta" "the live boundary path must reuse typed adjacent coverage dispatch"
+
         testCase "resident navigator drag remains local and requests coverage only after explicit overscroll" <| fun _ ->
             let projection : TaLoadedCoverageProjection =
                 { CoverageIdentity = "coverage:global-drag"

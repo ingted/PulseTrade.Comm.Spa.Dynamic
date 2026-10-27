@@ -1,0 +1,25 @@
+# Dynamic 0.2.56 atomic pointer frame
+
+## Pre-work plan
+
+- 背景：Daedilus 的 0.2.55 Gate A 真實瀏覽器首跑顯示 CURSOR 主圖拖曳 `moving -> committed`，本機 visible window 改變，但 15 秒內沒有 `/api/workspace/actions`。
+- 已證實事實：`Renderer.fs` 的 pointerdown 分別讀取 `runtimeState.Value.Document/Data` 與 `latestPreparedData`；`setWindowFromPreparedRange` 會先 `commitLocalWindow`，若 event range 無法從 prepared frame 解析，則只清 draft 而不送 action。
+- 預期不變量：一次 pointer gesture 的 document、data、prepared timeline 與 projection 必須來自同一個已提交 chart frame；需要 server materialization 的 CURSOR pan 不得只有本機 commit。
+- Source of truth：`chartCommittedFrame`；真實驗收由 Daedilus 的 `main-chart-drag-0255` evidence 與正式 workspace action wire 決定。
+- 最早偏離點：`startMainPlotDrag` pointerdown capture。
+- 假設：非原子的 pointer capture 使 `visibleEventRangePrepared` 無法解析 target range，造成 local-only commit。
+- 步驟：新增 focused RED contract；改為一次讀取 `chartCommittedFrame.Value`；跑 Renderer focused tests、Release build/package gates，再交 Daedilus 重跑 A/B/C/D。
+- 範圍：Renderer pointer capture、對應 tests 與既有 RFC/WBS/Test/DevLog 的增量紀錄；不改 consumer source。
+- 停止條件：focused gate 全綠且 Daedilus 真實 Gate A 有一個 accepted workspace action；若 hardened rerun 反證 hypothesis，停止修改並更新因果模型。
+- 風險：共享 dirty `lib-packs.txt`、PTCS test 與 `.pcsl/` 皆不納入本輪。
+
+## Operations
+
+- 2026-10-27 10:47 +08:00：確認 branch `20260915_033.ptcs_group_support`、HEAD `01bdaee65156ba60cc4564648e8b0ed28fb10c13`；保留既有外部 dirty。
+- 2026-10-27 10:47 +08:00：讀取 Daedilus evidence `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\main-chart-drag-0255\gesture-before-response.json`；結果為 committed/local changed/action response missing。
+- 2026-10-27 10:49 +08:00：新增 DYN-T-722；focused run 1/1 RED，明確命中 `runtimeState.Value.Document` 與獨立 `latestPreparedData` capture。
+- 2026-10-27 10:49 +08:00：pointer capture改用一次`chartCommittedFrame.Value`，projection改讀同一`pointerState.Data`；focused 1/1、full Renderer 113/113 PASS。
+- 2026-10-27 10:50 +08:00：Renderer／Interactive.Client與direct test references由0.2.55升0.2.56；同步RFC-0036 D21、WBS-608、DYN-T-722與DevLog candidate紀錄。
+- 2026-10-27 10:56 +08:00：Daedilus hardened evidence反證hypothesis：before/after完全相同，target start `3150+340`超出4500 timeline可用範圍，`tryMainPlotPanWindow` fail closed。atomic patch並未修A。
+- 2026-10-27 10:57 +08:00：依DEBUG流程精確回退本次source/test/version/RFC/WBS/TEST至0.2.55 baseline；DevLog以Correction追加，不改寫歷史。candidate nupkg未對外交付。
+
