@@ -367,6 +367,20 @@ let tests =
                 "eventRangeSettlementOwnsViewportScope"
                 "the live accepted-data branch must use the tested scope precedence policy"
 
+        testCase "DYN-T-719 matching event-range settlement survives the full-preparation boundary" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let scopePolicyUseCount =
+                source.Split([| "RendererModel.eventRangeSettlementOwnsViewportScope" |], StringSplitOptions.None).Length - 1
+            Expect.equal
+                scopePolicyUseCount
+                2
+                "runtime-state scheduling and prepared-data acceptance must both preserve matching settlement ownership"
+            Expect.stringContains
+                source
+                "eventRangeSettlementOwnsPreparation"
+                "the pre-preparation state sink must retain matching pending event-range context"
+
         testCase "DYN-T-716 accepted main relocation reanchors the requested event time exactly once" <| fun _ ->
             let allTimes =
                 Array.init 4_840 (fun index ->

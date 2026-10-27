@@ -1,0 +1,22 @@
+# Event-range settlement across full preparation boundary
+
+## Pre-work plan
+
+- 背景：Daedilus exact 0.2.53 Gate A仍見main local `1645 -> 1985`；package/version/server/commit均正確，0.2.53 accept-stage precedence未觸發。
+- 目標：讓matching pending event-range action跨`runtimeState.View`的coverage-scope full-preparation排程存活，直到prepared frame執行UTC settlement；發佈下一stable 0.2.54。
+- 假設：live sink在dataChanged＋viewportScopeChanged時先無條件清pending與draft，這是accept-stage之前的最早分歧，0.2.53修得太晚。
+- Source of truth：Daedilus `main-chart-drag-0253/main-commit-gate.json`與Renderer `runtimeState.View`→`scheduleFullPreparation`→`acceptPreparedDataCore`時序。
+- 範圍：Renderer sink lifecycle、DYN-T-719、0.2.54 packages與RFC/WBS/Test/DevLog；consumer唯讀。
+- 不變事項：canvas/identity/base-row mismatch仍清pending；server materialization、wire、same-axis與非event-range gesture不變。
+- 步驟：DYN-T-719 RED → factor matching-document predicate → sink preserve/mismatch clear → owner package gates → commit/final pack → Daedilus A/B/C/latency同sequence重驗。
+- 驗收：source/live sink與accept stage共用scope ownership helper；matching pending不在full-preparation前清除；mismatch仍clear；Renderer／Interactive／verifier／BrowserDemo全綠；真main維持1645。
+- 風險：stale same-base-row pending跨不相關coverage frame；terminal generation/target missing仍由既有Await/Reject收斂。
+- 停止條件：owner package與handoff完成；Daedilus真A/B/C/latency未GREEN前不宣告全修完。
+
+## Operations
+
+- 09:29：drain 0.2.53 Gate A RED `msg-fsi-acea3dc...`；bounded JSON顯示ui:5 action ExplicitBounds/ExpectedRev5/Gen2、server ActiveDetail +340、coverage5→6、render12→14，但DOM1645→1985。source定位`runtimeState.View` line3392-3399在`scheduleFullPreparation`前再次清pending/draft；已回覆`msg-fsi-7ba21b...`並將0.2.53降為consumer RED。
+- 09:31：DYN-T-719對0.2.53 exact package/source得到預期RED：runtime scope policy call expected2、actual1。最小patch factor matching-document predicate；sink在full preparation前以既有scope policy保留matching pending/draft，mismatch仍clear。升stable0.2.54並同步direct refs；Renderer F# compile 0 errors。
+- 09:32：C: free 3.77GB；`dynamic-0252` ignored task cache 4.32GB已由0.2.53/0.2.54取代，正式source/evidence在Git、packages在SDK library-packs。清除前將驗exact absolute path在repo `temp/agent.asteer`、所有descendant無reparse；僅刪該可重建cache，保留current `dynamic-0253`與new `dynamic-0254`。
+- 09:35：0.2.54 candidate owner gates全綠：Renderer110/110（含DYN-T-719）、Interactive20/20、Interactive package verifier PASS、package-only BrowserDemo build 0 warnings/0 errors。candidate Renderer/Interactive SHA-256=`E94F1196DFC3DF312608EB65DDCA81EEF35A09623E5235DFE8C264660BD8A4A8`／`71FA82A4CE548F5B294F91C1BFB78423809BCC6A30F69D23CB5FE651D794A33E`。
+- 09:37：drain Daedilus 0.2.53 B/C：B left-edge action UTC wire正確但DOM停local1122；C final2720..3623/no duplicate正確，但heldFrame792、regressionFrames60。已分別reply receipt並要求0.2.54同組A/B/C重驗；consumer任一RED前不宣告完成。

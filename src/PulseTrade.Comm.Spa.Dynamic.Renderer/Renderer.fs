@@ -2912,6 +2912,10 @@ module TaWorkspaceRenderer =
                           QueryGeneration = intent.QueryGeneration }
                 | _ -> None
             | _ -> None
+        let pendingEventRangeMatchesDocument (document: TaWorkspaceDocument) =
+            match pendingEventRangeSettlement with
+            | Some pending -> document.BaseRowId = Some pending.BaseRowId
+            | None -> false
         let startVisibleRangeAction action =
             pendingEventRangeSettlement <- pendingEventRangeSettlementForAction action
             startActionWithFeedback
@@ -3059,12 +3063,10 @@ module TaWorkspaceRenderer =
                 next.Document
                 |> Option.map (fun document -> defaultViewportAppliedToCanvas <> Some(viewportScopeKey next document))
                 |> Option.defaultValue false
-            let pendingEventRangeMatchesDocument =
-                match pendingEventRangeSettlement, next.Document with
-                | Some pending, Some document -> document.BaseRowId = Some pending.BaseRowId
-                | _ -> false
+            let pendingEventRangeMatchesNextDocument =
+                next.Document |> Option.exists pendingEventRangeMatchesDocument
             let eventRangeSettlementConsumed =
-                if viewportScopeChanged && not pendingEventRangeMatchesDocument then
+                if viewportScopeChanged && not pendingEventRangeMatchesNextDocument then
                     pendingEventRangeSettlement <- None
                     false
                 else
@@ -3072,7 +3074,7 @@ module TaWorkspaceRenderer =
             let eventRangeSettlementOwnsViewportScope =
                 RendererModel.eventRangeSettlementOwnsViewportScope
                     viewportScopeChanged
-                    pendingEventRangeMatchesDocument
+                    pendingEventRangeMatchesNextDocument
                     eventRangeSettlementConsumed
                     pendingEventRangeSettlement.IsSome
             if eventRangeSettlementOwnsViewportScope && eventRangeSettlementConsumed then
@@ -3358,6 +3360,14 @@ module TaWorkspaceRenderer =
                 next.Document
                 |> Option.map (fun document -> defaultViewportAppliedToCanvas <> Some(viewportScopeKey next document))
                 |> Option.defaultValue false
+            let pendingEventRangeMatchesNextDocument =
+                next.Document |> Option.exists pendingEventRangeMatchesDocument
+            let eventRangeSettlementOwnsPreparation =
+                RendererModel.eventRangeSettlementOwnsViewportScope
+                    viewportScopeChanged
+                    pendingEventRangeMatchesNextDocument
+                    false
+                    pendingEventRangeSettlement.IsSome
             if next.Identity <> observedDataState.Identity then
                 cancelMainPlotDrag |> Option.iter (fun cancel -> cancel ())
                 cancelGlobalResidentDrag |> Option.iter (fun cancel -> cancel ())
@@ -3392,10 +3402,11 @@ module TaWorkspaceRenderer =
                     if viewportScopeChanged then
                         queuedViewportIntent <- None
                         pendingBoundaryPan <- None
-                        pendingEventRangeSettlement <- None
                         residentNavigatorAuthority.Value <- None
-                        if finishNavigatorDrag.IsNone then
-                            draftWindow.Value <- None
+                        if not eventRangeSettlementOwnsPreparation then
+                            pendingEventRangeSettlement <- None
+                            if finishNavigatorDrag.IsNone then
+                                draftWindow.Value <- None
                         observedDataState <- next
                         scheduleFullPreparation ()
                     else

@@ -1,10 +1,16 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-718（0.2.53 owner package / consumer pending）
+## 2026-10-27 DYN-T-719（0.2.54 owner candidate / consumer pending）
+
+- 契約：matching pending event-range在`runtimeState.View`的dataChanged＋coverage-scope full-preparation邊界不得先被清除；pending/draft須存活至prepared frame的Reanchor／Await／Reject。identity、canvas或base-row mismatch仍clear，其他scope reset不變。
+- RED/GREEN：以0.2.53 exact source驗runtime scope-policy usage只有1處，預期sink＋accept共2處而RED；0.2.54 factor matching-document predicate並讓兩階段共用既有ownership policy。candidate Renderer110/110、Interactive20/20、Interactive package verifier PASS、package-only BrowserDemo 0 warnings/0 errors；candidate Renderer/Interactive SHA=`E94F1196...A4A8`／`71FA82A4...A33E`。
+- 真E2E：Daedilus用同一new-context sequence驗A main local維持1645、B cross-axis left-edge local0並能續overscroll、C rapid-frame held/regression皆0且geometry持續mounted、latency global1500-middle/4500-return settle。任一RED都不宣告全修完。
+
+## 2026-10-27 DYN-T-718（0.2.53 owner package / consumer RED）
 
 - 真反例：0.2.51 package/host ProductVersion exact、新browser context，action與server materialization全GREEN，DOM仍`1645 -> 1985`。`viewportScopeKey`包含CoverageIdentity；accepted ui:5 更新identity時live branch先清pending，再以document default覆寫viewport，故DYN-T-716 pure exact UTC helper未成為live authority。
 - policy gate：changed coverage scope＋matching base row時，Reanchor/Reject consumed必須壓過default並完成新scope；Await須保留pending/viewport；base-row mismatch仍不得保留舊action；scope未變不需抑制default。source gate要求`acceptPreparedDataCore`實際使用同一pure policy。
-- RED/GREEN：0.2.52 exact package缺`eventRangeSettlementOwnsViewportScope`而4個FS0039 RED；final 0.2.53 source `59c535ecfdc05751c181c82445bda096d7125c0a`已push，Renderer/Interactive SHA=`A312BBDE...892C`／`79AE7EBB...EA4F`、RepositoryCommit/ProductVersion exact、Client Renderer `[0.2.53]`、SDK10.0.402 library-packs parity。fresh Renderer109/109、Interactive20/20、Interactive package verifierPASS、package-only BrowserDemo 0 warnings/0 errors。真E2E須以Daedilus原ui:4→ui:5 sequence驗main local維持1645，再驗cross-axis local0／續overscroll，以及no-wait rapid-2-body第3手勢期間navigator/selection geometry不unmount超過5秒。
+- RED/GREEN：0.2.52 exact package缺`eventRangeSettlementOwnsViewportScope`而4個FS0039 RED；final 0.2.53 source `59c535ecfdc05751c181c82445bda096d7125c0a`已push，owner Renderer109/109、Interactive20/20、package verifier與BrowserDemo全綠。但Daedilus exact package/new context實測A main `1645->1985`、B left-edge local1122、C rapid-frame60個regression frames，證明accept-stage修正太晚；轉DYN-T-719／DYN-WBS-605。
 
 ## 2026-10-27 DYN-T-717（0.2.52 source complete / 0.2.53 successor consumer pending）
 

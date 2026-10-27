@@ -126,6 +126,10 @@ D14只使cross-axis navigator preview與action取得正確UTC range，沒有要�
 
 D15的「coverage scope清pending」只適用pending action與next document/base row不相符的真正scope切換。`viewportScopeKey`包含CoverageIdentity，而accepted relocation本來就可更新CoverageIdentity；若matching pending event-range已Reanchor／Reject，該settlement擁有viewport且不得再被document default覆寫，並把新scope標為已套用；若matching action仍Await，保留pending與當前optimistic viewport，直到matching／terminal frame。只有base-row不符或沒有matching pending時才清舊context並套default。canvas／identity切換既有clear path、wire與server materialization契約不變。
 
+### D18. 2026-10-27 matching settlement survives full-preparation scheduling
+
+D17的precedence必須從`runtimeState.View`收到accepted data起生效，不能只在`acceptPreparedDataCore`套用。當data與coverage scope同時改變、pending event-range與next document/base row相符時，full-preparation排程前保留pending與optimistic draft，讓prepared timeline執行D15的Reanchor／Await／Reject；否則accept-stage永遠看不到settlement context而退回local continuation。identity／canvas切換及base-row不符仍立即清除，queued viewport、boundary pan、resident navigator authority的既有scope reset不變。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.
