@@ -3,7 +3,7 @@
 ## 2026-10-27 DYN-T-732（rendered selection right-edge snap）
 
 - RED fixture：total4500/count79、raw draft local4418；track1436、frozen move target local x1/width25.174667、pointer start13.587333、release1423.4127。0.3.5 package-backed compile因新pure seam FS0039 3處RED。
-- GREEN contract：exact rendered right edge需snap maxStart4421；interior pointer1400維持draft4418；pointer1436.1不在snap seam改寫，`navigatorGestureBoundaryDirection`仍回Later。Candidate focused1/1、Renderer122/122、Interactive20/20、package verifierPASS；fresh exact-package BrowserDemo0.3.6僅既有WS9002、0 errors。
+- GREEN contract：exact rendered right edge需snap maxStart4421；interior pointer1400維持draft4418；pointer1436.1不在snap seam改寫，`navigatorGestureBoundaryDirection`仍回Later。Source `e0575622b5efcf78619d37a68f91e353af417d6a`已push；final Renderer／Interactive SHA=`36593858F26EA84270C0956818B404304C8FB0A17667A129EA9721A4ED8ABB48 / 4B76912C398F740EB2A7477130332DEB9C7F33BC5BE44BEC95EBD211C184E2D6`，provenance／SDK cache exact。Fresh final Renderer122/122、Interactive20/20、package verifierPASS；exact-package BrowserDemo僅既有WS9002、0 errors，full/min SHA=`2FB111E4EA8D468E550A6B0513330C7798165F980E19BEBF4CBDE00E43AF04A1 / 1F55B1F400321DF7C67B3421E6DB71B0030EAD2BA782F52B5B23504D4AA1F187`。
 - 真Gate：Daedilus沿同一0.3.5 evidence sequence，以consumer/oracle/host不變重跑right-edge-80；action仍須NavigatorWindow intent/count79，final local4421，真正Later coverage可用，errors空。
 
 ## 2026-10-27 DYN-T-731（resident track physical boundary）

@@ -6,11 +6,11 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
-### DYN-VFY-057 0.3.6 rendered right-edge snap（candidate）
+### DYN-VFY-057 0.3.6 rendered right-edge snap（owner final / consumer pending）
 
 - Consumer RED：0.3.5 exact ProductVersion在left-edge-80與Earlier coverage GREEN；right-edge-80 action亦有NavigatorWindow intent/ExpectedRev6/QueryGen6/count79，但實際rendered selection右緣到track右緣時，move anchor 1px inset使draft/final local4418，expected maxStart4421，errors空。
-- Owner candidate：凍結pointerdown move target actual DOMRect，inside-track translated edge到界才snap local0/maxStart，outside pointer不snap且boundary仍Later。DYN-T-732修前0.3.5 compile FS0039 RED；修後focused1/1、Renderer122/122、Interactive20/20、package verifierPASS；fresh package-only BrowserDemo exact0.3.6，僅既有WS9002、0 errors。
-- Final gate：source commit後重建兩個immutable packages並驗provenance/hash，再由Daedilus同一真right-edge sequence證final local4421與Later coverage相鄰路徑。
+- Owner final：凍結pointerdown move target actual DOMRect，inside-track translated edge到界才snap local0/maxStart，outside pointer不snap且boundary仍Later。Source `e0575622b5efcf78619d37a68f91e353af417d6a`已push；Renderer／Interactive SHA=`36593858F26EA84270C0956818B404304C8FB0A17667A129EA9721A4ED8ABB48 / 4B76912C398F740EB2A7477130332DEB9C7F33BC5BE44BEC95EBD211C184E2D6`，RepositoryCommit／ProductVersion／SDK cache exact。Fresh final Renderer122/122、Interactive20/20、package verifierPASS；fresh exact-package BrowserDemo僅既有WS9002、0 errors，full/min SHA=`2FB111E4EA8D468E550A6B0513330C7798165F980E19BEBF4CBDE00E43AF04A1 / 1F55B1F400321DF7C67B3421E6DB71B0030EAD2BA782F52B5B23504D4AA1F187`。
+- Consumer gate：Daedilus同一真right-edge sequence須證final local4421，並驗真正Later coverage相鄰路徑；未GREEN不close。
 
 ### DYN-VFY-056 0.3.5 resident-track physical boundary（owner final / consumer pending）
 

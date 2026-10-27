@@ -6,6 +6,8 @@
 
 不變量是「inside-track visual selection edge碰到track edge就clamp local boundary；pointer本身越出track才是coverage overscroll」。因此不能硬加3 bars，也不能把right edge誤判Later；需以pointerdown實際target DOMRect作frozen geometry authority，普通interior move、resize與event-time mapping不變。
 
+0.3.6 owner source `e0575622b5efcf78619d37a68f91e353af417d6a`與immutable packages完成；剩餘authority是Daedilus同一真browser sequence的right-edge local4421與Later coverage相鄰驗收，owner synthetic不代替。
+
 ## 2026-10-27 resident track boundary quantization（DYN-WBS-617）
 
 0.3.4 runtime telemetry與真18884重現排除projection／publication遺失：middle action含`NavigatorWindow` intent；local1198/count80拖到視覺左邊界時，CSS換算得raw delta -1200，preview正確clamp local0，但logical boundary classifier把requested -2當Earlier。Cross-axis沒有可證GLOBAL ordinal，因此該分支不提交typed local action；後續bare range被consumer當main-plot pan，只前移80根。
