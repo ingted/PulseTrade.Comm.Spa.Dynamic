@@ -38,3 +38,8 @@ Source非型別宣告約10–20行，test約20–35行；若超過2x，先追加
 - Source `e0575622b5efcf78619d37a68f91e353af417d6a`已push；final Renderer／Interactive packages與fresh BrowserDemo DLL provenance皆exact。
 - Fresh final gates：Renderer122/122、Interactive20/20、package verifierPASS、BrowserDemo WS9002 x1／0 errors。
 - Source hypothesis已收斂；只剩同一真consumer的right-edge local4421與Later coverage驗收，未GREEN不close。
+
+## Consumer resolution
+
+- 0.3.6 exact真序列已證right-edge local4421與Later active51445；左右edge、Earlier/Later、browser/action errors契約全綠。
+- A/D/Tagging/FirstPaint/No1K/formal stress相鄰回歸全綠，本issue resolved。既知2018 return tail為獨立consumer pending，沒有改動本因果或close boundary。
