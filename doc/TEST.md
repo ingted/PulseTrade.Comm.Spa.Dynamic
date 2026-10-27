@@ -2,7 +2,7 @@
 
 ## Current gate：DYN-T-743/744 queue authority（0.3.15）
 
-DYN-T-743於0.3.14 source wiring重現1 failed：shared dispatch gate漏pending event-range；DYN-T-744驗同coverage identity刷新revision/generation但保留UTC/count/purpose，以及跨identity、ordinal、direction、provider-open、typed無projection拒絕和legacy不變。0.3.15 exact-package與真rapid待驗；約80根左界接點由owner先在0.3.14獨立focused，不與rapid混報。
+DYN-T-743於0.3.14 source wiring重現1 failed：shared dispatch gate漏pending event-range；DYN-T-744驗同coverage identity刷新revision/generation但保留UTC/count/purpose，以及跨identity、ordinal、direction、provider-open、typed無projection拒絕和legacy不變。0.3.15 exact-package133/133＋20/20、fresh Ptcs.Client0.2.3 17/17，0 ignored/failed/errored；verifier/LiveDemo Release過。0.3.14真79根左界focused首步保寬/接點accepted，第二次越界與0.3.15真rapid待驗；詳細hash/provenance及舊PTCS候選拒絕見DYN-VFY-064。
 
 ## Current gate：DYN-T-741/742 接點settlement（0.3.14）
 
