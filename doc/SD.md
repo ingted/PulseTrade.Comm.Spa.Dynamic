@@ -4,7 +4,7 @@
 
 `navigatorCoverageTelemetryStatus defaultView data`以bounded text區分inline/ref-present/ref-missing/ref-invalid，再輸出none／some revision+generation+active range／第一個decode error code+field。Navigator mapper每次publication與persistent listener每次pointerdown共用`publishNavigatorGestureTelemetry`，在document root寫event、renderer instance、publication sequence、document source、state/prepared map counts與decode states、projection、document/data/transport revisions；`data-renderer-navigator-frame-trace`只保留最後12筆。
 
-DYN-T-730鎖production publication/pointerdown seam，DYN-T-730B鎖missing dataRef、resolvable projection與bounded trace。0.3.3 source實跑0/1 RED；0.3.4 candidate實跑2/2、Renderer120/120、Interactive20/20、verifierPASS，package-only BrowserDemo exact0.3.4且generated JS含trace attribute。此版只是觀測性gate；必須先取得Daedilus同一真B的publication/pointer trace，再修根因，不以忽略None或保留舊Some作workaround。
+DYN-T-730鎖production publication/pointerdown seam，DYN-T-730B鎖missing dataRef、resolvable projection與bounded trace。0.3.3 source實跑0/1 RED；0.3.4 source `aea3d7602d55853b5508e57559f803c8c630ae78`已push。Final immutable Renderer／Interactive.Client SHA-256=`EACB0830E07F81DE16ABC5D7F536AFC3A1F6CA4DD14BF1006B8A520DF28D06D1 / 1A8A909CB7AD55B1B1EDE22F871079207768A521A2098EBCBAA958A76E6C2376`，provenance exact；fresh final Renderer120/120、Interactive20/20、verifierPASS，package-only BrowserDemo exact0.3.4且generated JS含trace attribute。此版只是觀測性gate；必須先取得Daedilus同一真B的publication/pointer trace，再修根因，不以忽略None或保留舊Some作workaround。
 
 ## 2026-10-27 retained mappers publish one frame document（DYN-WBS-615）
 
