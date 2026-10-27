@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 shell-prepared query settlement（DYN-WBS-619 / 0.3.8）
+
+`shellPreparedFrame`是chart shell實際使用的`RuntimeState * TaPreparedRendererData`原子publication；topology、row refresh與full preparation成功都會更新。Accepted callback建立pending後先對該holder求settlement；若frame還沒完成，仍由incremental/full prepared path後續消耗。`chartCommittedFrame`保留原topology/chart用途，不再作為Accepted callback的latest prepared authority。
+
+`TaQueryViewportSettlementDiagnostics`只在renderer instance內保留一份bounded last outcome，chart root發佈pending、intent/latest generation、baseline/current data/query revision、selection/applied start/count與outcome。不存放axis/bars/payload，不成為render或settlement authority。Rejected、superseded、identity reset與Await都有明確outcome。
+
 ## 2026-10-27 generation-scoped query viewport settlement（DYN-WBS-619）
 
 `submitQuery`在dispatch前記錄baseline DataRevision與loaded-coverage QueryGeneration。Accepted callback只建立`TaPendingQueryViewportSettlement`，並最多檢查`chartCommittedFrame`；不再對`runtimeState.Value`直接呼叫`queryViewportSelection`。`acceptedQueryViewportSettlement`是pure gate：local intent generation已舊時回Stale；DataRevision或QueryGeneration任一未前進時回Await；只有matching frame才以新document/data求temporal selection。

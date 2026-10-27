@@ -28,6 +28,14 @@ Production非型別宣告預計15–35行，tests預計30–60行。若productio
 - 重查後維持同一最小機制：一個4-field pending record、一個pure revision/generation gate、一個settlement function；無wire/contract/consumer變更，不新增timer、retry、poll或第二套viewport authority。
 - 可觀察貢獻：每個新增呼叫點只對應一條已存在的authoritative prepared-frame commit path；DYN-T-733同時鎖old frame Await、data-only Await、matching frame Selected、newer local generation Stale。
 
+## Experiment 2: 0.3.7 consumer falsification
+
+- 真18884的0.3.7 response已前進到DataRevision24、coverageRevision23、queryGeneration18，ActiveDetail start0/count1491；DOM也已render Loaded1491，但local window仍是start0/count1028。因此package/frames/query selection資料未缺，0.3.7的pending intent沒有成功將prepared frame結果套到ui state。
+- Daedilus證實`submitWorkspaceAction`先`applyIncrementalFrames`/`runtimeState.Value <- state`，後complete Accepted。這使「prepared frame先完成、Accepted callback後建pending」成為真實時序，不是單純假設。
+- Source中`shellPreparedFrame`在topology、row refresh、full preparation的accepted prepared frame都會更新；`chartCommittedFrame`則不保證每個row-refresh prepared frame更新。Accepted callback目前只讀`chartCommittedFrame.Value`，所以可在pending建立後永久停在舊frame Await。
+- 更精確的根因假設：accepted callback的prepared-frame authority選錯；應讀與render shell同一權威的`shellPreparedFrame`，而非只表示topology/chart commit的`chartCommittedFrame`。
+- 區分證據：0.3.8在chart root發佈bounded settlement telemetry，僅包pending、intent/latest generation、baseline/current data/query revisions、selection/applied start/count與最後outcome；不暴露bars/raw payload。原consumer必須顯示`selected-applied`、selection/applied count1491且Viewing=ActiveDetail才完成。
+
 ## Owner resolution
 
 - Source `b9a3628249785bb0a734e86bee9c3e3721022dab`與final 0.3.7 immutable packages已證實鎖定dispatch baseline、prepared-frame settle與newer-generation cancellation；owner tests與package-only BrowserDemo全綠。

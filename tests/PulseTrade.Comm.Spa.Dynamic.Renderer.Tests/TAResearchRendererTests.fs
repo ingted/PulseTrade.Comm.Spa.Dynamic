@@ -1167,12 +1167,34 @@ let tests =
             let submitBody = source.Substring(submitStart, submitEnd - submitStart)
             Expect.stringContains submitBody "BaselineDataRevision = baselineDataRevision" "The accepted intent must retain its dispatch-time data authority."
             Expect.stringContains submitBody "BaselineQueryGeneration = baselineQueryGeneration" "The accepted intent must retain its dispatch-time query authority."
-            Expect.stringContains submitBody "chartCommittedFrame.Value" "The accepted callback may inspect only the last committed prepared frame."
+            Expect.stringContains submitBody "shellPreparedFrame.Value" "The accepted callback must inspect the latest prepared frame used by the rendered shell."
+            Expect.isFalse
+                (submitBody.Contains("chartCommittedFrame.Value", StringComparison.Ordinal))
+                "A row-refresh prepared frame may not advance chartCommittedFrame, so the accepted callback must not wait on that narrower authority."
             Expect.isFalse
                 (submitBody.Contains("RendererModel.queryViewportSelection", StringComparison.Ordinal))
                 "The accepted callback must not consume the viewport intent directly against runtimeState."
             Expect.stringContains source "settlePendingQueryViewportFor next nextPreparedData" "Incremental prepared-frame acceptance must settle the pending query."
             Expect.stringContains source "settlePendingQueryViewportFor current prepared" "Full prepared-frame acceptance must settle the pending query."
+
+        testCase "DYN-T-734 accepted query settlement exposes bounded DOM diagnostics" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains source "publishQueryViewportSettlementDiagnostics" "Settlement state must be published without depending on consumer logs."
+            for attribute in
+                [| "data-query-viewport-settlement-pending"
+                   "data-query-viewport-settlement-outcome"
+                   "data-query-viewport-settlement-intent-generation"
+                   "data-query-viewport-settlement-latest-generation"
+                   "data-query-viewport-settlement-baseline-data-revision"
+                   "data-query-viewport-settlement-baseline-query-generation"
+                   "data-query-viewport-settlement-current-data-revision"
+                   "data-query-viewport-settlement-current-query-generation"
+                   "data-query-viewport-settlement-selection-start"
+                   "data-query-viewport-settlement-selection-count"
+                   "data-query-viewport-settlement-applied-start"
+                   "data-query-viewport-settlement-applied-count" |] do
+                Expect.stringContains source attribute ("Missing bounded settlement diagnostic " + attribute)
 
         testCase "visible window handles short series" <| fun _ ->
             let actual =

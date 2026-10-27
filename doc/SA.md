@@ -1,5 +1,13 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 prepared frame publication race（0.3.7 falsification）
+
+Daedilus以exact 0.3.7重跑原18884 return gate：response與rendered data已到DataRevision24、coverageRevision23、queryGeneration18、ActiveDetail start0/count1491，但DOM仍是Loaded1491/Viewing1-1028。這排除package、response payload與「單純等不到revision」；0.3.7 pending intent未能在已準備的render frame上消耗。
+
+最早偏離是Accepted callback回查`chartCommittedFrame`，但row-refresh prepared frame的canonical presentation holder是`shellPreparedFrame`。Frames/preparation若先於Accepted completion，pending後建立時`chartCommittedFrame`可仍是2018，且不會再有prepared event觸發settlement；這正好解釋new data已render、window卻保留1028。
+
+不變量：dispatch baseline與revision/generation gate保留；Accepted callback改讀latest shell-prepared authority，並以bounded DOM attributes公開pending/outcome/revisions/selection/applied window。不改wire、consumer expected、host/oracle、0.3.6 edge behavior或raw bars。
+
 ## 2026-10-27 accepted query / prepared-frame authority（DYN-WBS-619）
 
 Daedilus將獨立2018 return-tail縮成同一response內的authority時序：action requested 2026-06-01..07-15，response帶24 snapshot chunks，DataRevision25、coverageRevision24、queryGeneration19、activeDetail start0/count1450，但DOM是Loaded1450/Viewing1-1028。最早偏離是accepted callback在Renderer prepared frame仍為2018 timeline時直接消耗query viewport intent；`NoIntersection`成為最終結果，後續matching frame又無pending intent可套用。

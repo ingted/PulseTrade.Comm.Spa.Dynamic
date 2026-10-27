@@ -1,5 +1,12 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-733B／734（shell-prepared race + bounded telemetry）
+
+- Real RED：exact 0.3.7在response DataRevision24/coverage23/query18、ActiveDetail1491且DOM Loaded1491後，Viewing仍1-1028。Evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0307\return-2026.json`。
+- Source RED：DYN-T-733B先要求Accepted callback讀`shellPreparedFrame.Value`且不可讀`chartCommittedFrame.Value`，在0.3.7 source為1/1 failed；DYN-T-734要求12個bounded settlement DOM attributes，修前同樣缺少。
+- Candidate GREEN：改用shell-prepared authority並加telemetry後，DYN-T-733/733B 2/2、DYN-T-734 1/1、Renderer full125/125、Interactive.Client20/20、package verifier PASS。Fresh package-only BrowserDemo精確解析Renderer/Interactive0.3.8與Contracts0.1.41，僅既有WS9002／0 errors，generated JS含new authority/telemetry；full/min SHA=`9CA841FCFB78B4CEA46A6F07F5DE3B7F322B85DC62FA6501DB17B8CD0D348324 / A4A02A38682F8E2B087247E85986BE4CAC49B93ADD192E262C786AE937242FB4`。候選0.3.8 Renderer/Interactive SHA=`7C5E68AC7D89236D964602019ED2A2ECF743059890993D6747CC1301E5096444 / 8B38B5458B44EBE755E84FBFBD16A04A2DA8761191E1FE4888375BA76F48F15B`；只作source-commit前owner gate。
+- 真Gate：Daedilus原consumer/oracle/host要求Viewing=ActiveDetail；telemetry應為`selected-applied`、pending=false、selection/applied count=實際returnedLoaded（本次1491），browser/action errors空。未達前不close。
+
 ## 2026-10-27 DYN-T-733／733B（accepted query authoritative settlement）
 
 - RED：0.3.6 package-backed test新增settlement contract後只剩FS0039 8處／exit1，不改consumer expected。真實evidence為DataRevision25/queryGeneration19/activeDetail1450，但accepted callback以舊frame得NoIntersection後DOM保留Viewing1-1028。

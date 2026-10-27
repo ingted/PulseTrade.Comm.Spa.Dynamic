@@ -55,6 +55,18 @@ type TaPendingQueryViewportSettlement =
       BaselineDataRevision: int64
       BaselineQueryGeneration: int64 }
 
+type TaQueryViewportSettlementDiagnostics =
+    { Pending: bool
+      Outcome: string
+      IntentGeneration: int option
+      LatestGeneration: int option
+      BaselineDataRevision: int64 option
+      BaselineQueryGeneration: int64 option
+      CurrentDataRevision: int64 option
+      CurrentQueryGeneration: int64 option
+      Selection: TaVisibleWindow option
+      Applied: TaVisibleWindow option }
+
 [<RequireQualifiedAccess>]
 type TaQueuedViewportIntent =
     | LocalRange of SduiAction
@@ -2845,6 +2857,35 @@ module TaWorkspaceRenderer =
         let mutable pendingBoundaryPan: TaPendingBoundaryPan option = None
         let mutable pendingEventRangeSettlement: TaPendingEventRangeSettlement option = None
         let mutable pendingQueryViewportSettlement: TaPendingQueryViewportSettlement option = None
+        let mutable queryViewportSettlementDiagnostics =
+            { Pending = false
+              Outcome = "idle"
+              IntentGeneration = None
+              LatestGeneration = None
+              BaselineDataRevision = None
+              BaselineQueryGeneration = None
+              CurrentDataRevision = None
+              CurrentQueryGeneration = None
+              Selection = None
+              Applied = None }
+        let publishQueryViewportSettlementDiagnostics (root: Element) =
+            if not (isNull root) then
+                let optionalText value = value |> Option.map string |> Option.defaultValue ""
+                root.SetAttribute("data-query-viewport-settlement-pending", if queryViewportSettlementDiagnostics.Pending then "true" else "false")
+                root.SetAttribute("data-query-viewport-settlement-outcome", queryViewportSettlementDiagnostics.Outcome)
+                root.SetAttribute("data-query-viewport-settlement-intent-generation", optionalText queryViewportSettlementDiagnostics.IntentGeneration)
+                root.SetAttribute("data-query-viewport-settlement-latest-generation", optionalText queryViewportSettlementDiagnostics.LatestGeneration)
+                root.SetAttribute("data-query-viewport-settlement-baseline-data-revision", optionalText queryViewportSettlementDiagnostics.BaselineDataRevision)
+                root.SetAttribute("data-query-viewport-settlement-baseline-query-generation", optionalText queryViewportSettlementDiagnostics.BaselineQueryGeneration)
+                root.SetAttribute("data-query-viewport-settlement-current-data-revision", optionalText queryViewportSettlementDiagnostics.CurrentDataRevision)
+                root.SetAttribute("data-query-viewport-settlement-current-query-generation", optionalText queryViewportSettlementDiagnostics.CurrentQueryGeneration)
+                root.SetAttribute("data-query-viewport-settlement-selection-start", queryViewportSettlementDiagnostics.Selection |> Option.map (fun window -> string window.StartIndex) |> Option.defaultValue "")
+                root.SetAttribute("data-query-viewport-settlement-selection-count", queryViewportSettlementDiagnostics.Selection |> Option.map (fun window -> string window.Count) |> Option.defaultValue "")
+                root.SetAttribute("data-query-viewport-settlement-applied-start", queryViewportSettlementDiagnostics.Applied |> Option.map (fun window -> string window.StartIndex) |> Option.defaultValue "")
+                root.SetAttribute("data-query-viewport-settlement-applied-count", queryViewportSettlementDiagnostics.Applied |> Option.map (fun window -> string window.Count) |> Option.defaultValue "")
+        let setQueryViewportSettlementDiagnostics diagnostics =
+            queryViewportSettlementDiagnostics <- diagnostics
+            publishQueryViewportSettlementDiagnostics chartStackElement
         let residentNavigatorAuthority = Var.Create<TaResidentNavigatorAuthority option> None
         let mutable queuedViewportIntent: TaQueuedViewportIntent option = None
         let mutable flushQueuedViewportIntent = ignore
@@ -3138,10 +3179,26 @@ module TaWorkspaceRenderer =
             settlePendingEventRangeProjectionFor committedState committedPreparedData
 
         let settlePendingQueryViewportFor (next: RuntimeState) nextPreparedData =
+            let updateDiagnostics outcome pending currentQueryGeneration selection applied =
+                setQueryViewportSettlementDiagnostics
+                    { queryViewportSettlementDiagnostics with
+                        Pending = pending
+                        Outcome = outcome
+                        LatestGeneration = Some querySelectionGeneration
+                        CurrentDataRevision = Some next.DataRevision
+                        CurrentQueryGeneration = currentQueryGeneration
+                        Selection = selection
+                        Applied = applied }
             match pendingQueryViewportSettlement with
             | None -> None
             | Some pending when pending.IntentGeneration <> querySelectionGeneration ->
                 pendingQueryViewportSettlement <- None
+                updateDiagnostics
+                    "superseded"
+                    false
+                    (coverageProjection next |> Option.map _.QueryGeneration)
+                    None
+                    None
                 Some(Some "A newer query superseded this response; the current viewport was preserved.")
             | Some pending ->
                 match next.Document, coverageProjection next with
@@ -3158,11 +3215,15 @@ module TaWorkspaceRenderer =
                             document
                             next.Data
                     with
-                    | TaAcceptedQueryViewportSettlement.AwaitAuthoritativeFrame -> None
+                    | TaAcceptedQueryViewportSettlement.AwaitAuthoritativeFrame ->
+                        updateDiagnostics "await-authoritative-frame" true (Some projection.QueryGeneration) None None
+                        None
                     | TaAcceptedQueryViewportSettlement.Settled selection ->
                         pendingQueryViewportSettlement <- None
                         match selection with
-                        | TaQueryViewportSelection.NotRequested -> Some None
+                        | TaQueryViewportSelection.NotRequested ->
+                            updateDiagnostics "not-requested" false (Some projection.QueryGeneration) None None
+                            Some None
                         | TaQueryViewportSelection.Selected window ->
                             let total = RendererModel.referenceTimelineForDocumentPrepared document nextPreparedData |> Array.length
                             let bounded =
@@ -3179,13 +3240,20 @@ module TaWorkspaceRenderer =
                                     CursorIndex = None }
                             cursorIndex.Value <- None
                             defaultViewportAppliedToCanvas <- Some(viewportScopeKey next document)
+                            updateDiagnostics "selected-applied" false (Some projection.QueryGeneration) (Some window) (Some bounded)
                             Some None
                         | TaQueryViewportSelection.NoIntersection ->
+                            updateDiagnostics "no-intersection" false (Some projection.QueryGeneration) None None
                             Some(Some "Query accepted, but the requested range has no loaded observations; the current viewport was preserved.")
-                        | TaQueryViewportSelection.Invalid reason -> Some(Some reason)
+                        | TaQueryViewportSelection.Invalid reason ->
+                            updateDiagnostics "invalid" false (Some projection.QueryGeneration) None None
+                            Some(Some reason)
                         | TaQueryViewportSelection.Stale ->
+                            updateDiagnostics "stale" false (Some projection.QueryGeneration) None None
                             Some(Some "A newer query superseded this response; the current viewport was preserved.")
-                | _ -> None
+                | _ ->
+                    updateDiagnostics "await-document-or-projection" true None None None
+                    None
 
         let publishPendingQueryViewportFeedback result =
             result
@@ -3520,6 +3588,14 @@ module TaWorkspaceRenderer =
                 pendingBoundaryPan <- None
                 pendingEventRangeSettlement <- None
                 pendingQueryViewportSettlement <- None
+                setQueryViewportSettlementDiagnostics
+                    { queryViewportSettlementDiagnostics with
+                        Pending = false
+                        Outcome = "identity-reset"
+                        CurrentDataRevision = Some next.DataRevision
+                        CurrentQueryGeneration = None
+                        Selection = None
+                        Applied = None }
                 residentNavigatorAuthority.Value <- None
                 queuedViewportIntent <- None
                 draftWindow.Value <- None
@@ -5406,7 +5482,18 @@ module TaWorkspaceRenderer =
                           IntentGeneration = intentGeneration
                           BaselineDataRevision = baselineDataRevision
                           BaselineQueryGeneration = baselineQueryGeneration }
-                let committedState, committedPreparedData = chartCommittedFrame.Value
+                setQueryViewportSettlementDiagnostics
+                    { Pending = true
+                      Outcome = "accepted-pending"
+                      IntentGeneration = Some intentGeneration
+                      LatestGeneration = Some querySelectionGeneration
+                      BaselineDataRevision = Some baselineDataRevision
+                      BaselineQueryGeneration = Some baselineQueryGeneration
+                      CurrentDataRevision = None
+                      CurrentQueryGeneration = None
+                      Selection = None
+                      Applied = None }
+                let committedState, committedPreparedData = shellPreparedFrame.Value
                 settlePendingQueryViewportFor committedState committedPreparedData
                 |> Option.bind id
             let dispatchLatestQueuedQuery () =
@@ -5421,7 +5508,14 @@ module TaWorkspaceRenderer =
                 (SduiAction.ChangeTaQuery(currentCanvasId (), query))
                 "Query accepted."
                 applyAcceptedQuery
-                ignore
+                (fun () ->
+                    pendingQueryViewportSettlement <- None
+                    setQueryViewportSettlementDiagnostics
+                        { queryViewportSettlementDiagnostics with
+                            Pending = false
+                            Outcome = "rejected"
+                            Selection = None
+                            Applied = None })
                 dispatchLatestQueuedQuery
 
         let applyQuery () =
@@ -6048,6 +6142,7 @@ module TaWorkspaceRenderer =
                                 on.afterRender (fun node ->
                                     chartStackElement <- node
                                     publishViewportDispatchDiagnostics node
+                                    publishQueryViewportSettlementDiagnostics node
                                     activeNavigatorDragMode
                                     |> Option.iter (fun drag -> node.SetAttribute("data-drag-mode", drag))
                                     latestCursorTimestamps <- visibleTimestamps

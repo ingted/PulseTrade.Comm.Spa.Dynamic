@@ -180,6 +180,10 @@ D24把prepared欄位選對但把frame authority認錯：實際inner navigator由
 
 `ChangeTaQuery` action result與Renderer prepared-frame commit是不同authority。Client可先合併raw RuntimeFrame並完成accepted callback，但Renderer仍可持有舊prepared timeline；此時對requested range的`NoIntersection`不得成為最終結果。Dispatch必須凍結baseline DataRevision與loaded-coverage QueryGeneration，accepted只留generation-scoped pending intent；同identity且兩個revision皆前進的prepared frame才可單次套用temporal viewport。Newer local query、rejection或identity replacement取消舊intent。禁止timer/retry、重送action、直接對runtimeState求viewport或改consumer expected；wire與0.3.6 edge behavior不變。
 
+### D31. 2026-10-27 accepted callback reads the latest shell-prepared authority
+
+0.3.7真Gate證明只revision/generation pending不足：frames與preparation可在Accepted completion前完成，而render shell已顯示新ActiveDetail；若callback之後只回查不保證每個row-refresh前進的`chartCommittedFrame`，pending可永久Await。決策是以render shell實際使用、且在topology/row-refresh/full preparation都更新的`shellPreparedFrame`作Accepted callback回查authority；後續prepared completion仍走原settlement seam。同版公開bounded last-outcome DOM telemetry，但telemetry不參與決策。不改wire、raw payload、consumer expected或host/oracle。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

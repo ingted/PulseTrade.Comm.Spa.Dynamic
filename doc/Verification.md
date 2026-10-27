@@ -6,6 +6,11 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
+### DYN-VFY-059 0.3.8 latest shell-prepared settlement（owner candidate / consumer pending）
+
+- 0.3.7 falsification：exact deployed/generated seam存在，但原return gate在DataRevision24/queryGeneration18/ActiveDetail1491後仍Loaded1491/Viewing1-1028。`shellPreparedFrame`已有new rendered data，Accepted callback卻可回查舊`chartCommittedFrame`並無後續event。Evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0307\return-2026.json`。
+- 0.3.8 candidate：Accepted callback改讀latest shell-prepared atomic frame，新增12個bounded DOM settlement attributes。DYN-T-733/733B2/2、DYN-T-7341/1、Renderer125/125、Interactive20/20、verifierPASS；candidate SHA=`7C5E68...96444 / 8B38B5...8F15B`。Fresh package-only BrowserDemo exact0.3.8 chain、WS9002 x1／0 errors，generated JS seam存在。Final provenance與Daedilus真Gate pending，不宣稱consumer close。
+
 ### DYN-VFY-058 0.3.7 accepted-query prepared-frame settlement（owner final / consumer pending）
 
 - Consumer RED：0.3.6 exact return-2026 response含24 frames，DataRevision25、coverageRevision24、queryGeneration19、activeDetail start0/count1450，但DOM Loaded1450/Viewing1-1028。Accepted callback在matching prepared frame前以舊2018 timeline回NoIntersection。Evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0306-tail-settle\return-2026.json`。

@@ -4,6 +4,7 @@
 
 ## Responsibility
 
+- 0.3.8 settlement authority：Accepted callback以render shell同一權威的latest prepared frame求settlement，不再讀可能落後的topology-only chart commit。Chart root以bounded attributes發佈pending、baseline/current revisions、selection/applied window與outcome，不包含raw bars。
 - owns：DOM/SVG chart layout、bounded local viewport、row visibility、compact query/Add Row UI、typed action callback。
 - does not own：PTCS、WebSocket、SQL、market-data provider、credential、ACL或authorization。
 - local-only：pan、zoom、row toggle、Reset View。
