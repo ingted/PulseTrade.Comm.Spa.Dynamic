@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-727（0.3.1 owner source/candidate / final package pending）
+
+- 契約：inner navigator pointerdown接收實際render closure的`renderedState + outer shell document + currentPreparedData + currentCoverageProjection`。State只供identity／commit key；document、timeline與projection不得在handler由另一document envelope重解，也不得改讀current/latest。
+- RED：exact 0.3.0真B中middle intent GREEN，但post-middle long target0仍bare/local1122；generated JS證D25已編入。Source-contract鎖production call與handler no-redecode，0.3.0 source 0/1 RED。
+- Candidate GREEN：handler顯式接收shell document／decoded projection；DYN-T-726、727各1/1，Renderer full115/115，Interactive20/20，package verifier PASS；package-only BrowserDemo resolved Contracts0.1.41／Renderer0.3.1／Interactive0.3.1／FSharp.Core10.1.402／WebSharper.FSharp10.1.7.680，0 warnings／0 errors。Final package須post-commit重建並驗metadata/hash；Daedilus同序列必須送NavigatorWindow CoverageIntent且settle local0，A/D/highlight/Tagging/原C不得回歸。
+
 ## 2026-10-27 DYN-T-726（0.3.0 owner package complete / consumer pending）
 
 - 契約：inner navigator由哪個shell frame render，pointerdown就capture同一`RuntimeState * TaPreparedRendererData` pair；不得在handler內重讀`chartCommittedFrame.Value`、current runtime或latest prepared。Projection/timeline從pair prepared RawData，document/key從pair state。

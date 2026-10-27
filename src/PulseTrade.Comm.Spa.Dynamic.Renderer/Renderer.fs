@@ -4086,7 +4086,9 @@ module TaWorkspaceRenderer =
 
         let startNavigatorDrag
             (dragState: RuntimeState)
+            (dragDocument: TaWorkspaceDocument)
             (dragPreparedData: TaPreparedRendererData)
+            (dragCoverageProjection: TaLoadedCoverageProjection option)
             (navigatorRoot: Element)
             (rawEvent: Event) =
             if not (isNull navigatorRoot) then
@@ -4106,23 +4108,19 @@ module TaWorkspaceRenderer =
                 else
                     let bounds = navigatorRoot.GetBoundingClientRect()
                     let localTotal =
-                        dragState.Document
-                        |> Option.map (fun document -> RendererModel.referenceTimelineForDocumentPrepared document dragPreparedData |> Array.length)
-                        |> Option.defaultValue 0
+                        RendererModel.referenceTimelineForDocumentPrepared dragDocument dragPreparedData
+                        |> Array.length
                     let localCommitted =
                         RendererModel.resolveWindow options.MinimumVisibleBars (maximumVisibleBarsNow ()) localTotal uiState.Value.FollowLatest uiState.Value.Window
                     let publishedNavigatorDraft = draftWindow.Value
                     let loadedCoverageSnapshot =
-                        match dragState.Document with
-                        | Some document ->
-                            RendererModel.tryLoadedCoverageResolved document.DefaultView dragPreparedData.RawData
-                            |> Option.map (fun projection ->
-                                document,
+                        dragCoverageProjection
+                        |> Option.map (fun projection ->
+                                dragDocument,
                                 dragPreparedData,
-                                RendererModel.referenceTimelineForDocumentPrepared document dragPreparedData,
+                                RendererModel.referenceTimelineForDocumentPrepared dragDocument dragPreparedData,
                                 projection,
                                 ProjectionCommitGate.key dragState)
-                        | None -> None
                     let residentSnapshotCurrent (snapshotKey: TaProjectionCommitKey) projection =
                         snapshotKey.Identity = runtimeState.Value.Identity
                         && (coverageProjection runtimeState.Value
@@ -6034,7 +6032,9 @@ module TaWorkspaceRenderer =
                                                         (fun navigatorRoot rawEvent ->
                                                             startNavigatorDrag
                                                                 renderedState
+                                                                document
                                                                 currentPreparedData
+                                                                currentCoverageProjection
                                                                 navigatorRoot
                                                                 rawEvent)
                                                         finishNavigatorDragFromElement

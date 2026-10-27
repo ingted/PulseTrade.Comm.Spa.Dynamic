@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 rendered navigator input closure authority（DYN-WBS-613）
+
+0.3.0 exact部署與bundle SHA皆正確，middle仍有NavigatorWindow intent，但post-middle long target0又bare/local1122。正式generated JS證production branch已含atomic pair修正；由`tryNavigatorEventRangeIntent`的total function與wire absence反推，唯一早期分歧是pointerdown `loadedCoverageSnapshot=None`。Source對照發現render path以外層cached shell `document`解`currentPreparedData.RawData`並取得`currentCoverageProjection`，handler卻以pair內`renderedState.Document`對同一RawData再decode；D25 pair沒有包含真正render使用的document/projection，因此仍是雙authority。
+
+不變量修正為「事件closure取得完整render inputs」：state提供identity/key，外層shell document、prepared data與已decoded projection提供navigator geometry、timeline、range與coverage intent。Handler不得重新decode或選current/latest authority。這是owner renderer wiring修正，不改consumer、wire、oracle、main plot與2018 tail mapping。
+
 ## 2026-10-27 rendered shell frame authority（DYN-WBS-612）
 
 0.2.59 exact部署後真B仍bare ui:4/local1122，反證DYN-WBS-611不是完整root cause。Action event-time已對上canonical target0，但CoverageIntent absent；source再查發現inner navigator由`currentPreparedData`（`shellPreparedData.View`）render，pointerdown卻重新讀另一個`chartCommittedFrame.Value`。兩個Var可獨立前進；0.2.59雖改讀prepared RawData，仍可能讀到不是使用者按下之DOM所render的frame，snapshot None便沿明確fallback送bare action。

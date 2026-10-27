@@ -1,0 +1,26 @@
+# Navigator 0.3.0 real Gate B RED
+
+時間：2026-10-27 14:31:07 +08:00
+
+## Pre-work plan
+
+- 背景：Daedilus以exact Renderer／Interactive.Client 0.3.0與source `acd00422892211f2662dc1fe3a83c968c210bc4f`重跑原Gate B，middle move仍有NavigatorWindow intent並到local1201，但long body target0仍送bare action、settle local1122。
+- 目標：消除render與pointerdown之間剩餘的document／projection雙authority，建立可在舊碼重現的actual-wiring RED，交付0.3.1 owner source與immutable package供同一真B重驗。
+- 已證實事實：18884 health 200；ProductVersion exact；canonical min.js SHA `F9FE22C602F581B55274F186335ED04336237061385E8C686B7AAABE0E98B780`；long gesture `dragLastDelta=-1202`、`targetLocalStart=0`、preview 1-79；POST只有2022-03-11T18:00至2022-03-15T10:30的VisibleRangeChanged，沒有CoverageIntent；100秒後active49646→49567／local1201→1122，browserErrors/actionFailures空。
+- 預期不變量：inner navigator每次gesture都以該次rendered atomic state/prepared pair作唯一authority；event-time target落在resident boundary且需要較早coverage時，release必須附NavigatorWindow CoverageIntent；middle／long gesture不得因targetStart=0、delta大小或accepted re-render而切回bare fallback。
+- Source of truth：Renderer actual release path、DYN-T-726 source contract、Daedilus `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0300`真browser byte evidence。
+- 假設：最早偏離不再是frame identity，而是同一handler內materialization branch只在部分gesture保留projection／coverage snapshot；long body的boundary或post-middle accepted frame使helper回None，caller再bare `setWindow`。
+- 最小證據：追`startNavigatorDrag`從pointerdown frozen inputs到pointerup action builder的每個Option gate，對照middle與long body唯一不同的target/delta/boundary條件；新增一個source-contract test，以post-middle rendered pair＋target0證舊碼得到bare fallback。
+- 範圍：只改Renderer owner source/tests及受影響current docs/version chain；不改Daedilus consumer、oracle、2018 tail mapping、main plot或已GREEN A/D/highlight/Tagging/原C。
+- 風險：若測試只重複helper happy path會再度假綠；必須鎖actual production expression與target0 boundary branch，並維持wire byte與package provenance gates。
+- 步驟：actual branch audit → source-contract RED →最小修復→focused/full/Release/Interactive/verifier/BrowserDemo→source commit→immutable package→formal handoff→同一真B。
+- 驗收：舊碼focused RED；修後owner gates全綠；Daedilus action含NavigatorWindow CoverageIntent且final local0；既有GREEN不回歸。
+- 停止條件：real consumer仍RED即不得關單，依新證據更新因果模型。
+
+## Operations
+
+- 14:30 +08:00：收到Daedilus direct `msg-fsi-119c4808bd3b435f8013e0b1191777c8`；0.3.0 exact provenance、middle GREEN、long body RED如上。已以`msg-fsi-cd534effcef0475f9089e06ea6e5960a` receipt回覆，不close且不改consumer/oracle。
+- 14:37 +08:00：DYN-T-727鎖actual production call必須傳render用outer document／decoded projection，並禁止handler重decode；0.3.0 source focused 0/1 RED，唯一失敗為call仍只傳state/prepared。
+- 14:39–14:44 +08:00：最小修正擴充`startNavigatorDrag` inputs並直接map captured projection；Renderer／Interactive與direct tests同步升0.3.1。Candidate Renderer source build 0 errors；DYN-T-726、727各1/1，Renderer full115/115，Interactive20/20，package verifierPASS；package-only BrowserDemo exact resolved Renderer／Interactive0.3.1並0 warnings／0 errors。第一次combined filter以`DYN-T-726|DYN-T-727`得到0 tests，未誤標PASS，改為兩個exact invocation後各實跑1/1。
+- Restore偏差：新空cache因本機PowerShell/native把explicit NuGet URL轉成local path而失敗；不建立`nuget.config`，改用本任務已驗E: cache加candidate feed／SDK library-packs，Renderer與Interactive restore成功。此為cache復用，不是package/source驗收替代。
+- Changed-path sensitive scan High=0／Medium=0；14個owned text paths均strict UTF-8、NUL=0、U+FFFD=0，兩個producer fsproj保留既有UTF-8 BOM，其餘無BOM；`git diff --check` PASS。Fresh checker `asteer-dyn0301-20261027143107-source-final`為PASS=28／WARN=2／FAIL=0，WARN僅expected external dirty與既有RFC traceability，WBS/Test missing均0。

@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 navigator captures the exact rendered document/projection（DYN-WBS-613）
+
+`viewportControls`的`ShellPreparedFrame.View` mapper已持有四個實際render inputs：`renderedState`、outer shell `document`、`currentPreparedData`、`currentCoverageProjection`。`startNavigatorDrag`簽名擴充為顯式接收四者；local timeline以captured document＋prepared計算，`loadedCoverageSnapshot`直接map captured projection並以rendered state建立commit key，不再執行`tryLoadedCoverageResolved renderedState.Document.DefaultView prepared.RawData`。
+
+DYN-T-727鎖actual production call與handler body：0.3.0 source 0/1 RED；修後DYN-T-726與727各1/1、Renderer full115/115、Interactive20/20、package verifier PASS、package-only BrowserDemo exact 0.3.1 chain 0 warnings／0 errors。Renderer／Interactive.Client與兩個direct test refs同步升0.3.1；final immutable package及Daedilus同序列local0仍是後續gate。
+
 ## 2026-10-27 navigator captures atomic rendered shell frame（DYN-WBS-612）
 
 `shellPreparedData: Var<TaPreparedRendererData>`改為`ShellPreparedFrame: Var<RuntimeState * TaPreparedRendererData>`；full initial shell、topology commit、row refresh與full/incremental accept都以同一candidate/current state和prepared data成對publication。`viewportControls`只投影pair的prepared half；inner navigator的`View.Map`同時取得`renderedState,currentPreparedData`，其DOM handler closure把兩者顯式傳給`startNavigatorDrag`。該函式不再讀`chartCommittedFrame.Value`，loaded projection與timeline仍只讀captured prepared RawData，document/key讀captured state。

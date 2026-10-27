@@ -160,6 +160,10 @@ D23只有在pointerdown取得projection時才生效。`chartCommittedFrame`是`R
 
 D24把prepared欄位選對但把frame authority認錯：實際inner navigator由`ShellPrepared` view render，`chartCommittedFrame`是另一個可獨立前進的chart authority。0.2.59真B證明前者已顯示canonical target0，pointerdown重讀後者仍可解不到projection並落入bare fallback。Shell authority因此改為atomic `RuntimeState * TaPreparedRendererData` pair；每次shell publication同時更新兩半，navigator render closure把該exact pair直接capture進event handler。Pointerdown不得再讀`chartCommittedFrame.Value`、`runtimeState.Value`或`latestPreparedData`。D24的prepared-RawData要求仍有效，但由D25 rendered shell pair提供；chart frame只繼續服務chart commit/settlement，不再冒充navigator interaction authority。
 
+### D26. 2026-10-27 rendered navigator inputs include the shell document and decoded projection
+
+0.3.0真B反證D25仍少列兩個render authority：`shellPreparedFrame.View`的navigator不是只由pair內的state/prepared render；外層cached shell `document`與由該document＋prepared RawData得到的`currentCoverageProjection`也直接決定GLOBAL／RESIDENT UI、selection與event-range materialization。Handler若再以`renderedState.Document`重解projection，便建立第三個authority；兩個document envelope語意相容但loaded-coverage表示不同時，render已持有projection而pointerdown仍會得到None並送bare action。決策改為render closure顯式傳入`renderedState + shell document + prepared data + decoded projection`；state只供identity／commit key，document／projection／timeline皆使用實際render輸入，handler不得再decode。Wire、consumer、oracle、event-time range與2018 tail mapping不變。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.
