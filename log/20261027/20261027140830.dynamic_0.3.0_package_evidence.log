@@ -1,0 +1,29 @@
+# Dynamic 0.3.0 immutable package evidence
+
+時間：2026-10-27 14:08:30 +08:00
+
+## Pre-work plan
+
+- 背景：Daedilus 以 exact 0.2.59 deployment 重現 Gate B `target0` 後仍 bare action／`local1122`；source 已定位為 rendered shell frame 與 pointerdown 重讀 chart frame 的雙 authority。
+- 目標：以已 push source commit 重建 Renderer／Interactive.Client 0.3.0 immutable packages，驗 metadata、hash、package-backed tests、verifier 與 package-only BrowserDemo，並交由 Daedilus 做真 consumer acceptance。
+- 假設：source commit與正式package metadata/hash維持已驗結果；consumer acceptance仍使用Daedilus原本相同的真B序列與oracle。
+- 範圍：只完成0.3.0 owner package evidence、current WBS/Test/DevLog同步、commit/push與formal handoff；不改consumer或其他owner source。
+- 風險：owner synthetic／package gates不能證明真browser wire與settlement；因此consumer未回報CoverageIntent及`local0`前不得關單。
+- 不變事項：不修改 consumer／oracle／2018 tail mapping；不改 A／D／highlight／Tagging／原始 C 行為；不納入既有 `lib-packs.txt`、Ptcs test、`.pcsl`、`temp` WIP。
+- 驗收：package RepositoryCommit／DLL ProductVersion exact；SDK library-packs hash parity；Renderer 114/114、Interactive 20/20；verifier PASS；BrowserDemo exact chain 0 errors；真 Gate B 最終仍由 Daedilus 證 action 含 NavigatorWindow CoverageIntent 且 settle `local0`。
+- 停止條件：owner evidence commit/push與formal handoff完成後等待 consumer；consumer未GREEN不得宣稱全部修完。
+
+## Operations
+
+- Source commit `acd00422892211f2662dc1fe3a83c968c210bc4f` 已 push；修正 shell 發布 atomic `(RuntimeState * TaPreparedRendererData)` pair，render closure 將同一 pair 傳入 navigator pointerdown handler，handler不再重讀 chart/current/latest frame。
+- Renderer 0.3.0 formal Release Rebuild：39 warnings、0 errors。
+- Renderer package：`src/PulseTrade.Comm.Spa.Dynamic.Renderer/bin/Release/PulseTrade.Comm.Spa.Dynamic.Renderer.0.3.0.nupkg`；SHA-256 `9FA017F16336A4E8DD877B6B4385AF49CA2743D097DF5A063D2472FCCC2BA481`；RepositoryCommit與ProductVersion均 exact `acd00422892211f2662dc1fe3a83c968c210bc4f`；dependencies為FSharp.Core `[10.1.402]`、Contracts `[0.1.41]`、WebSharper.FSharp `[10.1.7.680]`；SDK 10.0.402 FSharp/library-packs hash parity。
+- Interactive.Client 0.3.0 formal Release Rebuild：1 warning、0 errors。
+- Interactive.Client package：`src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/bin/Release/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.0.3.0.nupkg`；SHA-256 `AA8D7BCF1E72777815B5C5599CEE0F9E8216D5BD9E2E390AF2D393B64DAF929C`；RepositoryCommit與ProductVersion均 exact `acd00422892211f2662dc1fe3a83c968c210bc4f`；dependencies為Contracts `[0.1.41]`、Renderer `[0.3.0]`；SDK 10.0.402 FSharp/library-packs hash parity。
+- Final package-backed tests：Renderer 114/114、Interactive 20/20；package verifier PASS，4 entries且Interactive SHA exact。
+- Final package-only BrowserDemo：resolved Contracts 0.1.41、Renderer 0.3.0、Interactive.Client 0.3.0、FSharp.Core 10.1.402、WebSharper.FSharp 10.1.7.680；1個既有WS9002、0 errors；7個JavaScript assets，共2,756,802 bytes。
+- C: 空間不足前，只搬移本任務candidate/final restore cache與candidate packages至 `E:\temp\agent.asteer\dynamic-0300-cache-offload\`；未刪除、未碰其他owner資料。正式0.3.0 packages仍位於producer固定`bin/Release`並已複製至SDK library-packs。
+- Owner package gate完成；consumer Gate B尚未驗收，因此狀態維持consumer pending，不宣稱全部修完。
+- Changed-path sensitive scan：files=4，High=0、Medium=0；四檔strict UTF-8、無BOM、NUL=0、U+FFFD=0；`git diff --check` PASS。
+- 首次fresh checker session `asteer-dyn0300-20261027140830`：PASS=27／WARN=3／FAIL=0；本輪可修WARN為log缺顯式假設／範圍／風險，已補齊；其餘為expected dirty與既有RFC traceability，將重跑確認。
+- Final fresh checker session `asteer-dyn0300-20261027140830-final2`：PASS=28／WARN=2／FAIL=0；WARN僅為repo既有／並行dirty與既有RFC traceability缺口，WBS/Test missing均0，本輪無FAIL。

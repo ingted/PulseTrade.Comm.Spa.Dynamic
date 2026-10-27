@@ -1,11 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-726（0.3.0 owner source / package pending）
+## 2026-10-27 DYN-T-726（0.3.0 owner package complete / consumer pending）
 
 - 契約：inner navigator由哪個shell frame render，pointerdown就capture同一`RuntimeState * TaPreparedRendererData` pair；不得在handler內重讀`chartCommittedFrame.Value`、current runtime或latest prepared。Projection/timeline從pair prepared RawData，document/key從pair state。
 - RED：exact 0.2.59真B中preview target0、canonical event-time正確但POST無CoverageIntent/local1122；source gate證明shell只發布prepared half，handler改讀另一chart frame，0/1 RED。
-- GREEN：shell改atomic pair且render closure直接傳pair後，focused1/1、Renderer full114/114、source Release 0 errors。Final 0.3.0 packages仍須metadata/hash、package-backed Renderer/Interactive/verifier/BrowserDemo；Daedilus同序列必須帶NavigatorWindow CoverageIntent並settle local0，A/D/highlight/Tagging/原C不回歸。
-- Candidate：Renderer／Interactive0.3.0 exact chain完成114/114、20/20、verifier PASS、BrowserDemo 1個既有WS9002／0 errors；candidate SHA只作pre-commit gate，不交consumer。Final package必須重建為source commit exact。
+- GREEN：shell改atomic pair且render closure直接傳pair後，focused1/1、Renderer full114/114、source Release 0 errors。Final source `acd00422892211f2662dc1fe3a83c968c210bc4f`；Renderer／Interactive.Client 0.3.0 SHA=`9FA017F16336A4E8DD877B6B4385AF49CA2743D097DF5A063D2472FCCC2BA481`／`AA8D7BCF1E72777815B5C5599CEE0F9E8216D5BD9E2E390AF2D393B64DAF929C`，RepositoryCommit／DLL ProductVersion exact、Interactive Renderer=`[0.3.0]`、Contracts=`[0.1.41]`、SDK10.0.402 parity。
+- Final package gates：Renderer114/114、Interactive20/20、package verifier PASS；BrowserDemo exact chain resolved Contracts0.1.41／Renderer0.3.0／Interactive0.3.0／FSharp.Core10.1.402／WebSharper.FSharp10.1.7.680，1個既有WS9002／0 errors、7 JS assets。Daedilus同序列仍須action帶NavigatorWindow CoverageIntent並settle local0；A/D/highlight/Tagging/原C不得回歸。
 
 ## 2026-10-27 DYN-T-725（0.2.59 owner package / consumer RED；successor DYN-T-726）
 
