@@ -531,7 +531,7 @@ let tests =
             Expect.stringContains source "setNavigatorWindowFromPrepared" "navigator local commit must use its frozen event-time projection"
             Expect.stringContains source "RendererModel.navigatorVisibleEventRangePrepared" "navigator action range must use the overview authority selector"
 
-        testCase "DYN-T-717 cross-axis navigator requests exact event-time materialization without an ordinal" <| fun _ ->
+        testCase "DYN-T-717/DYN-T-724 navigator requests exact event-time materialization without an ordinal" <| fun _ ->
             let activeTimeline =
                 [| "2022-03-15T02:30:00.0000000+00:00"
                    "2022-03-15T03:00:00.0000000+00:00"
@@ -588,6 +588,14 @@ let tests =
             Expect.isNone
                 (RendererModel.tryCrossAxisNavigatorEventRangeIntent activeTimeline sameAxis target)
                 "same-axis navigator keeps its existing resident/local action path"
+            let sameAxisIntent =
+                RendererModel.tryNavigatorEventRangeIntent sameAxis target
+                |> Option.get
+            Expect.equal sameAxisIntent.Purpose TaCoverageWindowPurpose.NavigatorWindow "accepted same-axis settlement must retain navigator origin"
+            Expect.equal sameAxisIntent.RangeAuthority TaCoverageRangeAuthority.ExplicitBounds "event time remains the target authority"
+            Expect.isNone sameAxisIntent.StartObservationOrdinal "same-axis navigator event-range materialization does not invent a GLOBAL ordinal"
+            Expect.isNone sameAxisIntent.Direction "a long body drag is not rewritten as an adjacent-boundary request"
+            Expect.equal sameAxisIntent.ObservationCount target.Count "the long body drag preserves the frozen target width"
             Expect.isSome
                 (RendererModel.tryCrossAxisNavigatorEventRangeIntent
                     activeTimeline
@@ -599,8 +607,8 @@ let tests =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
             Expect.stringContains
                 source
-                "RendererModel.tryCrossAxisNavigatorEventRangeIntent"
-                "the local navigator commit must attach the typed cross-axis materialization intent"
+                "RendererModel.tryNavigatorEventRangeIntent"
+                "the local navigator commit must retain typed navigator origin after axis settlement"
 
         testCase "DYN-T-721 cross-axis exact active fallback still requests event-time materialization" <| fun _ ->
             let activeTimeline =

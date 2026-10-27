@@ -148,6 +148,10 @@ no-ordinal／no-direction／`ExplicitBounds`只描述range authority，不能區
 
 Purpose不替代StartOrdinal／Direction／RangeAuthority：有ordinal/direction的overscroll仍按既有materialization path處理。Consumer不得由count、axis或missing purpose推論；升級時total match此DU，MainPlotPan保visible count並同步平移resident+visible，NavigatorWindow只套用fixed resident內durable visible window。Contracts wire round-trip、resident action validation與兩個Renderer origin tests為owner gate。
 
+### D23. 2026-10-27 navigator purpose survives accepted axis settlement
+
+D22的purpose由producer interaction seam決定，不由每次action當下的axis equality重新推論。Accepted navigator materialization可能改變Global／Active axis關係；後續同一inner navigator的resize、move或長body drag仍須附`NavigatorWindow`。Same/cross-axis只選擇exact prepared event timeline及ordinal是否可安全使用；它不得把typed origin降成`CoverageIntent=None`。Event-time range繼續作位置authority，same-axis navigator event-range亦為`ExplicitBounds`、`StartObservationOrdinal=None`、`Direction=None`。Main plot、resident ordinal與adjacent boundary path不變，禁止count fallback。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

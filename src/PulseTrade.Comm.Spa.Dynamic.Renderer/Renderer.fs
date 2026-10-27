@@ -3552,10 +3552,8 @@ module TaWorkspaceRenderer =
             projection
             followLatest
             window =
-            let activeTimeline =
-                RendererModel.referenceTimelineForDocumentPrepared expectedDocument prepared
             let coverageIntent =
-                RendererModel.tryCrossAxisNavigatorEventRangeIntent activeTimeline projection window
+                RendererModel.tryNavigatorEventRangeIntent projection window
             setWindowFromPreparedRange
                 expectedDocument
                 prepared

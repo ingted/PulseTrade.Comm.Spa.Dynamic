@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 post-settlement navigator purpose continuity（DYN-WBS-610）
+
+0.2.57真Gate B證明第一次cross-axis resize／middle move皆帶`NavigatorWindow`並正確settle；accepted frame之後的長body drag從resident-local `1201/79`到`0/79`，卻只送沒有`CoverageIntent`的`VisibleRangeChanged`，最後只到`1122/79`。最早偏離不是consumer total match、count或pointer geometry，而是producer以「當下Global/Active axis是否不同」決定是否保留purpose：accepted materialization可讓axis equality改變，但gesture origin仍是navigator。
+
+不變量是producer seam決定origin：所有由inner navigator送出的event-range action都帶`NavigatorWindow`，不因accepted frame後的axis equality消失；main plot仍只帶`MainPlotPan`。Same/cross-axis只影響event-time timeline選擇或ordinal可否映射，不得刪除purpose；此路徑仍以UTC半開range為位置authority，`StartObservationOrdinal=None`、`Direction=None`，不恢復count heuristic或猜GLOBAL ordinal。
+
 ## 2026-10-27 coverage-window purpose authority（DYN-WBS-609）
 
 Gate B真wire證明cross-axis main pan與navigator move／resize都可形成`StartObservationOrdinal=None`、`Direction=None`、`RangeAuthority=ExplicitBounds`。第一次resize可用count變化猜中navigator，但下一次等寬move的count會等於current visible count，立即被同一heuristic誤判main pan並搬動resident。最早偏離不是range authority或axis mapping，而是shared intent沒有producer purpose；count、目前window或action順序都不是穩定authority。

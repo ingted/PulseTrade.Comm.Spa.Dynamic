@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-724（0.2.58 owner source / package pending）
+
+- 契約：inner navigator origin在accepted frame使axis relation改變後仍是`NavigatorWindow`。Same-axis event-range intent保持`ExplicitBounds`、StartOrdinal/Direction none、current coverage revision、next query generation與frozen target count；main plot及resident ordinal path不變。
+- RED：0.2.57 package-backed Renderer test呼叫canonical unconditional navigator helper得到FS0039；真18884先證resize/middle move purpose正確，再證長body drag local1201/count79→target0只送bare ui:4，settle為local1122而非0。
+- GREEN gate：Renderer source使用unconditional navigator helper，保留舊cross-axis compatibility test；fresh Renderer/Interactive tests、package metadata/hash、verifier與package-only BrowserDemo需全綠。真E2E必須同一序列settle到local0，且A/C/highlight/D無回歸。
+
 ## 2026-10-27 DYN-T-723（0.2.57 owner package / consumer pending）
 
 - 契約：每個`TaCoverageWindowIntent`都帶required purpose。main plot in-range／boundary／provider-open皆為MainPlotPan；cross-axis navigator move／resize及resident action為NavigatorWindow。有StartOrdinal／Direction的overscroll仍以既有materialization authority處理，purpose不取代range authority。

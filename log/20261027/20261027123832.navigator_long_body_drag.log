@@ -1,0 +1,27 @@
+# Navigator long body drag retains coverage purpose
+
+## Pre-work plan
+
+- Context: Renderer/Interactive.Client 0.2.57 introduced `TaCoverageWindowPurpose` and `ta-coverage-window.v2`. Daedilus installed the immutable packages and proved the first resize and middle move settle correctly, without the retired count heuristic.
+- 目標: preserve typed navigator origin and the frozen target range through the post-settlement long body drag, then produce an immutable 0.2.58 owner package for real 18884 verification.
+- 假設: the cross-axis-only predicate is the earliest authority loss; axis equality after accepted materialization erases `NavigatorWindow` even though the action still originates from the inner navigator.
+- Observed failure: after resize to 79 and a settled middle move, a body drag from resident-local start 1201 to target start 0 emits only `VisibleRangeChanged`; `CoverageIntent` is absent. Consumer settles active 49646 -> 49567 and resident-local 1201 -> 1122 instead of materializing target local 0.
+- Source of truth: the pointerdown-frozen navigator domain/window and the emitted action wire captured in `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0257-bundle\left-edge-80-*.json`, plus the typed `TaCoverageWindowPurpose` contract.
+- Invariant: every navigator-origin event-range materialization retains `Purpose=NavigatorWindow` and the exact frozen target event range; main-plot pan remains `MainPlotPan`; no count-based inference returns.
+- Scope/owner: producer source/tests/packages under this repository only. Daedilus owns consumer/18884 changes and real-browser acceptance.
+- Plan: establish a focused RED for the post-settlement same-axis/long-body-drag path; locate the earliest branch that drops the navigator intent; make the smallest producer fix; run focused/full tests, package verification, package-only consumer build, sensitive/encoding/check gates; commit/push and hand off immutable package evidence.
+- Acceptance: resize 1500 -> 79, middle move, then long body drag to local 0 emits a navigator-purpose intent and exact target range; existing main-pan, resident, highlight, and D behavior remain green; Daedilus confirms real 18884 A/B/C and regression gates.
+- Risks: same-axis navigation previously relied on a bare `VisibleRangeChanged`; adding the explicit discriminator must not invent an ordinal or change main-plot semantics.
+
+## Operations
+
+- 2026-10-27 12:35 +08:00: received Daedilus message `msg-fsi-cf924969482b4587a38f7dd9d76f14fc`. B remains RED only on the long body drag; C original `Frames=[]` path is closed and awaits a 30-second correctness rerun; A rerun follows.
+- 2026-10-27 12:36 +08:00: replied with exact `replyToMessageId`, accepted owner-side scope, and preserved the no-count-heuristic/consumer-owner boundary.
+- 2026-10-27 12:37 +08:00: audited branch `20260915_033.ptcs_group_support`; HEAD/upstream `4f871a3766fb77e312a7e0d2fd576c9480194e63`. Preserved unrelated dirty `lib-packs.txt`, `tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests/Program.fs`, `.pcsl/**`, and `temp/`.
+- 2026-10-27 12:37 +08:00: read the three bounded consumer evidence files. Wire action `ui:4` has `VisibleRangeChanged` with no `CoverageIntent`; gesture target is resident-local start 0/count 79; settled state remains local start 1122/count 79.
+- 2026-10-27 12:38 +08:00: source inspection located the first authority loss: `setNavigatorWindowFromPrepared` derives the discriminator through cross-axis-only `tryCrossAxisNavigatorEventRangeIntent`; once the accepted frame normalizes axes, the next navigator-origin event range is deliberately returned as `None` although gesture origin remains navigator. `setWindowFromPreparedRange` then serializes the bare visible-range action.
+- 2026-10-27 12:38 +08:00: two initially combined bounded source/test reads exceeded the <20 KiB guard (32,823 and 24,734 bytes). Raw captures were not read; subsequent reads were split into bounded ranges.
+- 2026-10-27 12:39 +08:00: DYN-T-724 RED against package-backed Renderer 0.2.57: build failed only at the new canonical helper with FS0039 (`tryNavigatorEventRangeIntent` absent); four pre-existing FS0046 warnings remained.
+- 2026-10-27 12:40 +08:00: implemented unconditional typed navigator event-range builder; retained the old cross-axis helper as a compatibility predicate/delegator, and switched only `setNavigatorWindowFromPrepared` to the new producer-origin seam. Bumped Renderer/Interactive.Client and their direct tests to exact 0.2.58; Contracts remains 0.1.41.
+- 2026-10-27 12:41 +08:00: first normal Renderer source build exited 0 but emitted 27,793 bytes of WebSharper output, so the guard withheld it. Raw capture was not read. A quiet/errors-only rerun exited 0.
+- 2026-10-27 12:42 +08:00: added RFC-0036 D23, SA/SD, DYN-WBS-610, DYN-T-724, and append-only DevLog traceability. Historical cross-axis helper behavior remains documented; the new decision explicitly supersedes using axis equality as purpose authority at the live navigator seam.

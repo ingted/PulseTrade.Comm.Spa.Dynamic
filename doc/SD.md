@@ -1,5 +1,11 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 navigator event-range origin survives axis settlement（DYN-WBS-610）
+
+RendererModel新增`tryNavigatorEventRangeIntent projection targetWindow`，無條件以既有`tryEventRangeIntent`建立`Purpose=NavigatorWindow`、no-ordinal/no-direction `ExplicitBounds` intent；舊`tryCrossAxisNavigatorEventRangeIntent`保留相容surface及predicate，只委派新builder。`Renderer.setNavigatorWindowFromPrepared`改用unconditional helper，因該函式本身就是navigator-origin boundary；range仍由pointerdown frozen prepared data、projection與`navigatorVisibleEventRangePrepared`取得，main plot／resident ordinal／boundary producers不變。
+
+DYN-T-724以accepted same-axis projection鎖定purpose、range authority、absence of ordinal/direction及exact count；DYN-T-717原cross-axis與old-helper same-axis compatibility assertions保留。Renderer／Interactive.Client升0.2.58，Contracts維持0.1.41／schema v2；Daedilus以resize→middle move→long body drag local0及A/C regression作真E2E gate。
+
 ## 2026-10-27 explicit coverage-window purpose（DYN-WBS-609）
 
 Contracts新增qualified DU `TaCoverageWindowPurpose = MainPlotPan | NavigatorWindow`，並把required `Purpose`加入`TaCoverageWindowIntent`；required wire改變使`WindowIntentSchema`由v1升v2。`TaLoadedCoverageCodec.tryWindowIntent`／resident relocation的generic default是NavigatorWindow；`DynamicActionValidation`拒絕以MainPlotPan purpose送`ResidentCoverageChanged`。BrowserRuntimeCodec沿用typed JSON，Contracts test直接驗purpose round-trip，不新增第二套DTO或optional compatibility fallback。

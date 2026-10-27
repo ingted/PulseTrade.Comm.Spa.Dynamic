@@ -3541,13 +3541,16 @@ module RendererModel =
     let tryMainPlotEventRangeIntent projection targetWindow =
         tryEventRangeIntent TaCoverageWindowPurpose.MainPlotPan projection targetWindow
 
+    let tryNavigatorEventRangeIntent projection targetWindow =
+        tryEventRangeIntent TaCoverageWindowPurpose.NavigatorWindow projection targetWindow
+
     let requiresCrossAxisNavigatorEventRangeMaterialization projection =
         projection.GlobalOverview
         |> Option.exists (fun overview -> overview.AxisRef <> projection.ActiveDetail.BaseAxisRef)
 
     let tryCrossAxisNavigatorEventRangeIntent (_activeTimeline: string array) projection targetWindow =
         if requiresCrossAxisNavigatorEventRangeMaterialization projection then
-            tryEventRangeIntent TaCoverageWindowPurpose.NavigatorWindow projection targetWindow
+            tryNavigatorEventRangeIntent projection targetWindow
         else
             None
 
