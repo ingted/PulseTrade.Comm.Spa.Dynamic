@@ -1,0 +1,18 @@
+# Navigator left-edge UI repair
+
+## Pre-work plan
+
+- 背景：user提供 `G:\coldfar_py\coldfar-symbolics\misc\2026-10-27 原本位置在1，拉到最左側，它會閃回位置2，而不是正確的往左側展1500根，且以目前最左側的位置作為接續點.png`，要求立即修復。
+- 目標：左界gesture以當前loaded head為接續點向左取得1500根，資料與viewport正確接續，不能跳回舊位置。
+- 事實：source `4b46434019a21ea3671766c70d11937f8c13b8c6` 已push；0.3.12候選Renderer128/128、Interactive20/20已通過。final Renderer/Interactive ProductVersion均含4b46434，SDK package hash parity已核；尚未final consumer UI驗收。
+- 假設：舊0.3.11 host拒絕count1491/max1500及epoch bounds已由0.3.12修復；截圖可能另含global-backed local relocation不觸發prepend。先區分deployment版本與gesture authority，避免重複修已解問題。
+- 範圍／owner：asteer負責Dynamic Renderer/Interactive與tests；daedilus負責真Research consumer驗收。lib-packs、Ptcs.Tests外來空白行與既有PCSL/temp dirty保留。
+- 步驟：核目前host/原formal失敗點→補必要失敗測試與最小source變更→final package focused驗證→真host相同gesture驗收→文件/check/commit/push。
+- 驗收：Earlier action正確、接縫無重複/遺失、loaded增加1500、viewport連續且不閃回、相鄰local/global操作通過。
+- 風險：active consumer由daedilus控制，測試需協調以免互相重設；unit/build不能替代UI驗收。
+
+## Operations
+
+- 2026-10-27 21:58 +08:00：恢復中斷的授權修復；status確認source無新dirty。先前final pack stale compiler service曾鎖websharper.log；僅終止exact自有專案compiler-service後重建，Renderer/Interactive與PTCS兩包ProductVersion皆為4b46434。PTCS PKCS NU1902/NU1903 blocker仍open。
+- 2026-10-27 22:04 +08:00：0.3.12 final Renderer package DLL與test runtime SHA同為1BF92FAF638E06D8820AE5A79B34D2DED7739FB963CC4D71CA8299E3E057D6E6；focused10/10、provider-open1/1、Interactive verifier PASS。自動審核拒絕兩個cache目錄刪除與shell Chrome啟動，未刪除；採binary readback測試與Chrome DevTools new_page成功。Node browser bridge缺kernel assets path，改既有Chrome工具。
+- 2026-10-27 22:10 +08:00：DYN-T-740以4500/start1198/count80、move delta=-1198、pointer仍在track內重現RED（expected Earlier、actual None，1 failed）。檢查確認cross-axis GLOBAL fallback亦會丟棄adjacent intent。修selection到左界觸發Earlier與cross-axis走event-time；same-axis ordinal route、resize與interior保持原行為。DYN-T-731/737依user明確觸界續載需求更新，非以舊implementation作oracle。一次測試仍在guard中時誤呼Foreground-Handoff造成capture鎖錯；未重啟測試，依原session取回完整RED，後續嚴格單一guard。

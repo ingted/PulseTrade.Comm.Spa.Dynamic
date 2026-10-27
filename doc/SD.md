@@ -1,5 +1,9 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## Current correction：left-edge release（RFC-0036 D36 / 0.3.13）
+
+`navigatorGestureBoundaryDirection`在有效domain、Move、rawDelta<0且requestedStart<=0時回Earlier；其他gesture沿既有規則。`requiresNavigatorAdjacentEventRangeMaterialization`對無GLOBAL或GLOBAL.AxisRef與ActiveDetail.BaseAxisRef不同者走event-time；same-axis保留ordinal route。既有queue、revision/generation fence、request count1500及provider-open loaded-head anchor不變。DYN-T-740覆蓋觸界/interior/no-motion/resize；DYN-T-737覆蓋cross-axis與same-axis分流。0.3.13同步Renderer/Interactive/direct tests；Ptcs.Client0.2.1與其tests/LiveDemo同步Renderer引用。
+
 ## 2026-10-27 active-local adjacent navigator dispatch（DYN-WBS-620 / 0.3.10-0.3.12）
 
 `tryNavigatorAdjacentEventRangeIntent`只建立directional event-range materialization contract：ExpectedCoverageRevision=current、QueryGeneration+1、StartObservationOrdinal=None、ObservationCount=current visible width、RangeAuthority=ExplicitBounds、Purpose=NavigatorWindow。它不讀GLOBAL total，也不把active ordinal0轉成whole-series ordinal。

@@ -2,6 +2,8 @@
 
 Progress 是粗略 implementation checkpoint，不代表正式驗收。
 
+DYN-WBS-620 current：0.3.13依RFC-0036 D36修selection左觸界與cross-axis adjacent routing；DYN-T-740已有RED→source focused GREEN。正式package與Research真UI驗收進行中，未close；詳見TEST current gate及`log/20261027/20261027215838.navigator_left_edge_ui.log`。
+
 | ID | 工項 | 狀態 | Progress | Test ID | 證據 / 備註 |
 |---|---|---:|---:|---|---|
 | WBS-001 | Harness 與文件鏈初始化 | Done | 100 | - | `doc/` 已有 REQ/SA/SD/WBS/TEST/UPSTREAM_RFC，目錄與專案結構建置完成。 |

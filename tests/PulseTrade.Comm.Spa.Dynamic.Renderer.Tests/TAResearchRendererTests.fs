@@ -2190,7 +2190,7 @@ let tests =
                 (1, 1)
                 "both counts remain valid at the lower bound"
 
-        testCase "DYN-T-737 initial global-backed active-local overscroll keeps the local event-time route" <| fun _ ->
+        testCase "DYN-T-737 cross-axis global-backed left edge uses adjacent event-time authority" <| fun _ ->
             let projection : TaLoadedCoverageProjection =
                 { CoverageIdentity = "coverage:initial-global-backed"
                   CoverageRevision = 1L
@@ -2212,9 +2212,17 @@ let tests =
                           ResidentStartObservationOrdinal = 1_387_905L
                           ResidentObservationCount = 134_906 } }
 
-            Expect.isFalse
+            Expect.isTrue
                 (RendererModel.requiresNavigatorAdjacentEventRangeMaterialization projection)
-                "a global-backed initial projection must clamp the local draft and materialize its exact event range"
+                "a cross-axis GLOBAL cannot suppress earlier loading or supply ordinals for the active axis"
+
+            let intent = RendererModel.tryNavigatorAdjacentEventRangeIntent TaCoverageDirection.Earlier 1500 projection |> Option.get
+            Expect.isNone intent.StartObservationOrdinal "the cross-axis continuation is anchored by event time"
+            Expect.equal intent.ObservationCount 1500 "the directional request asks for the full continuation page"
+            Expect.isFalse
+                (RendererModel.requiresNavigatorAdjacentEventRangeMaterialization
+                    { projection with GlobalOverview = projection.GlobalOverview |> Option.map (fun overview -> { overview with AxisRef = projection.ActiveDetail.BaseAxisRef }) })
+                "same-axis resident ordinal authority retains its existing route"
 
             let source =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
@@ -2631,7 +2639,7 @@ let tests =
             Expect.isNone (direction -1500 0.0) "Landing exactly on the left track boundary is local."
             Expect.isNone (direction 2000 1000.0) "Landing exactly on the right track boundary is local."
 
-        testCase "DYN-T-731 cross-axis resident track clamps pixel quantization at local zero" <| fun _ ->
+        testCase "DYN-T-731 cross-axis resident track continues earlier when the selection reaches local zero" <| fun _ ->
             let committed = { StartIndex = 1198; Count = 80 }
             let rawDelta = -1200
             let draft =
@@ -2642,13 +2650,31 @@ let tests =
                 (RendererModel.navigatorGestureBoundaryDirection false 4500 committed TaWindowDrag.Move rawDelta 10.0 1200.0)
                 (Some TaCoverageDirection.Earlier)
                 "a local-only navigator retains logical-boundary behavior"
-            Expect.isNone
+            Expect.equal
                 (RendererModel.navigatorGestureBoundaryDirection true 4500 committed TaWindowDrag.Move rawDelta 10.0 1200.0)
-                "a resident track must commit clamped local zero while the pointer remains physically inside"
+                (Some TaCoverageDirection.Earlier)
+                "user left-edge continuation follows the selection even when the pointer grab offset remains inside"
             Expect.equal
                 (RendererModel.navigatorGestureBoundaryDirection true 4500 committed TaWindowDrag.Move rawDelta -0.1 1200.0)
                 (Some TaCoverageDirection.Earlier)
                 "an actual physical overscroll still requests earlier resident coverage"
+
+        testCase "DYN-T-740 moving the visible selection to the loaded left edge requests continuation" <| fun _ ->
+            let committed = { StartIndex = 1198; Count = 80 }
+            for hasGlobalTrack in [ false; true ] do
+                Expect.equal
+                    (RendererModel.navigatorGestureBoundaryDirection hasGlobalTrack 4500 committed TaWindowDrag.Move -1198 10.0 1200.0)
+                    (Some TaCoverageDirection.Earlier)
+                    "reaching the loaded head requests earlier data even when the pointer grab offset remains inside the track"
+                Expect.isNone
+                    (RendererModel.navigatorGestureBoundaryDirection hasGlobalTrack 4500 committed TaWindowDrag.Move -1197 10.4 1200.0)
+                    "an interior position does not request another page"
+                Expect.isNone
+                    (RendererModel.navigatorGestureBoundaryDirection hasGlobalTrack 4500 { StartIndex = 0; Count = 80 } TaWindowDrag.Move 0 10.0 1200.0)
+                    "a click without movement at the boundary cannot request repeated pages"
+                Expect.isNone
+                    (RendererModel.navigatorGestureBoundaryDirection hasGlobalTrack 4500 committed TaWindowDrag.ResizeLeft -1198 0.0 1200.0)
+                    "resizing to the existing head does not request a page"
 
         testCase "DYN-T-732 move snaps the rendered selection right edge to maximum start" <| fun _ ->
             let total = 4500

@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## Current gate：DYN-T-740 selection reaches left edge（0.3.13）
+
+- RED：0.3.12 package上4500 loaded/start1198/count80、delta=-1198、pointer10/width1200回None，1 failed。
+- Source：觸界focused1/1。由舊package編譯tests再替換DLL使可最佳化helper仍採舊reference，full128/129（737失敗）；此結果不作正式package gate，改新0.3.13 exact restore/build/tests。
+- 必驗：跨axis/global與no-global觸界Earlier；interior、無移動click及resize不誤發。Same-axis route不變。真host須同時驗原formal與user縮小viewport後左觸界，記request/accept/loaded/head/viewport接縫與browser errors。
+
 ## 2026-10-27 DYN-T-738／DYN-T-739（provider-open epoch + directional request/viewport counts）
 
 - Real RED：Daedilus exact0.3.11完整formal的initial gate已GREEN；returned tail action為Direction=Earlier、StartOrdinal=None、ExplicitBounds/NavigatorWindow、ObservationCount1491、MaximumBasePoints1500，range仍`1970-01-01T08:00+08..2026-05-29T11:00+08`。Research true host以`SPAA-ACTION-COVERAGE-WINDOW`拒絕，Loaded/Viewing維持1491。Evidence=`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\formal-overview-edge-drag-0311\returned-earlier-drop.json`。

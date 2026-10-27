@@ -1,5 +1,9 @@
 # RFC-PTCS-DYNAMIC-0036 Global Resident Navigator
 
+## D36 — 2026-10-27 左界觸及即續載（user accepted；0.3.13）
+
+User以實際Chrome截圖明確要求：可視框向左移到已載入範圍左界時，以loaded head為接點向左取得1500根，不必把滑鼠拖出外框。Move且負向delta到零才送Earlier；靜止click、interior及resize不新增觸界fetch。跨尺度GLOBAL不得把1K ordinal當30K位置，也不得壓回local commit；沿既有event-time/provider-open contract。Same-axis ordinal route與query/revision fence保留。DYN-T-740修前RED、修後focused GREEN；0.3.13正式package與true-host gate待驗。此決策取代DYN-T-731/737先前「GLOBAL一律clamp local」的操作假設。
+
 - ID: RFC-PTCS-DYNAMIC-0036
 - Status: Accepted / owner package and formal consumer validation passed
 - Date: 2026-10-21

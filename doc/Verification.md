@@ -6,6 +6,11 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
+### DYN-VFY-062 左界觸及續載（0.3.13 / pending）
+
+- DYN-T-740：4500 loaded/start1198/count80、負向Move剛到左界且pointer仍在內；0.3.12 RED，source focused GREEN。Interiors/no-motion/resize與same-axis須維持。
+- 0.3.13正式exact-package測試與18884 true UI尚待；原formal與使用者縮小框後觸左界均須驗request、accept、loaded head接縫、viewport寬度與browser errors。DYN-T-731/737需求更新依RFC-0036 D36。
+
 ### DYN-VFY-061 0.3.12 scoped active-local Earlier authority（owner candidate / consumer pending）
 
 - 0.3.9真RED：query settlement已GREEN；failure-drop pointerdown projection=Some、coverage25/20/start0/count1491、前一action已settled。Pointerup新增ui:30卻是bare current range，frame1，Loaded/Viewing仍1491，決定性排除stale/pending並定位ordinal0 local reapply。

@@ -3453,7 +3453,10 @@ module RendererModel =
         | _ -> None
 
     let navigatorGestureBoundaryDirection hasGlobalResidentTrack total committed drag rawDelta pointerX trackWidth =
-        if hasGlobalResidentTrack then
+        if total > 0 && committed.Count > 0 && drag = TaWindowDrag.Move
+           && rawDelta < 0 && committed.StartIndex + rawDelta <= 0 then
+            Some TaCoverageDirection.Earlier
+        elif hasGlobalResidentTrack then
             residentNavigatorBoundaryDirection total committed drag rawDelta pointerX trackWidth
         else
             navigatorBoundaryDirection total committed drag rawDelta
@@ -3618,7 +3621,8 @@ module RendererModel =
             observationCount
 
     let requiresNavigatorAdjacentEventRangeMaterialization (projection: TaLoadedCoverageProjection) =
-        projection.GlobalOverview.IsNone
+        projection.GlobalOverview
+        |> Option.forall (fun overview -> overview.AxisRef <> projection.ActiveDetail.BaseAxisRef)
 
     let navigatorAdjacentObservationCounts maximumVisibleBars observationCount =
         let requestObservationCount =

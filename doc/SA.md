@@ -1,5 +1,9 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## Current correction：左界觸及續載（RFC-0036 D36 / 0.3.13）
+
+User截圖的操作要求是selection觸界即向左接1500，而0.3.12的physical-pointer gate只有pointer出框才續載；cross-axis GLOBAL另一分支更會將boundary降為local commit。DYN-T-740以4500/start1198/count80、delta=-1198重現None而非Earlier。共同不變量是以當前navigator axis及loaded-head event time接續，不能以GLOBAL存在與否阻擋續載。修正只影響負向Move觸左界及cross-axis adjacent routing；request1500與viewport寬度分離維持。True-host接縫/viewport驗收仍須完成。
+
 ## 2026-10-27 returned-query left overscroll authority（0.3.9 / 0.3.10-0.3.11 falsification / 0.3.12）
 
 0.3.9真formal已證query settlement本身GREEN：pending=false、selected-applied、ActiveDetail／Loaded／Viewing皆1491。其後returned-2026左overscroll的pointerdown frozen projection為Some，state/prepared coverage皆`ref-present/some:25:20:0:1491`，且前一action已在pointerdown前1177ms完成；pointerup同毫秒新增的ui:30卻仍是當前`2026-05-29..07-14` bare range、CoverageIntent=None、frameCount1，Loaded/Viewing不變。這排除stale frame與pending競態。
