@@ -346,6 +346,27 @@ let tests =
                   "let cancel () =" ] do
                 Expect.stringContains source required ("missing main-plot range preview contract: " + required)
 
+        testCase "DYN-T-718 accepted event-range settlement owns a changed coverage scope" <| fun _ ->
+            Expect.isTrue
+                (RendererModel.eventRangeSettlementOwnsViewportScope true true true false)
+                "a consumed exact settlement must not be overwritten by the new coverage identity default"
+            Expect.isTrue
+                (RendererModel.eventRangeSettlementOwnsViewportScope true true false true)
+                "an awaiting matching settlement preserves its pending viewport across an intermediate coverage identity"
+            Expect.isFalse
+                (RendererModel.eventRangeSettlementOwnsViewportScope true false false true)
+                "a base-row mismatch is a real scope change and must not retain the old pending action"
+            Expect.isFalse
+                (RendererModel.eventRangeSettlementOwnsViewportScope false true false true)
+                "an unchanged coverage scope does not need to suppress default application"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains
+                source
+                "eventRangeSettlementOwnsViewportScope"
+                "the live accepted-data branch must use the tested scope precedence policy"
+
         testCase "DYN-T-716 accepted main relocation reanchors the requested event time exactly once" <| fun _ ->
             let allTimes =
                 Array.init 4_840 (fun index ->

@@ -3059,12 +3059,26 @@ module TaWorkspaceRenderer =
                 next.Document
                 |> Option.map (fun document -> defaultViewportAppliedToCanvas <> Some(viewportScopeKey next document))
                 |> Option.defaultValue false
-            let mainPlotSettlementConsumed =
-                if viewportScopeChanged then
+            let pendingEventRangeMatchesDocument =
+                match pendingEventRangeSettlement, next.Document with
+                | Some pending, Some document -> document.BaseRowId = Some pending.BaseRowId
+                | _ -> false
+            let eventRangeSettlementConsumed =
+                if viewportScopeChanged && not pendingEventRangeMatchesDocument then
                     pendingEventRangeSettlement <- None
                     false
                 else
                     settlePendingEventRangeProjectionFor next nextPreparedData
+            let eventRangeSettlementOwnsViewportScope =
+                RendererModel.eventRangeSettlementOwnsViewportScope
+                    viewportScopeChanged
+                    pendingEventRangeMatchesDocument
+                    eventRangeSettlementConsumed
+                    pendingEventRangeSettlement.IsSome
+            if eventRangeSettlementOwnsViewportScope && eventRangeSettlementConsumed then
+                next.Document
+                |> Option.iter (fun document ->
+                    defaultViewportAppliedToCanvas <- Some(viewportScopeKey next document))
             let topologyChanged =
                 next.Identity <> committedState.Identity
                 || not (sameDocumentPresentation committedState next)
@@ -3090,7 +3104,7 @@ module TaWorkspaceRenderer =
                             currentUi.FollowLatest
                             currentUi.Window
                     let reanchored =
-                        if viewportScopeChanged then
+                        if viewportScopeChanged && not eventRangeSettlementOwnsViewportScope then
                             pendingBoundaryPan <- None
                             Some(
                                 RendererModel.initialViewportWindow
@@ -3151,7 +3165,7 @@ module TaWorkspaceRenderer =
                                         nextTimeline
                                         pending.IntentWindow
                                 | _ -> None
-                            | _ when not mainPlotSettlementConsumed
+                            | _ when not eventRangeSettlementConsumed
                                      && pendingEventRangeSettlement.IsNone
                                      && not currentUi.FollowLatest
                                      && generalOldTimeline.Length > 0

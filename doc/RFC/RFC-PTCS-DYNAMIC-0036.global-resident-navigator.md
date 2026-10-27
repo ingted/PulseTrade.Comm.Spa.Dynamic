@@ -122,6 +122,10 @@ non-CURSOR main exact-pan送出的`VisibleRangeChanged`以UTC半開range為viewp
 
 D14只使cross-axis navigator preview與action取得正確UTC range，沒有要求consumer materialize該range；`CoverageIntent=None`時consumer只能沿用既有visible-page shift，真18884因而在local0 drop後只移動79 bars。當且僅當D14的validated cross-axis one-to-one timeline成立時，Renderer須為同一frozen window附加`ExplicitBounds` intent：`StartObservationOrdinal=None`、`Direction=None`、當前coverage revision、下一query generation與exact visible count；UTC半開range仍是位置authority，禁止建立GLOBAL ordinal。accepted frame沿用D15 exact UTC settlement，但pending state泛化為event-range relocation。same-axis、長度或timestamp validation不精確的fallback仍不附加此intent，既有resident/local action、preview與wire shape不變。
 
+### D17. 2026-10-27 accepted settlement precedes coverage-identity viewport reset
+
+D15的「coverage scope清pending」只適用pending action與next document/base row不相符的真正scope切換。`viewportScopeKey`包含CoverageIdentity，而accepted relocation本來就可更新CoverageIdentity；若matching pending event-range已Reanchor／Reject，該settlement擁有viewport且不得再被document default覆寫，並把新scope標為已套用；若matching action仍Await，保留pending與當前optimistic viewport，直到matching／terminal frame。只有base-row不符或沒有matching pending時才清舊context並套default。canvas／identity切換既有clear path、wire與server materialization契約不變。
+
 - Contracts and wire codecs gain optional/additive fields and one action discriminator.
 - Renderer gains a second, visually separate navigator and an independent draft/pending state machine.
 - Interactive.Client transports the new action without Research-specific vocabulary.

@@ -1,10 +1,16 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
-## 2026-10-27 DYN-T-717（0.2.52 owner candidate / consumer pending）
+## 2026-10-27 DYN-T-718（0.2.53 owner candidate / consumer pending）
+
+- 真反例：0.2.51 package/host ProductVersion exact、新browser context，action與server materialization全GREEN，DOM仍`1645 -> 1985`。`viewportScopeKey`包含CoverageIdentity；accepted ui:5 更新identity時live branch先清pending，再以document default覆寫viewport，故DYN-T-716 pure exact UTC helper未成為live authority。
+- policy gate：changed coverage scope＋matching base row時，Reanchor/Reject consumed必須壓過default並完成新scope；Await須保留pending/viewport；base-row mismatch仍不得保留舊action；scope未變不需抑制default。source gate要求`acceptPreparedDataCore`實際使用同一pure policy。
+- RED/GREEN：0.2.52 exact package缺`eventRangeSettlementOwnsViewportScope`而4個FS0039 RED；0.2.53 candidate DYN-T-718與Renderer109/109、Interactive20/20、Interactive package verifierPASS、package-only BrowserDemo 0 warnings/0 errors。candidate Renderer/Interactive SHA=`410F1113...5065`／`8646DE9D...5E02`，尚非post-commit authority。真E2E須以Daedilus原ui:4→ui:5 sequence驗main local維持1645，再驗cross-axis local0／續overscroll。
+
+## 2026-10-27 DYN-T-717（0.2.52 source complete / 0.2.53 successor consumer pending）
 
 - 反例：cross-axis resident overview local0與action `StartEventTimeUtc`已同為`2022-03-11T10:00:00Z`，但0.2.50 action `CoverageIntent=None`，consumer只能把ActiveDetail `49646 -> 49567`（-79），settled local start仍1122。最早偏離不是pointer mapping，而是缺少exact-time materialization contract。
 - contract gate：只有`GlobalOverview.AxisRef <> ActiveDetail.BaseAxisRef`、overview axis等於active/base、validated overview timeline與active timeline exact同長且非空時，建立`ExplicitBounds` intent；Start ordinal／Direction皆None，revision為當前、generation只+1、count保留draft width。same-axis與長度不符都必須回None，不做GLOBAL ordinal或比例推測。
-- RED/GREEN：0.2.51 exact package因helper不存在得到3個FS0039 RED；0.2.52 candidate DYN-T-717與Renderer108/108、Interactive20/20、Interactive package verifierPASS，package-only BrowserDemo同步FSharp.Core10.1.402／WebSharper.FSharp10.1.7.680／WebSharper.UI10.1.6.680並以Spa project type build 0 warnings/0 errors。candidate Renderer/Interactive SHA=`7D2BA67D...B768`／`7F025C43...0BC9`，尚非post-commit authority。Daedilus真18884須驗action後ActiveDetail absolute relocation、settled localStart=0、selection ratio與續left overscroll；2018 query DOCUMENT-CHANGED為consumer獨立診斷。
+- RED/GREEN：0.2.51 exact package因helper不存在得到3個FS0039 RED；0.2.52 source commit `ec2470fdd5be67dab0079251e1aca4dfa57ce817`已push，local final Renderer/Interactive SHA=`BEA57060...EE1A`／`94DFD9B2...B632`及owner gates全綠，但因main scope真RED而未handoff。功能保留於0.2.53 successor；Daedilus須驗action後ActiveDetail absolute relocation、settled localStart=0、selection ratio與續left overscroll；2018 query DOCUMENT-CHANGED為consumer獨立診斷。
 
 ## 2026-10-27 DYN-T-716（0.2.51 owner package / consumer pending）
 

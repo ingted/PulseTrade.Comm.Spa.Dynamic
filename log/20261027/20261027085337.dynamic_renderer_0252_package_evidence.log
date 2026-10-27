@@ -1,0 +1,18 @@
+# Dynamic Renderer 0.2.52 package evidence
+
+## Pre-work plan
+
+- 背景：DYN-WBS-603 source/docs/tests commit `ec2470f` 已push；pre-commit candidate packages不可作immutable交付authority。
+- 目標：由exact source commit重建Renderer／Interactive.Client 0.2.52 final packages，驗metadata、hash、SDK10.0.402 library-packs parity與fresh consumer gates，再正式handoff Daedilus。
+- 假設：fresh task-scoped caches與standalone WebSharper compiler可隔離同版candidate及global stale Contracts；consumer real E2E仍是獨立最終gate。
+- 範圍：兩個0.2.52 final nupkg、direct tests、package verifier、package-only BrowserDemo、post-commit evidence與COMM handoff；不改consumer source、不納入外部dirty。
+- 步驟：fresh restore／lock audit／pack → metadata/hash → copy SDK library-packs/readback → fresh Renderer/Interactive tests → verifier/BrowserDemo → checker → evidence commit/push → handoff。
+- 驗收：RepositoryCommit/ProductVersion exact `ec2470f...`、Client exact Renderer `[0.2.52]`、feed hash parity；Renderer108/108、Interactive20/20、verifier PASS、BrowserDemo 0 warnings/0 errors。
+- 風險：same-version candidate cache、WebSharper orphan log lock、source commit與package metadata不一致。
+- 停止條件：owner package gates與handoff完成；Daedilus 18884 local0 settle／續overscroll回報前不宣告consumer完成。
+
+## Operations
+
+- 08:53：source/docs/tests commit `ec2470f` 完成並push；staged paths僅本輪13檔，既有 `lib-packs.txt`、Ptcs.Tests `Program.fs`、`.pcsl/`與`temp/`未納入。
+- 08:58：以commit `ec2470f`重建0.2.52 final-local Renderer／Interactive packages，RepositoryCommit/ProductVersion exact、Client Renderer `[0.2.52]`、SDK10.0.402 library-packs parity；fresh Renderer108/108、Interactive20/20、verifier與BrowserDemo 0/0全綠。Renderer SHA=`BEA57060...EE1A`、Interactive SHA=`94DFD9B2...B632`。
+- 08:59：在正式handoff前收到Daedilus 0.2.51 main真18884反證：package/host ProductVersion exact且server relocation GREEN，但DOM local仍1645→1985；因此0.2.52 local artifacts不宣告最終交付。cross-axis 0.2.51 literal null則為版本邊界預期，typed intent自0.2.52才存在。轉入DYN-T-718查accepted coverage identity scope是否先於UTC settlement清pending／覆寫viewport。

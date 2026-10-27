@@ -1,0 +1,21 @@
+# Accepted event-range settlement scope precedence
+
+## Pre-work plan
+
+- 背景：Daedilus以exact 0.2.51 package與新browser context重現main accepted projection後local `1645 -> 1985`；server ActiveDetail、GLOBAL resident、coverage/query generation皆正確。
+- 目標：找出owner unit與真consumer最早分歧，讓matching accepted event-range settlement在coverage identity更新時仍以exact UTC viewport為authority；併入下一stable 0.2.53。
+- 假設：`acceptPreparedDataCore`先以包含CoverageIdentity的`viewportScopeKey`判定scope changed，直接清掉pending event-range settlement並套document default，故DYN-T-716 pure helper雖正確但live branch未執行。
+- Source of truth：Daedilus `main-commit-gate.json`／exact package ProductVersion與Renderer `acceptPreparedDataCore` lifecycle；真18884同sequence為E2E gate。
+- 範圍：Renderer scope/settlement precedence、DYN-T-718、0.2.53 Renderer/Interactive packages與current RFC/WBS/Test/DevLog；consumer唯讀。
+- 不變事項：真正canvas/base-row/identity切換仍清pending並套default；same-axis navigator、wire、server validation與cross-axis no-ordinal intent不變。
+- 步驟：bounded lifecycle review → DYN-T-718 RED → pure scope ownership policy＋最小wiring → package gates → commit/final pack → Daedilus同sequence main及cross-axis真驗。
+- 驗收：changed coverage identity＋matching Reanchor不得被default覆寫；Await保留pending；base-row mismatch仍default/clear；Renderer／Interactive／verifier／BrowserDemo全綠；真18884 main local維持1645且cross-axis落local0。
+- 風險：把真正新scope誤認accepted relocation、Await永久壓住default、Reject後保留stale window。
+- 停止條件：owner package與handoff完成；Daedilus真main＋cross-axis兩條皆GREEN前不宣告全修完。
+
+## Operations
+
+- 08:59：drain Daedilus `msg-fsi-070348...`／`msg-fsi-b8abe3...`；已回覆`msg-fsi-e4bc592...`接受main RED並更正0.2.51 cross-axis null屬預期版本邊界。source review確認`viewportScopeChanged`時line3063先清pending，line3093再套initial viewport，符合最早分歧候選。
+- 09:01：DYN-T-718先對0.2.52 exact package得到4個FS0039 RED；最小patch以matching base-row、settlement consumed/still-pending決定scope ownership，consume後標記新scope，Await不套default，mismatch仍清pending。Renderer F# compile 0 errors。
+- 09:05：升stable0.2.53並同步Interactive與兩個direct test projects exact refs；fresh candidate Renderer109/109、Interactive20/20、package verifier與package-only BrowserDemo 0 warnings/0 errors。candidate Renderer/Interactive SHA=`410F1113...5065`／`8646DE9D...5E02`，尚非post-commit authority。
+- 09:08：checker揭露前一slice在首次成功check後又改寫兩個083605 log bytes（追加欄位說明、移除EOF空行），屬流程偏差。已只反向patch該agent自身post-check delta，精確恢復checker baseline SHA=`568BBD69...26B6`／`E191328F...65EF`；原因與修正改記本append-only新log，不改歷史語意。待重跑checker確認FAIL歸零。

@@ -3522,6 +3522,15 @@ module RendererModel =
         else
             None
 
+    let eventRangeSettlementOwnsViewportScope
+        viewportScopeChanged
+        pendingMatchesDocument
+        settlementConsumed
+        settlementStillPending =
+        viewportScopeChanged
+        && pendingMatchesDocument
+        && (settlementConsumed || settlementStillPending)
+
     let mainPlotEventRangeProjectionSettlement
         minimumVisibleBars
         maximumVisibleBars
