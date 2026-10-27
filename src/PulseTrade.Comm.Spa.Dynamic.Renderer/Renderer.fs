@@ -4299,6 +4299,15 @@ module TaWorkspaceRenderer =
                                 ratios
                                 drag
                                 (float event.ClientX)
+                        let frozenMoveSelectionBounds =
+                            if drag = TaWindowDrag.Move then
+                                if semanticDrag = Some TaWindowDrag.Move && not (isNull eventTarget) then
+                                    let visualBounds = eventTarget.GetBoundingClientRect()
+                                    Some(visualBounds.Left - bounds.Left, visualBounds.Width)
+                                else
+                                    Some(RendererModel.navigatorSelectionBounds bounds.Width ratios)
+                            else
+                                None
                         let mutable latestRawDelta = 0
                         let mutable latestPointerX = pointerX
                         let mutable moveHandler: Action<Event> = null
@@ -4332,7 +4341,20 @@ module TaWorkspaceRenderer =
                                 if bounds.Width <= 0.0 || total <= 0 then 0
                                 else int (Math.Round((float mouse.ClientX - startClientX) / bounds.Width * float total))
                             latestRawDelta <- delta
-                            RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta
+                            let draft =
+                                RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta
+                            match frozenMoveSelectionBounds with
+                            | Some(selectionLeft, selectionWidth) ->
+                                RendererModel.snapNavigatorMoveDraftToPhysicalEdges
+                                    total
+                                    drag
+                                    bounds.Width
+                                    selectionLeft
+                                    selectionWidth
+                                    pointerX
+                                    latestPointerX
+                                    draft
+                            | None -> draft
 
                         let gestureDeltaRatio () =
                             if bounds.Width <= 0.0 then 0.0

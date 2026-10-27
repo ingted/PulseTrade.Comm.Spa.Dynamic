@@ -2,9 +2,9 @@
 
 This project is a dynamic SDUI (Server-Driven UI) and Actor extension for `PulseTrade.Comm.Spa`, built with WebSharper.
 
-## Current 0.3.5 navigator boundary release
+## Current 0.3.6 navigator right-edge candidate
 
-Renderer／Interactive.Client `0.3.5` corrects the real cross-axis resident-track edge case isolated by `0.3.4` telemetry: CSS pixel quantization can make a visual left-edge drag request local `-1/-2` even while the pointer remains physically inside the GLOBAL resident track. Inside-track gestures now commit the clamped active-local window and keep the existing event-time `NavigatorWindow` intent path; only a pointer that physically leaves the track is classified as an outside-resident request. This does not restore prohibited GLOBAL-to-active ordinal arithmetic. Source commit `3e039739f9c0cc704062a7497c31d1a6487a7cc4` is pushed. Final Renderer／Interactive.Client SHA-256 are `D88143F8CB89DE3740CC76E57B797F474D67F4A7390A31DAD61A89FB8A6BB95F` and `BEAF92F7EF57D1EFC150E2E8459970D8308907FA1556A5791B308CEE7E51F9FC`; package `RepositoryCommit`, DLL `ProductVersion`, and SDK 10.0.402 library-packs hashes match. Owner gates are Renderer 121/121, Interactive.Client 20/20, package verifier PASS, and fresh exact-package BrowserDemo Release with the existing WS9002 warning and zero errors. Daedilus real Gate B remains required before functional closeout.
+Renderer／Interactive.Client `0.3.5` fixed the cross-axis resident-track left edge and passed Daedilus `left-edge-80` plus true Earlier coverage. The same exact consumer then exposed the symmetric right visual edge: the rendered move target reaches the track edge, but preserving its 1px grab inset rounds the bar delta three bars short (`local4418` instead of maxStart `4421`) even though the action already carries the correct `NavigatorWindow` intent. The `0.3.6` candidate freezes the actual rendered move-target bounds at pointerdown and snaps only an inside-track selection whose translated visual edge reaches the physical track edge; a pointer outside the track remains Later coverage. DYN-T-732 focused 1/1, Renderer 122/122, Interactive.Client 20/20, package verifier PASS, and fresh exact-package BrowserDemo Release with the existing WS9002 warning and zero errors. Final immutable provenance and Daedilus right-edge Gate B remain required before closeout.
 
 ## Current TA release graph
 

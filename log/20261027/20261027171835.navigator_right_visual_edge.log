@@ -1,0 +1,27 @@
+# Navigator 0.3.5 real Gate B: right visual edge inset
+
+時間：2026-10-27 17:18:35 +08:00
+
+## Pre-work plan
+
+- 背景：0.3.5 exact consumer證left-edge-80與earlier coverage GREEN；後續right-edge-80 action雖含NavigatorWindow intent且errors空，最終local4418而非maxStart4421。
+- 目標：以Daedilus exact geometry建立右視覺邊緣修前RED，最小修正move gesture的inside-track right-edge snap，交付0.3.6 immutable packages並重跑同一真Gate。
+- 已證實事實：18884 ProductVersion=`0.3.5+3e039739f9c0cc704062a7497c31d1a6487a7cc4`；right selection count79，navX82/width1436，moveHit x83/width25.174667，start center95.587；target center1505.413使selection右緣等於track右緣，action含ExpectedRev6/QueryGen6/count79，final local4418，預期4421，browser/action errors空。
+- 預期不變量：Move的視覺selection右緣到trackWidth時，inside-track release必須clamp maxStart；pointer實際越出track仍走Later coverage。左緣local0、earlier coverage、resize handles、main plot與event-time intent不回歸。
+- Source of truth：Daedilus `G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0305` evidence、production `pointerDraft`／`previewWindowBounds`／finish boundary/action path。
+- 假設：raw pointer center映射成bar delta時沒有把Move selection half-width/right visual edge納入clamp，因此1px inset量化成少3 bars；不是coverage intent或remote settlement偏差。
+- 最小證據：以total4500/count79/start0與exact track/selection/start/target geometry重現preview4418；再證right visual edge觸界後應為4421，pointer>trackWidth的boundary仍Later。
+- Canonical mechanism：在gesture geometry→draft delta seam加入對稱視覺edge snap；不修改consumer expected、不硬加3 bars、不改GLOBAL/active ordinal mapping。
+- 範圍：Renderer owner source/tests/version、Interactive exact dependency、current docs/package evidence；不改consumer/oracle/host、wire contract、Tagging或PTCS test WIP。
+- 步驟：evidence/source audit → DYN-T-732 RED → minimal pure geometry fix＋production wiring → focused/full/Interactive/verifier/BrowserDemo → source/final packages/evidence commits → Daedilus真Gate。
+- 驗收：owner gates全綠；Daedilusright-edge action仍為NavigatorWindow intent/count79且final local4421，真正overscroll仍Later，整體errors0。
+- 風險：若以pointer center等同selection edge會打壞一般Move；修正必須顯式知道drag mode與selection pixel width，只在視覺edge到界時snap。
+- 停止條件：真right-edge仍非4421即不close，依new evidence重建geometry模型。
+
+## Operations
+
+- 17:18 +08:00：收到Daedilus direct `msg-fsi-c82f15a3c83a43949b6c8cb63aac67a2`；以exact replyTo回覆receipt `msg-fsi-e490536f1f0b440db6778335e6c6f2f1`，明示0.3.5 PARTIAL與0.3.6對稱snap scope。
+- 17:19–17:20 +08:00：read-only檢查`G:\coldfar_py\coldfar-symbolics\temp\agent.daedilus\resident-width-and-edges-0305`；right action含NavigatorWindow intent／ExpectedRev6／QueryGen6／count79，gesture exact證move target初始local x1/width25.174667、pointer start13.587333、release1423.4127、raw delta4418，visual right edge已到1436而draft/final少3。DYN-T-732先只加test，對0.3.5 package-backed build得到FS0039 3處／exit1，RED成立。
+- 17:20–17:23 +08:00：新增pure `snapNavigatorMoveDraftToPhysicalEdges`；production只在semantic Move凍結actual event target DOMRect，fallback才由ratios推導。Inside translated edge以0.001px tolerance snap0/maxStart，pointer outside/Resize/interior不改；boundary/action path不變。第一次Renderer pack命中`wsfsc -532462766`；Application Event 1026 exact為source Renderer `websharper.log` UnauthorizedAccessException，owner是dead-parent wsfscservice PID13408。只停止該exact owner後同source重跑成功；candidate Renderer SHA=`7D31A96C449E018771F123835940AB01723D2A7806EAFD3273629D65FFBDCB9F`，SDK library-packs hash parity。DYN-T-732 1/1、Renderer122/122。
+- 17:23–17:25 +08:00：Interactive.Client 0.3.6 candidate SHA=`04024714A31BFCB991AE5F4F0989F1E985BB6C5CECB63D292AAC8A1732D9853B`，SDK library-packs hash parity；Interactive20/20、package verifierPASS。Fresh package-only BrowserDemo從isolated package root解析Contracts0.1.41、Renderer0.3.6、Interactive.Client0.3.6、FSharp.Core10.1.402、WebSharper.FSharp10.1.7.680、WebSharper.UI10.1.6.680；僅既有WS9002／0 errors，7 JS/1,487,612 bytes，full/min SHA=`2FB111E4EA8D468E550A6B0513330C7798165F980E19BEBF4CBDE00E43AF04A1 / 1F55B1F400321DF7C67B3421E6DB71B0030EAD2BA782F52B5B23504D4AA1F187`。
+- 17:25–17:26 +08:00：精確停止本輪dead-parent Renderer/Interactive compiler-service PID37348/8312，remaining0。Changed-path sensitive scan files=12、High=0／Medium=0；16檔strict UTF-8、既有兩fsproj BOM保持、NUL=0、U+FFFD=0；`git diff --check` PASS。Fresh checker `asteer-dyn0306-202610271726`：PASS=28／WARN=2／FAIL=0；WARN僅expected dirty與既有RFC traceability，WBS/Test missing均0。

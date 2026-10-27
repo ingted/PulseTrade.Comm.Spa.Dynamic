@@ -1,5 +1,9 @@
 # System Design (SD) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 frozen rendered selection edge snap（DYN-WBS-618）
+
+Pointerdown若命中semantic Move target，production凍結其`GetBoundingClientRect()`相對track的left/width；geometry fallback才由ratios推導。`snapNavigatorMoveDraftToPhysicalEdges`用currentPointerX-startPointerX平移該frozen bounds：pointer仍在`0..trackWidth`且translated left/right進入0.001px edge tolerance時，將既有draft clamp到0/maxStart；pointer越界、Resize或interior move原樣返回。Boundary classifier與NavigatorWindow intent construction不變，所以outside Later仍走coverage branch。
+
 ## 2026-10-27 physical resident-track boundary gate（DYN-WBS-617）
 
 新增pure `navigatorGestureBoundaryDirection hasGlobalResidentTrack ... pointerX trackWidth`。無GLOBAL resident track時維持既有logical `navigatorBoundaryDirection`；有GLOBAL resident track時沿用`residentNavigatorBoundaryDirection`，只有pointerX小於0或大於trackWidth才回Earlier/Later。Production finish從captured `loadedCoverageSnapshot`判定`GlobalOverview.IsSome`，pointer仍在track內便走既有`commitLocalDraft`，由`setNavigatorWindowFromPrepared`送event-time `NavigatorWindow` intent；ordinal mapping與consumer不變。

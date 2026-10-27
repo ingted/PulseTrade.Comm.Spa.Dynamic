@@ -1,5 +1,11 @@
 # System Analysis (SA) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 rendered move-target right edge（DYN-WBS-618）
+
+0.3.5真consumer已證左視覺邊緣local0與真正Earlier coverage都GREEN，但右視覺邊緣action雖有NavigatorWindow intent，仍settle local4418而非maxStart4421。Exact geometry是track width1436、move target初始local x1/width25.174667、pointer start local13.587333、release local1423.4127；move target右緣已到1436，但pointer-center delta換算只得4418。最早偏離是draft geometry只看pointer center，沒有保留實際rendered move target的grab offset／visual edge。
+
+不變量是「inside-track visual selection edge碰到track edge就clamp local boundary；pointer本身越出track才是coverage overscroll」。因此不能硬加3 bars，也不能把right edge誤判Later；需以pointerdown實際target DOMRect作frozen geometry authority，普通interior move、resize與event-time mapping不變。
+
 ## 2026-10-27 resident track boundary quantization（DYN-WBS-617）
 
 0.3.4 runtime telemetry與真18884重現排除projection／publication遺失：middle action含`NavigatorWindow` intent；local1198/count80拖到視覺左邊界時，CSS換算得raw delta -1200，preview正確clamp local0，但logical boundary classifier把requested -2當Earlier。Cross-axis沒有可證GLOBAL ordinal，因此該分支不提交typed local action；後續bare range被consumer當main-plot pan，只前移80根。

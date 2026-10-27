@@ -6,6 +6,12 @@ scope: PulseTrade.Comm.Spa.Dynamic package / browser-extension gates
 
 # PulseTrade.Comm.Spa.Dynamic Verification Registry
 
+### DYN-VFY-057 0.3.6 rendered right-edge snap（candidate）
+
+- Consumer RED：0.3.5 exact ProductVersion在left-edge-80與Earlier coverage GREEN；right-edge-80 action亦有NavigatorWindow intent/ExpectedRev6/QueryGen6/count79，但實際rendered selection右緣到track右緣時，move anchor 1px inset使draft/final local4418，expected maxStart4421，errors空。
+- Owner candidate：凍結pointerdown move target actual DOMRect，inside-track translated edge到界才snap local0/maxStart，outside pointer不snap且boundary仍Later。DYN-T-732修前0.3.5 compile FS0039 RED；修後focused1/1、Renderer122/122、Interactive20/20、package verifierPASS；fresh package-only BrowserDemo exact0.3.6，僅既有WS9002、0 errors。
+- Final gate：source commit後重建兩個immutable packages並驗provenance/hash，再由Daedilus同一真right-edge sequence證final local4421與Later coverage相鄰路徑。
+
 ### DYN-VFY-056 0.3.5 resident-track physical boundary（owner final / consumer pending）
 
 - RED：0.3.4真18884從local1198/count80拖到視覺左邊界；pointer仍在track內、preview已clamp local0，但CSS換算raw delta -1200使requested -2，logical classifier先回Earlier，約34ms後送bare action並settle local1118。Middle action仍含`NavigatorWindow` intent，故projection/publication不是根因。

@@ -1,5 +1,11 @@
 # Test Plan (TEST) - PulseTrade.Comm.Spa.Dynamic
 
+## 2026-10-27 DYN-T-732（rendered selection right-edge snap）
+
+- RED fixture：total4500/count79、raw draft local4418；track1436、frozen move target local x1/width25.174667、pointer start13.587333、release1423.4127。0.3.5 package-backed compile因新pure seam FS0039 3處RED。
+- GREEN contract：exact rendered right edge需snap maxStart4421；interior pointer1400維持draft4418；pointer1436.1不在snap seam改寫，`navigatorGestureBoundaryDirection`仍回Later。Candidate focused1/1、Renderer122/122、Interactive20/20、package verifierPASS；fresh exact-package BrowserDemo0.3.6僅既有WS9002、0 errors。
+- 真Gate：Daedilus沿同一0.3.5 evidence sequence，以consumer/oracle/host不變重跑right-edge-80；action仍須NavigatorWindow intent/count79，final local4421，真正Later coverage可用，errors空。
+
 ## 2026-10-27 DYN-T-731（resident track physical boundary）
 
 - 契約：有GlobalOverview的navigator，pointer仍在實體track內時，raw delta即使因CSS pixel量化讓requested start成為-1/-2，也必須提交clamped local0的event-time `NavigatorWindow` intent；只有pointer越出track才可走outside-resident Earlier/Later。

@@ -2452,6 +2452,29 @@ let tests =
                 (Some TaCoverageDirection.Earlier)
                 "an actual physical overscroll still requests earlier resident coverage"
 
+        testCase "DYN-T-732 move snaps the rendered selection right edge to maximum start" <| fun _ ->
+            let total = 4500
+            let draft = { StartIndex = 4418; Count = 79 }
+            let snapped =
+                RendererModel.snapNavigatorMoveDraftToPhysicalEdges
+                    total TaWindowDrag.Move 1436.0 1.0 25.174667 13.587333679199219 1423.4127 draft
+
+            Expect.equal snapped { StartIndex = 4421; Count = 79 } "the exact rendered right edge owns maximum start"
+            Expect.equal
+                (RendererModel.snapNavigatorMoveDraftToPhysicalEdges
+                    total TaWindowDrag.Move 1436.0 1.0 25.174667 13.587333679199219 1400.0 draft)
+                draft
+                "an interior move preserves the ordinary bar draft"
+            Expect.equal
+                (RendererModel.snapNavigatorMoveDraftToPhysicalEdges
+                    total TaWindowDrag.Move 1436.0 1.0 25.174667 13.587333679199219 1436.1 draft)
+                draft
+                "a pointer outside the track remains available to the Later coverage branch"
+            Expect.equal
+                (RendererModel.navigatorGestureBoundaryDirection true total { StartIndex = 0; Count = 79 } TaWindowDrag.Move 4422 1436.1 1436.0)
+                (Some TaCoverageDirection.Later)
+                "physical overscroll still requests later resident coverage"
+
         testCase "navigator hit resolver uses boundary targets and interior move for ordinary selections" <| fun _ ->
             let ratios = 0.2, 0.4
             let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer

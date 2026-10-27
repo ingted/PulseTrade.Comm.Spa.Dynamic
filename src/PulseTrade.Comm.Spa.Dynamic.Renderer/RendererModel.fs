@@ -2595,6 +2595,29 @@ module RendererModel =
                 let nextCount = min (min maximumCount total) (nextEnd - startIndex)
                 clampWindow minimumCount maximumCount total { StartIndex = nextEnd - nextCount; Count = nextCount }
 
+    let snapNavigatorMoveDraftToPhysicalEdges total drag trackWidth selectionLeft selectionWidth pointerStartX pointerCurrentX draft =
+        let invalid value = Double.IsNaN value || Double.IsInfinity value
+        if
+            drag <> TaWindowDrag.Move
+            || total <= 0
+            || draft.Count <= 0
+            || trackWidth <= 0.0
+            || ([ selectionLeft; selectionWidth; pointerStartX; pointerCurrentX ] |> List.exists invalid)
+            || pointerCurrentX < 0.0
+            || pointerCurrentX > trackWidth
+        then
+            draft
+        else
+            let translatedLeft = selectionLeft + pointerCurrentX - pointerStartX
+            let translatedRight = translatedLeft + max 0.0 selectionWidth
+            let edgeEpsilon = 0.001
+            if translatedLeft <= edgeEpsilon then
+                { draft with StartIndex = 0 }
+            elif translatedRight >= trackWidth - edgeEpsilon then
+                { draft with StartIndex = viewportMaximumStart total draft }
+            else
+                draft
+
     let commitWindowBounds minimumCount maximumCount total draft =
         let next = clampWindow minimumCount maximumCount total draft
         next.StartIndex = viewportMaximumStart total next, next
