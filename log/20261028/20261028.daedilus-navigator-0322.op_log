@@ -1,0 +1,8 @@
+Renderer 0.3.22: resident 的 selection 觸邊不再自動 Earlier；GLOBAL-backed track 要實際 pointer 越界才要求相鄰 coverage。依 2026-10-28 人類更正取代 DYN-T-740 舊期待。
+GLOBAL 季／年標記增加 5px tick；resident 改每日（30/60K）或每小時（1/5K）tick 與日期／小時雙行，文字按寬度疏排、tick 保留。UTC 無 suffix 的 durable overview timestamp 明確依 UTC 解讀。
+Renderer source suite 149/149 PASS；Release library build PASS。Research 真 UI 尚待新套件部署驗收；1500 回跳 1207 尚未重現，不宣稱修復。
+
+後續更正：Renderer / Interactive.Client 0.3.22 正式 NuGet 已發布，SDK 10.0.402 FSharp/library-packs 與 source nupkg 的 SHA-256 均相同。canonical Renderer.Tests 已以 bumpVersion.fsx 指向 0.3.22，實際套件測試 149/149 PASS（0 failed / 0 errored）。
+Research 18884 Chrome 實測：1K 有 75 個 hourly tick，5K 有 375 個 hourly tick，日期為 MMDD／HH；預設 30K/60K resident 有 daily tick、YYYYMMDD／HH。文字因密度疏排，但 tick 保留。
+使用者說明寬度回跳發生於完全載入後。已實際測試單側縮放、左右交替及快速 1500→1207→1500；最後結算目前均為 1500。仍記為「未重現」，不把已通過案例等同根因修復。
+Research 主程式舊 boundary bridge 會於 no-change 時自動 click pan，已於 consumer 移除（不屬本 NuGet）。觸碰左端後 4500 範圍起日維持 20260224；後續仍在軌道內拖曳不得多發展開。
