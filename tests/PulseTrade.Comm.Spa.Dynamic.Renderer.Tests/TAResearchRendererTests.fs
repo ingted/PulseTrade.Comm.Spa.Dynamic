@@ -2810,6 +2810,25 @@ let tests =
             Expect.isNone (direction -1500 0.0) "Landing exactly on the left track boundary is local."
             Expect.isNone (direction 2000 1000.0) "Landing exactly on the right track boundary is local."
 
+        testCase "navigator drag delta uses the SVG client box rather than its bordered bounding box" <| fun _ ->
+            let visibleSelectionCssWidth = 478.0
+            Expect.equal
+                (RendererModel.navigatorGestureDeltaForDomain 4500 (-visibleSelectionCssWidth / 1434.0))
+                -1500
+                "One rendered third of the 1434px SVG client box must move exactly 1500 of 4500 observations."
+            Expect.equal
+                (RendererModel.navigatorGestureDeltaForDomain 4500 (-visibleSelectionCssWidth / 1436.0))
+                -1498
+                "Including the two CSS border pixels reproduces the cumulative two-observation drift."
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let startIndex = source.IndexOf("        let startNavigatorDrag", StringComparison.Ordinal)
+            let endIndex = source.IndexOf("        let finishNavigatorDragFromElement", startIndex, StringComparison.Ordinal)
+            let handlerBody = source.Substring(startIndex, endIndex - startIndex)
+            Expect.stringContains handlerBody "[data-testid='ta-overview-interaction-surface']" "Production drag math must measure the border-free SVG interaction surface."
+            Expect.stringContains handlerBody "RendererModel.navigatorGestureDeltaForDomain" "Production must use the tested domain-delta conversion."
+
         testCase "DYN-T-731 cross-axis resident track continues earlier when the selection reaches local zero" <| fun _ ->
             let committed = { StartIndex = 1198; Count = 80 }
             let rawDelta = -1200

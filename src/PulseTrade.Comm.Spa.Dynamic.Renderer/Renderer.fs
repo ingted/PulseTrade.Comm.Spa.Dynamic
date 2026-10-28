@@ -864,20 +864,26 @@ module TaWorkspaceRenderer =
             Attr.Handler "pointerup" (fun _ event -> onDragEnd event)
             on.mouseMove (fun element event ->
                 let bounds = element.GetBoundingClientRect()
-                if bounds.Width > 0.0 then
+                let interactionSurface = element.QuerySelector("[data-testid='ta-overview-interaction-surface']")
+                let trackBounds =
+                    if isNull interactionSurface then bounds
+                    else interactionSurface.GetBoundingClientRect()
+                let trackWidth = trackBounds.Width
+                let trackLeft = trackBounds.Left
+                if trackWidth > 0.0 then
                     let html = element |> As<HTMLElement>
                     let dragOutcome = element.GetAttribute("data-drag-outcome")
                     if dragOutcome = "tracking" || dragOutcome = "moving" then
                         html.Style.SetProperty("cursor", "grabbing")
                     else
-                        let pointerX = float event.ClientX - bounds.Left
+                        let pointerX = float event.ClientX - trackLeft
                         let cursor =
-                            match RendererModel.navigatorDragMode bounds.Width 24.0 latestSelectionRatios pointerX with
+                            match RendererModel.navigatorDragMode trackWidth 24.0 latestSelectionRatios pointerX with
                             | Some TaWindowDrag.Move -> "grab"
                             | Some _ -> "ew-resize"
                             | None -> "default"
                         html.Style.SetProperty("cursor", cursor)
-                    let x = max 0.0 (min width ((float event.ClientX - bounds.Left) / bounds.Width * width))
+                    let x = max 0.0 (min width ((float event.ClientX - trackLeft) / trackWidth * width))
                     let pixel = int (Math.Round x)
                     let candidates =
                         [| pixel; pixel - 1; pixel + 1; pixel - 2; pixel + 2 |]
@@ -4367,6 +4373,12 @@ module TaWorkspaceRenderer =
                     setDragDiagnostic "data-drag-outcome" "disabled"
                 else
                     let bounds = navigatorRoot.GetBoundingClientRect()
+                    let interactionSurface = navigatorRoot.QuerySelector("[data-testid='ta-overview-interaction-surface']")
+                    let trackBounds =
+                        if isNull interactionSurface then bounds
+                        else interactionSurface.GetBoundingClientRect()
+                    let trackWidth = trackBounds.Width
+                    let trackLeft = trackBounds.Left
                     let localTotal =
                         RendererModel.referenceTimelineForDocumentPrepared dragDocument dragPreparedData
                         |> Array.length
@@ -4407,7 +4419,7 @@ module TaWorkspaceRenderer =
                             authoritativeCommitted
                             renderedNavigatorDraft
                             publishedNavigatorDraft
-                    let pointerX = float event.ClientX - bounds.Left
+                    let pointerX = float event.ClientX - trackLeft
                     let renderedSelectionRatios =
                         match
                             Double.TryParse(navigatorRoot.GetAttribute("data-selection-left-ratio")),
@@ -4430,15 +4442,15 @@ module TaWorkspaceRenderer =
                             | _ -> None
                     let resolvedDrag =
                         semanticDrag
-                        |> Option.orElseWith (fun () -> RendererModel.navigatorDragMode bounds.Width 24.0 ratios pointerX)
+                        |> Option.orElseWith (fun () -> RendererModel.navigatorDragMode trackWidth 24.0 ratios pointerX)
                     setDragDiagnostic "data-drag-runtime-document-revision" (string runtimeState.Value.DocumentRevision)
                     setDragDiagnostic "data-drag-runtime-data-revision" (string runtimeState.Value.DataRevision)
                     setDragDiagnostic "data-drag-prepared-reference-count" (string localTotal)
                     setDragDiagnostic "data-drag-local-start" (string localCommitted.StartIndex)
                     setDragDiagnostic "data-drag-local-count" (string localCommitted.Count)
                     setDragDiagnostic "data-drag-pointer-client-x" (string event.ClientX)
-                    setDragDiagnostic "data-drag-track-left" (string bounds.Left)
-                    setDragDiagnostic "data-drag-track-width" (string bounds.Width)
+                    setDragDiagnostic "data-drag-track-left" (string trackLeft)
+                    setDragDiagnostic "data-drag-track-width" (string trackWidth)
                     setDragDiagnostic "data-drag-pointer-x" (string pointerX)
                     setDragDiagnostic "data-drag-ratio-left" (string (fst ratios))
                     setDragDiagnostic "data-drag-ratio-right" (string (snd ratios))
@@ -4481,8 +4493,8 @@ module TaWorkspaceRenderer =
                         (navigatorRoot |> As<HTMLElement>).Style.SetProperty("cursor", "grabbing")
                         let startClientX =
                             RendererModel.navigatorDragAnchorClientX
-                                bounds.Left
-                                bounds.Width
+                                trackLeft
+                                trackWidth
                                 ratios
                                 drag
                                 (float event.ClientX)
@@ -4490,9 +4502,9 @@ module TaWorkspaceRenderer =
                             if drag = TaWindowDrag.Move then
                                 if semanticDrag = Some TaWindowDrag.Move && not (isNull eventTarget) then
                                     let visualBounds = eventTarget.GetBoundingClientRect()
-                                    Some(visualBounds.Left - bounds.Left, visualBounds.Width)
+                                    Some(visualBounds.Left - trackLeft, visualBounds.Width)
                                 else
-                                    Some(RendererModel.navigatorSelectionBounds bounds.Width ratios)
+                                    Some(RendererModel.navigatorSelectionBounds trackWidth ratios)
                             else
                                 None
                         let mutable latestRawDelta = 0
@@ -4523,10 +4535,13 @@ module TaWorkspaceRenderer =
 
                         let pointerDraft (rawPointerEvent: Event) =
                             let mouse = rawPointerEvent :?> MouseEvent
-                            latestPointerX <- float mouse.ClientX - bounds.Left
+                            latestPointerX <- float mouse.ClientX - trackLeft
                             let delta =
-                                if bounds.Width <= 0.0 || total <= 0 then 0
-                                else int (Math.Round((float mouse.ClientX - startClientX) / bounds.Width * float total))
+                                if trackWidth <= 0.0 || total <= 0 then 0
+                                else
+                                    RendererModel.navigatorGestureDeltaForDomain
+                                        total
+                                        ((float mouse.ClientX - startClientX) / trackWidth)
                             latestRawDelta <- delta
                             let draft =
                                 RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta
@@ -4535,7 +4550,7 @@ module TaWorkspaceRenderer =
                                 RendererModel.snapNavigatorMoveDraftToPhysicalEdges
                                     total
                                     drag
-                                    bounds.Width
+                                    trackWidth
                                     selectionLeft
                                     selectionWidth
                                     pointerX
@@ -4575,7 +4590,7 @@ module TaWorkspaceRenderer =
                                         drag
                                         latestRawDelta
                                         latestPointerX
-                                        bounds.Width
+                                        trackWidth
                                 let preferPendingBoundary = gestureDomain.UsesResidentAuthority && boundaryDirection.IsSome
                                 let draft =
                                     RendererModel.releaseNavigatorDraft
@@ -4742,7 +4757,12 @@ module TaWorkspaceRenderer =
                             match projection.GlobalOverview, RendererModel.tryGlobalResidentWindow projection with
                             | Some overview, Some authoritativeCommitted ->
                                 let bounds = navigatorRoot.GetBoundingClientRect()
-                                if bounds.Width > 0.0 then
+                                let interactionSurface = navigatorRoot.QuerySelector("[data-testid='ta-overview-interaction-surface']")
+                                let trackBounds =
+                                    if isNull interactionSurface then bounds
+                                    else interactionSurface.GetBoundingClientRect()
+                                let trackWidth = trackBounds.Width
+                                if trackWidth > 0.0 then
                                     let committed = globalResidentDraft.Value |> Option.defaultValue authoritativeCommitted
                                     event.PreventDefault()
                                     event.StopPropagation()
@@ -4822,7 +4842,7 @@ module TaWorkspaceRenderer =
                                             latestDelta <-
                                                 RendererModel.globalResidentDragDelta
                                                     overview.TotalObservationCount
-                                                    bounds.Width
+                                                    trackWidth
                                                     (float startClientX)
                                                     (float mouse.ClientX)
                                             RendererModel.previewGlobalResidentWindow
