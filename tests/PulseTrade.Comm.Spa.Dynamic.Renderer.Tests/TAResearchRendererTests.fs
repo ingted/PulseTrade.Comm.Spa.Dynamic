@@ -2753,6 +2753,27 @@ let tests =
                     | None -> failtest "The queued resident target must remain dispatchable."
                 | None -> failtest "A resident overscroll must have a bounded target."
 
+            let capturedEarlierStart = expandedOverview.ResidentStartObservationOrdinal - 1500L
+            let shiftedOverview =
+                { expandedOverview with
+                    ResidentStartObservationOrdinal = capturedEarlierStart }
+            let shiftedProjection =
+                { expandedProjection with
+                    CoverageRevision = 5L
+                    QueryGeneration = 4L
+                    ActiveDetail =
+                        { expandedProjection.ActiveDetail with
+                            StartObservationOrdinal = expandedOverview.ResidentStartObservationOrdinal
+                            ObservationCount = 1500 }
+                    GlobalOverview = Some shiftedOverview }
+            match RendererModel.tryLoadedCoverageWindowIntentAt shiftedProjection capturedEarlierStart 702 with
+            | Some dispatched ->
+                Expect.equal dispatched.StartObservationOrdinal (Some capturedEarlierStart) "A gesture queued behind an earlier action keeps the absolute T-relative target captured at pointer-up."
+                Expect.isNone dispatched.Direction "The accepted prior action must not turn the captured target into another Earlier page."
+                Expect.equal dispatched.ExpectedCoverageRevision (Some 5L) "Dispatch refreshes only the optimistic concurrency revision."
+                Expect.equal dispatched.QueryGeneration 5L "Dispatch advances from the latest accepted query generation."
+            | None -> failtest "The captured absolute target must remain dispatchable after the prior action shifts resident coverage."
+
             let newerProjection =
                 { expandedProjection with
                     CoverageRevision = 5L
@@ -4708,12 +4729,6 @@ let tests =
                   "JS.Document.AddEventListener(\"pointercancel\", cancelHandler)" ] do
                 Expect.stringContains source required ("missing navigator lifetime contract: " + required)
 
-            let rebaseStart = source.IndexOf("dispatchResidentGesture <-", StringComparison.Ordinal)
-            let rebaseEnd = source.IndexOf("let withLoadedCoverage", rebaseStart, StringComparison.Ordinal)
-            let rebaseSource = source.Substring(rebaseStart, rebaseEnd - rebaseStart)
-            Expect.stringContains rebaseSource "RendererModel.coverageNavigatorWindowWithAuthority" "D39 queued gestures use the same loaded domain as pointerdown and selection."
-            Expect.stringContains rebaseSource "RendererModel.tryNavigatorGestureCoverageIntent" "D39 queued gestures retain native versus GLOBAL intent mapping."
-
             let moveHitIndex = source.IndexOf("Attr.Create \"data-testid\" \"ta-overview-move-hit\"", StringComparison.Ordinal)
             let leftHandleIndex = source.IndexOf("Attr.Create \"data-testid\" \"ta-overview-left-handle\"", StringComparison.Ordinal)
             let rightHandleIndex = source.IndexOf("Attr.Create \"data-testid\" \"ta-overview-right-handle\"", StringComparison.Ordinal)
@@ -4777,11 +4792,12 @@ let tests =
             Expect.stringContains source "pendingBoundaryPan.IsNone && committedCoverageReady ()" "The queue cannot dispatch from an uncommitted coverage snapshot."
             Expect.stringContains source "RendererModel.residentGestureScopeMatches projection" "An accepted earlier gesture must not invalidate a later same-resident gesture."
             Expect.stringContains source "draftWindow.Value <- publishedNavigatorDraft" "Cancelling a new gesture restores the previous outstanding drop."
-            Expect.stringContains source "TaQueuedViewportIntent.ResidentGesture" "A gesture queued behind an earlier action must retain semantic displacement rather than a stale absolute window."
-            Expect.stringContains source "dispatchResidentGesture" "The queued semantic gesture must rebuild against the latest committed projection."
+            Expect.isFalse (source.Contains("TaQueuedViewportIntent.ResidentGesture", StringComparison.Ordinal)) "A queued gesture must not be replayed from a new resident origin."
+            Expect.isFalse (source.Contains("dispatchResidentGesture", StringComparison.Ordinal)) "A queued gesture must preserve its pointer-up target rather than rebase its displacement."
+            Expect.stringContains source "TaQueuedViewportIntent.CoverageWindow(targetStart, targetCount, successText)" "The queue stores an absolute observation target captured at pointer-up."
+            Expect.stringContains source "sendOrQueueCoverageWindowAction targetStart intent.ObservationCount" "A resident boundary drop queues the captured absolute target."
             Expect.stringContains source "RendererModel.resolveNavigatorGestureDomain" "The navigator must preserve whether its ordinals are resident or active-local."
             Expect.stringContains source "RendererModel.tryNavigatorGestureCoverageIntent" "Only a typed resident domain may dispatch a GLOBAL ordinal coverage intent."
-            Expect.stringContains source "Resident navigator authority changed before the queued gesture could settle." "A queued cross-axis gesture without typed authority must fail closed."
             Expect.stringContains source "rejectNavigatorDraft" "A queued gesture rejected by the latest projection must not leave a permanent Preview."
             Expect.stringContains source "publishViewportDispatchDiagnostics node" "A replacement chart stack must receive the current queue diagnostics."
 

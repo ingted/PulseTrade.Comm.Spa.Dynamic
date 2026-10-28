@@ -73,7 +73,6 @@ type TaQueuedViewportIntent =
     | AdjacentCoverage of PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection * int
     | NavigatorAdjacentCoverage of PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection * int * int * string
     | CoverageWindow of int64 * int * string
-    | ResidentGesture of string * float * string
 
 type TaRendererDisplayTime =
     { Zone: View<SduiDisplayTimeZone>
@@ -2894,7 +2893,6 @@ module TaWorkspaceRenderer =
         let mutable dispatchNavigatorAdjacentCoverage =
             fun (_: PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection) (_: int) (_: int) (_: string) -> ()
         let mutable dispatchCoverageWindow = fun (_: int64) (_: int) (_: string) -> ()
-        let mutable dispatchResidentGesture = fun (_: string) (_: float) (_: string) -> ()
         let mutable settlePendingCoverageProjection = fun () -> false
         let mutable settlePendingEventRangeProjection = fun () -> false
         let preparedRowsReady = Var.Create false
@@ -3046,14 +3044,6 @@ module TaWorkspaceRenderer =
                 setUiState { uiState.Value with Feedback = "Adjacent navigator coverage request queued." }
             else
                 dispatchNavigatorAdjacentCoverage direction delta observationCount successText
-        let queueResidentGestureWhenBlocked drag deltaRatio successText =
-            if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
-                recordViewportDispatch "resident-gesture" None None (Some deltaRatio)
-                queuedViewportIntent <- Some(TaQueuedViewportIntent.ResidentGesture(drag, deltaRatio, successText))
-                setUiState { uiState.Value with Feedback = "Resident navigator gesture queued." }
-                true
-            else
-                false
         flushQueuedViewportIntent <- fun () ->
             match queuedViewportIntent with
             | Some intent when uiState.Value.PendingActionId.IsNone && pendingBoundaryPan.IsNone && committedCoverageReady () && not (remoteDisabled runtimeState.Value.Poll) ->
@@ -3069,8 +3059,6 @@ module TaWorkspaceRenderer =
                     dispatchNavigatorAdjacentCoverage direction delta observationCount successText
                 | TaQueuedViewportIntent.CoverageWindow(targetStart, targetCount, successText) ->
                     dispatchCoverageWindow targetStart targetCount successText
-                | TaQueuedViewportIntent.ResidentGesture(drag, deltaRatio, successText) ->
-                    dispatchResidentGesture drag deltaRatio successText
             | _ -> ()
 
         View.Map2
@@ -4315,78 +4303,6 @@ module TaWorkspaceRenderer =
                     rejectNavigatorDraft "Loaded coverage is unavailable."
             | None -> rejectNavigatorDraft "Loaded coverage document is unavailable."
 
-        dispatchResidentGesture <- fun drag deltaRatio successText ->
-            match runtimeState.Value.Document with
-            | Some document ->
-                let timeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
-                let currentWindow = resolvedWindow uiState.Value
-                match RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
-                | Some projection ->
-                    match
-                        RendererModel.coverageNavigatorWindowWithAuthority
-                            timeline.Length
-                            currentWindow
-                            residentNavigatorAuthority.Value
-                            projection
-                    with
-                    | Some(_, total, committed) ->
-                        let rebasedDelta = RendererModel.navigatorGestureDeltaForDomain total deltaRatio
-                        let rebasedDraft =
-                            RendererModel.previewWindowBounds
-                                options.MinimumVisibleBars
-                                (maximumVisibleBarsNow ())
-                                total
-                                committed
-                                drag
-                                rebasedDelta
-                        navigatorSelectionRatiosOverride.Value <- Some(RendererModel.selectionRatios total rebasedDraft)
-                        draftWindow.Value <- Some rebasedDraft
-                        if not (isNull chartStackElement) then
-                            chartStackElement.SetAttribute("data-drag-rebased-domain-count", string total)
-                            chartStackElement.SetAttribute("data-drag-rebased-delta", string rebasedDelta)
-                        match RendererModel.navigatorBoundaryDirection total committed drag rebasedDelta with
-                        | Some direction when projection.GlobalOverview.IsNone && actionAllowed "visible-range-changed" ->
-                            recordViewportDispatch "rebased-loaded-adjacent" None (Some committed.Count) (Some deltaRatio)
-                            dispatchNavigatorAdjacentCoverage direction rebasedDelta committed.Count successText
-                        | Some direction when actionAllowed "visible-range-changed" ->
-                            match
-                                RendererModel.tryResidentAdjacentCoverageIntent
-                                    direction
-                                    (maximumVisibleBarsNow ())
-                                    committed
-                                    projection
-                            with
-                            | Some intent ->
-                                match intent.StartObservationOrdinal with
-                                | Some targetStart ->
-                                    if not (isNull chartStackElement) then
-                                        chartStackElement.SetAttribute("data-drag-outcome", "rebase-adjacent")
-                                    recordViewportDispatch "rebased-resident-adjacent" (Some targetStart) (Some intent.ObservationCount) (Some deltaRatio)
-                                    dispatchCoverageWindow targetStart intent.ObservationCount successText
-                                | None -> rejectNavigatorDraft "Rebased resident target is unavailable."
-                            | None -> rejectNavigatorDraft "Rebased resident coverage is unavailable."
-                        | Some _ -> rejectNavigatorDraft "Rebased resident action is disabled."
-                        | None ->
-                            match
-                                RendererModel.tryNavigatorGestureCoverageIntent
-                                    { DomainCount = total; CommittedWindow = committed; UsesResidentAuthority = true }
-                                    projection
-                                    rebasedDraft
-                            with
-                            | Some intent ->
-                                match intent.StartObservationOrdinal with
-                                | Some targetStart ->
-                                    if not (isNull chartStackElement) then
-                                        chartStackElement.SetAttribute("data-drag-outcome", "rebase-resident")
-                                    recordViewportDispatch "rebased-resident" (Some targetStart) (Some intent.ObservationCount) (Some deltaRatio)
-                                    dispatchCoverageWindow targetStart intent.ObservationCount successText
-                                | None -> rejectNavigatorDraft "Rebased resident target is unavailable."
-                            | None -> rejectNavigatorDraft "Rebased resident gesture is outside the latest projection."
-                    | None ->
-                        rejectNavigatorDraft "Resident navigator authority changed before the queued gesture could settle."
-                | _ -> rejectNavigatorDraft "Resident navigator projection is unavailable."
-            | None -> rejectNavigatorDraft "Resident navigator document is unavailable."
-
         let withLoadedCoverage operation =
             match runtimeState.Value.Document with
             | Some document ->
@@ -4627,10 +4543,6 @@ module TaWorkspaceRenderer =
                                     draft
                             | None -> draft
 
-                        let gestureDeltaRatio () =
-                            if bounds.Width <= 0.0 then 0.0
-                            else (latestPointerX - pointerX) / bounds.Width
-
                         let cleanup () =
                             if not (isNull moveHandler) then JS.Document.RemoveEventListener("pointermove", moveHandler)
                             if not (isNull upHandler) then JS.Document.RemoveEventListener("pointerup", upHandler)
@@ -4707,17 +4619,10 @@ module TaWorkspaceRenderer =
                                                             setDragDiagnostic "data-drag-outcome" "commit-resident"
                                                             navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
                                                             draftWindow.Value <- Some next
-                                                            if
-                                                                not (
-                                                                    queueResidentGestureWhenBlocked
-                                                                        drag
-                                                                        (gestureDeltaRatio ())
-                                                                        "Resident viewport requested.")
-                                                            then
-                                                                sendOrQueueCoverageWindowAction
-                                                                    targetStart
-                                                                    intent.ObservationCount
-                                                                    "Resident viewport requested."
+                                                            sendOrQueueCoverageWindowAction
+                                                                targetStart
+                                                                intent.ObservationCount
+                                                                "Resident viewport requested."
                                                         else
                                                             setDragDiagnostic "data-drag-outcome" "resident-action-disabled"
                                                             draftWindow.Value <- None
@@ -4752,14 +4657,7 @@ module TaWorkspaceRenderer =
                                                     "data-drag-outcome"
                                                     (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "request-earlier" else "request-later")
                                                 draftWindow.Value <- Some draft
-                                                if
-                                                    not (
-                                                        queueResidentGestureWhenBlocked
-                                                            drag
-                                                            (gestureDeltaRatio ())
-                                                            "Loaded coverage requested.")
-                                                then
-                                                    sendOrQueueCoverageWindowAction targetStart intent.ObservationCount "Loaded coverage requested."
+                                                sendOrQueueCoverageWindowAction targetStart intent.ObservationCount "Loaded coverage requested."
                                             | None -> draftWindow.Value <- None
                                         | None ->
                                             setDragDiagnostic "data-drag-outcome" "coverage-boundary"
