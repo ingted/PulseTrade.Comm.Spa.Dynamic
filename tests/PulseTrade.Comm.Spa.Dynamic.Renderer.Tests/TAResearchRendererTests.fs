@@ -31,6 +31,35 @@ let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc avai
 
 let tests =
     testList "TA renderer model" [
+        testCase "DYN-T-750 superseded range completion cannot undo the latest resize" <| fun _ ->
+            let oldReply = TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 1202; Count = 1500 }
+            let latestReply = TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 1202; Count = 356 }
+            Expect.equal (RendererModel.eventRangeSettlementEffects 1 2 oldReply)
+                (true, None, false)
+                "the old 1500 reply releases its data gate but cannot overwrite the 356-bar local commit"
+            Expect.equal (RendererModel.eventRangeSettlementEffects 2 2 latestReply)
+                (true, Some { StartIndex = 1202; Count = 356 }, false)
+                "the latest reply can settle its exact requested width"
+            Expect.equal (RendererModel.eventRangeSettlementEffects 1 1 oldReply)
+                (true, Some { StartIndex = 1202; Count = 1500 }, false)
+                "without a newer gesture normal relocation must still apply"
+            for latest in [ 1; 2 ] do
+                Expect.equal (RendererModel.eventRangeSettlementEffects 1 latest TaCoverageIntentProjectionSettlement.Await)
+                    (false, None, false) "a provisional response must not release queued dispatch"
+            Expect.equal (RendererModel.eventRangeSettlementEffects 1 2 TaCoverageIntentProjectionSettlement.Reject)
+                (true, None, false) "an old rejection must not discard the newer draft"
+            Expect.equal (RendererModel.eventRangeSettlementEffects 2 2 TaCoverageIntentProjectionSettlement.Reject)
+                (true, None, true) "a current terminal rejection must still be reported"
+
+        testCase "DYN-T-751 preparation feedback cannot gray the committed charts" <| fun _ ->
+            let source = IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let start = source.IndexOf("Attr.Create \"data-testid\" \"ta-chart-preparation-pending\"", StringComparison.Ordinal)
+            Expect.isGreaterThan start -1 "preparation still has an observable progress indicator"
+            let finish = source.IndexOf("Preparing coverage", start, StringComparison.Ordinal)
+            let overlay = source.Substring(start, finish - start)
+            Expect.isFalse (overlay.Contains("inset:0")) "progress must not cover the full chart stack"
+            Expect.isFalse (overlay.Contains("rgba(248,250,252,0.18)")) "existing candles remain at their original contrast"
+
         for label, trackWidth, startX, currentX, expected in
             [ "forward 25 to 65", 1000.0, 250.0, 650.0, Some { StartIndex = 3375; Count = 600 }
               "reverse same bounds", 1000.0, 650.0, 250.0, Some { StartIndex = 3375; Count = 600 }

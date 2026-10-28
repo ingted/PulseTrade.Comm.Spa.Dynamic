@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <Version>0.3.23</Version>
     <TargetFramework>net10.0</TargetFramework>
     <GenerateProgramFile>false</GenerateProgramFile>
     <LangVersion>preview</LangVersion>
@@ -14,6 +15,6 @@
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="[10.1.402]" />
     <PackageReference Include="Expecto" Version="10.2.3" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="0.3.22" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="0.3.23" />
   </ItemGroup>
 </Project>

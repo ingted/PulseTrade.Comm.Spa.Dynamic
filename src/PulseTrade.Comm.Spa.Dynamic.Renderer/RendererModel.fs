@@ -3728,6 +3728,16 @@ module RendererModel =
             | _ when actionPending -> TaCoverageIntentProjectionSettlement.Await
             | _ -> TaCoverageIntentProjectionSettlement.Reject
 
+    // Data completion releases the dispatch gate even when a newer local gesture
+    // owns the viewport. A superseded reply must neither reanchor nor reject it.
+    let eventRangeSettlementEffects intentGeneration latestIntentGeneration settlement =
+        let current = intentGeneration = latestIntentGeneration
+        match settlement with
+        | TaCoverageIntentProjectionSettlement.Await -> false, None, false
+        | TaCoverageIntentProjectionSettlement.Reanchor window ->
+            true, (if current then Some window else None), false
+        | TaCoverageIntentProjectionSettlement.Reject -> true, None, current
+
     let selectWindow window (values: 'T array) =
         if window.Count <= 0 || values.Length = 0 then [||]
         else

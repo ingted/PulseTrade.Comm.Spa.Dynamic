@@ -47,7 +47,8 @@ type TaPendingEventRangeSettlement =
       StartEventTimeUtc: string
       EndEventTimeExclusiveUtc: string
       ObservationCount: int
-      QueryGeneration: int64 }
+      QueryGeneration: int64
+      ViewportIntentGeneration: int }
 
 type TaPendingQueryViewportSettlement =
     { Query: TaQueryChange
@@ -2897,6 +2898,7 @@ module TaWorkspaceRenderer =
         let mutable queryInFlight = false
         let mutable queuedQuery: (TaQueryChange * int) option = None
         let mutable pendingBoundaryPan: TaPendingBoundaryPan option = None
+        let mutable viewportIntentGeneration = 0
         let mutable pendingEventRangeSettlement: TaPendingEventRangeSettlement option = None
         let mutable pendingQueryViewportSettlement: TaPendingQueryViewportSettlement option = None
         let mutable queryViewportSettlementDiagnostics =
@@ -3034,7 +3036,8 @@ module TaWorkspaceRenderer =
                           StartEventTimeUtc = change.StartEventTimeUtc
                           EndEventTimeExclusiveUtc = change.EndEventTimeExclusiveUtc
                           ObservationCount = intent.ObservationCount
-                          QueryGeneration = intent.QueryGeneration }
+                          QueryGeneration = intent.QueryGeneration
+                          ViewportIntentGeneration = viewportIntentGeneration }
                 | _ -> None
             | _ -> None
         let pendingEventRangeMatchesDocument (document: TaWorkspaceDocument) =
@@ -3072,6 +3075,7 @@ module TaWorkspaceRenderer =
             else
                 startVisibleRangeAction action
         let sendOrQueueCoverageWindowAction targetStart targetCount successText =
+            viewportIntentGeneration <- viewportIntentGeneration + 1
             recordViewportDispatch "coverage-window" (Some targetStart) (Some targetCount) None
             if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
                 queuedViewportIntent <- Some(TaQueuedViewportIntent.CoverageWindow(targetStart, targetCount, successText))
@@ -3079,6 +3083,7 @@ module TaWorkspaceRenderer =
             else
                 dispatchCoverageWindow targetStart targetCount successText
         let sendOrQueueNavigatorAdjacentCoverage direction delta observationCount successText =
+            viewportIntentGeneration <- viewportIntentGeneration + 1
             recordViewportDispatch "navigator-adjacent" None (Some observationCount) None
             if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
                 queuedViewportIntent <-
@@ -3189,7 +3194,7 @@ module TaWorkspaceRenderer =
                 match RendererModel.tryLoadedCoverageResolved document.DefaultView next.Data with
                 | Some projection ->
                     let timeline = RendererModel.referenceTimelineForDocumentPrepared document nextPreparedData
-                    match
+                    let completed, window, rejected =
                         RendererModel.mainPlotEventRangeProjectionSettlement
                             options.MinimumVisibleBars
                             (maximumVisibleBarsFor document)
@@ -3199,25 +3204,23 @@ module TaWorkspaceRenderer =
                             pending.QueryGeneration
                             uiState.Value.PendingActionId.IsSome
                             projection
-                    with
-                    | TaCoverageIntentProjectionSettlement.Reanchor window ->
+                        |> RendererModel.eventRangeSettlementEffects pending.ViewportIntentGeneration viewportIntentGeneration
+                    if completed then
                         pendingEventRangeSettlement <- None
+                    window |> Option.iter (fun window ->
                         let followLatest = window.StartIndex = RendererModel.viewportMaximumStart timeline.Length window
                         setUiState
                             { uiState.Value with
                                 Window = window
                                 FollowLatest = followLatest
                                 CursorIndex = None }
-                        cursorIndex.Value <- None
-                        true
-                    | TaCoverageIntentProjectionSettlement.Reject ->
-                        pendingEventRangeSettlement <- None
+                        cursorIndex.Value <- None)
+                    if rejected then
                         draftWindow.Value <- None
                         setUiState
                             { uiState.Value with
                                 Feedback = "Accepted event-range frame does not contain the requested event-time viewport." }
-                        true
-                    | TaCoverageIntentProjectionSettlement.Await -> false
+                    completed
                 | None -> false
             | _ -> false
 
@@ -3823,6 +3826,8 @@ module TaWorkspaceRenderer =
                          && document.RowsRef = expectedDocument.RowsRef
                          && document.BaseRowId = expectedDocument.BaseRowId ->
                     let changed, bounded = commitLocalWindow followLatest window
+                    if changed then
+                        viewportIntentGeneration <- viewportIntentGeneration + 1
                     if changed && actionAllowed "visible-range-changed" then
                         match rangeFor expectedDocument prepared bounded with
                         | Some range ->
@@ -6216,7 +6221,7 @@ module TaWorkspaceRenderer =
                                         if pending then
                                             div [
                                                 Attr.Create "data-testid" "ta-chart-preparation-pending"
-                                                attr.style "position:absolute; inset:0; z-index:20; display:flex; align-items:flex-start; justify-content:flex-end; padding:8px 20px; background:rgba(248,250,252,0.18); pointer-events:none; box-sizing:border-box;"
+                                                attr.style "position:absolute; top:8px; right:20px; z-index:20; pointer-events:none;"
                                             ] [
                                                 span [ attr.style "padding:3px 7px; border:1px solid #cbd6e5; border-radius:4px; background:#f8fafc; color:#40536d; font-size:11px;" ] [ text "Preparing coverage…" ]
                                             ] :> Doc
