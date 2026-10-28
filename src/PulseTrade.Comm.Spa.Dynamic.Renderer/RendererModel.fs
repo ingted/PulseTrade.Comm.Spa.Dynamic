@@ -3472,10 +3472,7 @@ module RendererModel =
         | _ -> None
 
     let navigatorGestureBoundaryDirection hasGlobalResidentTrack total committed drag rawDelta pointerX trackWidth =
-        if total > 0 && committed.Count > 0 && drag = TaWindowDrag.Move
-           && rawDelta < 0 && committed.StartIndex + rawDelta <= 0 then
-            Some TaCoverageDirection.Earlier
-        elif hasGlobalResidentTrack then
+        if hasGlobalResidentTrack then
             residentNavigatorBoundaryDirection total committed drag rawDelta pointerX trackWidth
         else
             navigatorBoundaryDirection total committed drag rawDelta
@@ -3867,6 +3864,40 @@ module RendererModel =
                        int (Math.Round(float tickIndex * float (timestamps.Length - 1) / float (count - 1)))
                    yield sourceIndex, timestamps[sourceIndex] |]
             |> Array.distinctBy fst
+
+    let residentCalendarTicks zone (timestamps: string array) =
+        // Overview timelines are UTC; some durable producers omit the trailing Z.
+        let parsed =
+            timestamps |> Array.mapi (fun index value ->
+                let canonical =
+                    if not(String.IsNullOrWhiteSpace value) && value.Length >= 19
+                       && not(value.EndsWith("Z")) && not(value.EndsWith("+00:00"))
+                       && (value.Length = 19 || (value[19] = '.' && value.Substring(20) |> Seq.forall Char.IsDigit)) then value + "Z"
+                    else value
+                TaDisplayTimeFormatter.tryParseCanonicalUtc canonical
+                |> Option.bind (fun utc ->
+                    TaDisplayTimeFormatter.tryFormat zone canonical
+                    |> Option.map (fun local -> index, utc, local))) |> Array.choose id
+        let intradayMinutes =
+            parsed |> Array.pairwise |> Array.choose (fun ((_, left, _), (_, right, _)) ->
+                let minutes = (right.Hour-left.Hour)*60 + right.Minute-left.Minute
+                if left.Year=right.Year && left.Month=right.Month && left.Day=right.Day && minutes>0 then Some minutes else None)
+        let hourly = intradayMinutes.Length>0 && Array.min intradayMinutes <= 5
+        let mutable previousDate = ""
+        let mutable previousHour = ""
+        let ticks =
+            parsed |> Array.choose (fun (index, _, local) ->
+                let date = local.DateText
+                let hour = local.ClockText.Substring(0,2)
+                let dateChanged = date <> previousDate
+                let hourChanged = dateChanged || hour <> previousHour
+                previousDate <- date
+                previousHour <- hour
+                if dateChanged || (hourly && hourChanged) then
+                    let dateLabel = date.Replace("-", "")
+                    Some(index, (if hourly then dateLabel.Substring(4) else dateLabel), hour, dateChanged)
+                else None)
+        hourly, ticks
 
     let globalCalendarTicks minimumSpacing width (anchors: TaOverviewAnchor array) =
         let seenYears = HashSet<int>()

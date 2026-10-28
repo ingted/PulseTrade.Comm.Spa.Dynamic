@@ -697,6 +697,37 @@ module TaWorkspaceRenderer =
             ] :> Doc)
         |> Doc.EmbedView
 
+    let residentTimeAxisWithPalette palette (displayTime: TaRendererDisplayTime) (timestamps: string array) =
+        View.Map2 (fun width zone -> width, zone) axisViewportWidth.View displayTime.Zone
+        |> View.Map (fun (width, zone) ->
+            let hourly, ticks = RendererModel.residentCalendarTicks zone timestamps
+            let mutable lastDateX = -1000.0
+            let mutable lastHourX = -1000.0
+            div [
+                Attr.Create "data-testid" "ta-overview-time-axis"
+                Attr.Create "data-time-axis-kind" (if hourly then "resident-hourly" else "resident-daily")
+                Attr.Create "data-display-time-zone" (SduiDisplayTimeZone.id zone)
+                attr.style ("position:relative;height:37px;overflow:hidden;background:" + palette.AxisSurface + ";color:" + palette.AxisText + ";font:10px Consolas,monospace;")
+            ] [
+                for index, date, hour, dateChanged in ticks do
+                    let ratio = if timestamps.Length<=1 then 0.0 else float index / float (timestamps.Length-1)
+                    let left = fixedText (ratio*100.0) + "%"
+                    let x = ratio * width
+                    let transform = if x<40.0 then "none" elif x>width-40.0 then "translateX(-100%)" else "translateX(-50%)"
+                    yield span [
+                        Attr.Create "data-time-axis-tick" (if hourly then "hour" else "day")
+                        Attr.Create "data-canonical-event-time" timestamps[index]
+                        attr.style ("position:absolute;top:0;left:" + left + ";height:5px;border-left:1px solid " + palette.AxisText + ";")
+                    ] []
+                    if dateChanged && x-lastDateX >= (if hourly then 38.0 else 66.0) then
+                        lastDateX <- x
+                        yield span [ Attr.Create "data-time-axis-lane" "date"; attr.style ("position:absolute;top:6px;left:" + left + ";transform:" + transform + ";white-space:nowrap;") ] [ text date ]
+                    if x-lastHourX >= 24.0 then
+                        lastHourX <- x
+                        yield span [ Attr.Create "data-time-axis-lane" "hour"; attr.style ("position:absolute;top:21px;left:" + left + ";transform:" + transform + ";") ] [ text hour ]
+            ] :> Doc)
+        |> Doc.EmbedView
+
     let timeAxis testId rowId timestamps =
         let zone = Var.Create SduiDisplayTimeZone.Utc
         timeAxisWithPalette lightPlotPalette { Zone = zone.View; Current = fun () -> zone.Value } testId rowId timestamps
@@ -706,7 +737,7 @@ module TaWorkspaceRenderer =
         |> View.Map (fun width ->
             let ticks = RendererModel.globalCalendarTicks 24.0 width anchors
             let laneCount = if ticks.Length = 0 then 1 else (ticks |> Array.maxBy _.Lane).Lane + 1
-            let axisHeight = laneCount * 15 + 2
+            let axisHeight = laneCount * 15 + 7
             div [
                 Attr.Create "data-testid" testId
                 Attr.Create "data-time-axis-row-id" rowId
@@ -721,7 +752,12 @@ module TaWorkspaceRenderer =
                     let transform = if left <= 0.0 then "none" elif left >= 100.0 then "translateX(-100%)" else "translateX(-50%)"
                     let kind = if tick.IsYearBoundary then "year" else "quarter"
                     let lane = string tick.Lane
-                    let top = string (tick.Lane * 15) + "px"
+                    let top = string (tick.Lane * 15 + 5) + "px"
+                    yield span [
+                        Attr.Create "data-time-axis-tick" kind
+                        Attr.Create "data-canonical-event-time" tick.EventTimeUtc
+                        attr.style ("position:absolute;top:0;left:" + fixedText left + "%;height:5px;border-left:1px solid " + palette.AxisText + ";")
+                    ] []
                     yield
                         span [
                             Attr.Create "data-time-axis-event-time" tick.EventTimeUtc
@@ -6345,11 +6381,9 @@ module TaWorkspaceRenderer =
                                                                     rawEvent
                                                             | None -> ())
                                                         finishNavigatorDragFromElement
-                                                    timeAxisWithPalette
+                                                    residentTimeAxisWithPalette
                                                         currentPlotPalette
                                                         displayTime
-                                                        "ta-overview-time-axis"
-                                                        "overview"
                                                         overviewReferenceTimeline
                                                 ]
                                             match currentCoverageProjection |> Option.bind _.GlobalOverview with

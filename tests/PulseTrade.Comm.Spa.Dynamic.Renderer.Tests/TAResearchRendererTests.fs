@@ -2829,7 +2829,7 @@ let tests =
             Expect.stringContains handlerBody "[data-testid='ta-overview-interaction-surface']" "Production drag math must measure the border-free SVG interaction surface."
             Expect.stringContains handlerBody "RendererModel.navigatorGestureDeltaForDomain" "Production must use the tested domain-delta conversion."
 
-        testCase "DYN-T-731 cross-axis resident track continues earlier when the selection reaches local zero" <| fun _ ->
+        testCase "DYN-T-731 global-backed resident track requires physical overscroll" <| fun _ ->
             let committed = { StartIndex = 1198; Count = 80 }
             let rawDelta = -1200
             let draft =
@@ -2840,22 +2840,20 @@ let tests =
                 (RendererModel.navigatorGestureBoundaryDirection false 4500 committed TaWindowDrag.Move rawDelta 10.0 1200.0)
                 (Some TaCoverageDirection.Earlier)
                 "a local-only navigator retains logical-boundary behavior"
-            Expect.equal
+            Expect.isNone
                 (RendererModel.navigatorGestureBoundaryDirection true 4500 committed TaWindowDrag.Move rawDelta 10.0 1200.0)
-                (Some TaCoverageDirection.Earlier)
-                "user left-edge continuation follows the selection even when the pointer grab offset remains inside"
+                "selection touching or clamped at the boundary while pointer remains inside must not page"
             Expect.equal
                 (RendererModel.navigatorGestureBoundaryDirection true 4500 committed TaWindowDrag.Move rawDelta -0.1 1200.0)
                 (Some TaCoverageDirection.Earlier)
                 "an actual physical overscroll still requests earlier resident coverage"
 
-        testCase "DYN-T-740 moving the visible selection to the loaded left edge requests continuation" <| fun _ ->
+        testCase "DYN-T-740 touching the loaded edge does not request continuation" <| fun _ ->
             let committed = { StartIndex = 1198; Count = 80 }
             for hasGlobalTrack in [ false; true ] do
-                Expect.equal
+                Expect.isNone
                     (RendererModel.navigatorGestureBoundaryDirection hasGlobalTrack 4500 committed TaWindowDrag.Move -1198 10.0 1200.0)
-                    (Some TaCoverageDirection.Earlier)
-                    "reaching the loaded head requests earlier data even when the pointer grab offset remains inside the track"
+                    "touching the loaded head must keep the resident range unchanged"
                 Expect.isNone
                     (RendererModel.navigatorGestureBoundaryDirection hasGlobalTrack 4500 committed TaWindowDrag.Move -1197 10.4 1200.0)
                     "an interior position does not request another page"
@@ -4510,7 +4508,18 @@ let tests =
                 (RendererModel.authoritativeGlobalOverviewReady true (state (projection (Some overview))))
                 "the validated authoritative GLOBAL projection replaces the bootstrap"
 
-        testCase "DYN-T-691 only the GLOBAL overview uses the dedicated calendar axis" <| fun _ ->
+        testCase "resident axis uses daily and hourly real observation boundaries in two lanes" <| fun _ ->
+            let hourly, minuteTicks = RendererModel.residentCalendarTicks SduiDisplayTimeZone.Utc
+                                        [| "2026-01-02T09:55:00Z"; "2026-01-02T10:00:00Z"; "2026-01-02T10:05:00Z"; "2026-01-03T09:00:00Z" |]
+            Expect.isTrue hourly "5K has hourly markers"
+            Expect.equal minuteTicks [| (0,"0102","09",true); (1,"0102","10",false); (3,"0103","09",true) |] "one marker per real hour, date label on each new date"
+            let hourly, halfHourTicks = RendererModel.residentCalendarTicks SduiDisplayTimeZone.Utc
+                                          [| "2026-01-02T23:00:00.0000000"; "2026-01-02T23:30:00.0000000"; "2026-01-03T00:00:00.0000000"; "2026-01-03T00:30:00.0000000" |]
+            Expect.isFalse hourly "30K has daily markers"
+            Expect.equal halfHourTicks [| (0,"20260102","23",true); (2,"20260103","00",true) |] "durable UTC timestamps without suffix retain their dates and hours"
+            Expect.equal (RendererModel.residentCalendarTicks SduiDisplayTimeZone.Utc Array.empty) (false,Array.empty) "empty timeline has no synthetic ticks"
+
+        testCase "DYN-T-691 GLOBAL and RESIDENT use their separate calendar axes" <| fun _ ->
             let source =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
             let authoritativeStart = source.IndexOf("let renderWithProjectionCommitAndDisplayTimeZone", StringComparison.Ordinal)
@@ -4523,13 +4532,13 @@ let tests =
             Expect.stringContains globalBody "globalOverview.Anchors" "GLOBAL tick positions must come from authoritative real anchors."
             Expect.stringContains source "data-global-calendar-tick-lane" "GLOBAL calendar ticks must expose dynamic lane assignments."
             Expect.stringContains source "data-global-calendar-lane-count" "GLOBAL calendar axis must expose its dynamic lane count."
-            Expect.stringContains source "laneCount * 15 + 2" "GLOBAL calendar axis height must grow with its dynamic lane count."
+            Expect.stringContains source "laneCount * 15 + 7" "GLOBAL calendar axis reserves room for five-pixel ticks and both text lanes."
             Expect.isFalse (globalBody.Contains("timeAxisWithPalette", StringComparison.Ordinal)) "GLOBAL must not fall back to the generic MM-dd HH:mm axis."
 
             let residentStart = source.IndexOf("let residentOverview =", StringComparison.Ordinal)
             let residentEnd = source.IndexOf("match currentCoverageProjection", residentStart, StringComparison.Ordinal)
             let residentBody = source.Substring(residentStart, residentEnd - residentStart)
-            Expect.stringContains residentBody "timeAxisWithPalette" "RESIDENT must retain the generic event-time axis."
+            Expect.stringContains residentBody "residentTimeAxisWithPalette" "RESIDENT must render its daily/hourly two-lane axis."
 
         testCase "DYN-T-697 bootstrap renders actual GLOBAL read-only before authoritative state" <| fun _ ->
             let source =
