@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "mappings": [
+    {
+      "project": "src/PulseTrade.Comm.Spa.Dynamic.Contracts/PulseTrade.Comm.Spa.Dynamic.Contracts.fsproj",
+      "tests": [{ "name": "Research contracts and marker metadata", "runner": "dotnet-run", "target": "tests/PulseTrade.Comm.Spa.Dynamic.Contracts.Tests.fsproj", "configuration": "Release", "arguments": [], "timeoutSeconds": 240 }]
+    },
+    {
+      "project": "src/PulseTrade.Comm.Spa.Dynamic.Renderer/PulseTrade.Comm.Spa.Dynamic.Renderer.fsproj",
+      "tests": [{ "name": "Renderer contract regression", "runner": "dotnet-run", "target": "tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj", "configuration": "Release", "arguments": [], "timeoutSeconds": 300 }]
+    },
+    {
+      "project": "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj",
+      "tests": [{ "name": "Interactive client regression", "runner": "dotnet-run", "target": "tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests.fsproj", "configuration": "Release", "arguments": [], "timeoutSeconds": 300 }]
+    },
+    {
+      "project": "src/PulseTrade.Comm.Spa.Dynamic.Tagging.Client/PulseTrade.Comm.Spa.Dynamic.Tagging.Client.fsproj",
+      "tests": [{ "name": "Tagging editor regression", "runner": "dotnet-run", "target": "tests/PtcsTaggingEditor.Tests/PtcsTaggingEditor.Tests.fsproj", "configuration": "Release", "arguments": [], "timeoutSeconds": 240 }]
+    }
+  ]
+}

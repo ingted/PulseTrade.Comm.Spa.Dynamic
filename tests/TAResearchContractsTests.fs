@@ -1046,6 +1046,32 @@ let tests =
                 |> Map.ofList
             Expect.isEmpty (MarkerValidation.candidateErrors splitDocument data) "Split candle refs resolve the same marker position contract."
 
+        testCase "DYN-T-759 split candle markers accept finite scalar values with trading-date metadata" <| fun _ ->
+            let refs = { OpenRef="o"; HighRef="h"; LowRef="l"; CloseRef="c"; VolumeRef="v" }
+            let series value =
+                TemporalSeriesCodec.encode
+                    { AxisRef="axis.metadata"; AxisRevision=7L
+                      Points=[| {Position=5L;Value=value} |] }
+            let metadata value = SduiValue.Object(Map.ofList ["v",value;"tradingDate",SduiValue.Number 20260707.0])
+            let data =
+                [ "o",series (metadata (SduiValue.Number 100.0))
+                  "h",series (metadata (SduiValue.Number 102.0))
+                  "l",series (SduiValue.Number 99.0)
+                  "c",series (metadata (SduiValue.Number 101.0))
+                  "v",series (metadata (SduiValue.Number 0.0)) ] |> Map.ofList
+            Expect.isTrue (MarkerValidation.splitCandleAt 5L refs data "axis.metadata" 7L) "Metadata does not erase real OHLCV values; plain and annotated scalars may coexist."
+            Expect.isFalse (MarkerValidation.splitCandleAt 5L refs data "axis.other" 7L) "Axis identity remains exact."
+            Expect.isFalse (MarkerValidation.splitCandleAt 5L refs data "axis.metadata" 8L) "Axis revision remains exact."
+            Expect.isFalse (MarkerValidation.splitCandleAt 6L refs data "axis.metadata" 7L) "An absent candle position remains invalid."
+            for invalid in
+                [ SduiValue.Null; SduiValue.Text "101"; SduiValue.Number nan; SduiValue.Number infinity
+                  SduiValue.Object Map.empty; metadata (SduiValue.Text "101")
+                  metadata (SduiValue.Number nan); metadata (SduiValue.Number infinity)
+                  metadata (metadata (SduiValue.Number 101.0)) ] do
+                let changed = data |> Map.add "c" (series invalid)
+                Expect.isFalse (MarkerValidation.splitCandleAt 5L refs changed "axis.metadata" 7L) "Only one finite numeric scalar envelope is valid; no string coercion, recursion or missing field fallback."
+            Expect.isFalse (MarkerValidation.splitCandleAt 5L refs (Map.remove "v" data) "axis.metadata" 7L) "All five components are still required."
+
         testCase "DYN-T-552 cross-trace marker wire limit rejects atomically" <| fun _ ->
             let axisRef = "axis.marker.aggregate"
             let candleRef = "series.marker.aggregate.price"

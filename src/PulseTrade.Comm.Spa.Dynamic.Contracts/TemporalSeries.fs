@@ -472,11 +472,16 @@ module MarkerValidation =
             |> List.forall (fun key -> objectNumber key value |> Option.isSome))
 
     let splitCandleAt position refs data axisRef axisRevision =
+        let componentNumber = function
+            // Split OHLCV points may retain trading-date metadata alongside v.
+            // Match the renderer's scalar envelope without coercing invalid values.
+            | SduiValue.Object fields -> Map.tryFind "v" fields |> Option.bind number
+            | value -> number value
         [| refs.OpenRef; refs.HighRef; refs.LowRef; refs.CloseRef; refs.VolumeRef |]
         |> Array.forall (fun dataRef ->
             match trySeries dataRef data with
             | Some series when series.AxisRef = axisRef && series.AxisRevision = axisRevision ->
-                positions series |> Map.tryFind position |> Option.bind number |> Option.isSome
+                positions series |> Map.tryFind position |> Option.bind componentNumber |> Option.isSome
             | _ -> false)
 
     let targetAtPosition position (markerSeries: TemporalSeries) (target: TaTraceSpec) data =
