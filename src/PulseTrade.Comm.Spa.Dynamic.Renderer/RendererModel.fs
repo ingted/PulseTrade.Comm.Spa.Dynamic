@@ -3915,12 +3915,12 @@ module RendererModel =
             low - valuePadding, high + valuePadding
 
     let rowYAxisBounds (row: TaRowSpec) =
-        if row.Kind = TaRowKind.Dmi || row.Kind = TaRowKind.Adx then Some 0.0, Some 100.0
-        else
-            let bound key =
-                row.Options |> Map.tryFind key
-                |> Option.bind (function SduiValue.Number value when finiteNumber value -> Some value | _ -> None)
-            bound "yStart", bound "yEnd"
+        let bound key =
+            row.Options |> Map.tryFind key
+            |> Option.bind (function SduiValue.Number value when finiteNumber value -> Some value | _ -> None)
+        match bound "yStart", bound "yEnd" with
+        | None, None when row.Kind = TaRowKind.Dmi || row.Kind = TaRowKind.Adx -> Some 0.0, Some 100.0
+        | authored -> authored
 
     let constrainYAxis (yStart, yEnd) (automaticLow, automaticHigh) =
         let span = max 1.0 (abs (automaticHigh - automaticLow))

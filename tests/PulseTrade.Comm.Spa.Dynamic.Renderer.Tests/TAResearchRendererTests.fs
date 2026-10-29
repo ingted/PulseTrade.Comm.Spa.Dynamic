@@ -63,12 +63,22 @@ let tests =
             Expect.equal (labels 60.0) (labels 30.0) "60K uses the same clock marks."
             Expect.isEmpty (RendererModel.residentCalendarGrid 30.0 SduiDisplayTimeZone.Utc [||]) "No generated observations."
 
-        testCase "DYN-T-751 row Y bounds retain fixed ends and DMI always uses 0..100" <| fun _ ->
+        testCase "DYN-T-751 authored Y bounds override DMI defaults without changing unconfigured rows" <| fun _ ->
             let row = { RowId = "test"; Kind = TaRowKind.Dmi; DataRef = "data"; HeightWeight = 1.0; Visible = true
-                        Options = Map [ "yStart", SduiValue.Number 20.0; "yEnd", SduiValue.Number 80.0 ]; Traces = [||] }
-            Expect.equal (RendererModel.rowYAxisBounds row) (Some 0.0, Some 100.0) "DMI has an invariant domain even with authored bounds."
-            Expect.equal (RendererModel.constrainYAxis (RendererModel.rowYAxisBounds row) (19.0, 67.0)) (0.0, 100.0) "Do not pad or auto-fit DMI."
-            let plain = { row with Kind = TaRowKind.Sma }
+                        Options = Map [ "yStart", SduiValue.Number -5.0; "yEnd", SduiValue.Number 100.0 ]; Traces = [||] }
+            // The user's explicit -5..100 demo supersedes the former unconditional DMI domain.
+            for kind in [ TaRowKind.Dmi; TaRowKind.Adx ] do
+                let configured = { row with Kind = kind }
+                Expect.equal (RendererModel.rowYAxisBounds configured) (Some -5.0, Some 100.0) "Authored bounds are exact for DMI and ADX."
+                Expect.equal (RendererModel.constrainYAxis (RendererModel.rowYAxisBounds configured) (19.0, 67.0)) (-5.0, 100.0) "Do not pad the explicitly fixed ends."
+                let lowerOnly = { configured with Options = Map [ "yStart", SduiValue.Number -5.0 ] }
+                let upperOnly = { configured with Options = Map [ "yEnd", SduiValue.Number 100.0 ] }
+                Expect.equal (RendererModel.rowYAxisBounds lowerOnly) (Some -5.0, None) "A single authored lower bound leaves the upper end automatic."
+                Expect.equal (RendererModel.rowYAxisBounds upperOnly) (None, Some 100.0) "A single authored upper bound leaves the lower end automatic."
+                let unconfigured = { configured with Options = Map.empty }
+                Expect.equal (RendererModel.rowYAxisBounds unconfigured) (Some 0.0, Some 100.0) "DMI/ADX still default to 0..100."
+            let plain = { row with Kind = TaRowKind.Sma; Options = Map [ "yStart", SduiValue.Number 20.0; "yEnd", SduiValue.Number 80.0 ] }
+            Expect.equal (RendererModel.rowYAxisBounds { plain with Options = Map.empty }) (None, None) "Other unconfigured rows remain automatic."
             Expect.equal (RendererModel.constrainYAxis (RendererModel.rowYAxisBounds plain) (-10.0, 120.0)) (20.0, 80.0) "Both ends are exact."
             Expect.equal (RendererModel.constrainYAxis (Some 0.0, None) (-10.0, 60.0)) (0.0, 60.0) "Only bottom is fixed."
             Expect.equal (RendererModel.constrainYAxis (None, Some 100.0) (20.0, 120.0)) (20.0, 100.0) "Only top is fixed."
