@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <PackageId>PulseTrade.Comm.Spa.Dynamic</PackageId>
-    <Version>0.1.42</Version>
+    <Version>0.1.43</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Dynamic SDUI and Actor extension for PulseTrade.Comm.Spa</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -37,11 +37,11 @@
     <PackageReference Include="FAkka.Argu" Version="10.1.400" />
     <PackageReference Include="FAkka.FCell2" Version="10.1.400" />
     <PackageReference Include="PulseTrade.Comm.Actor.Registry" Version="[0.1.6]" PrivateAssets="all" ExcludeAssets="runtime" />
-    <PackageReference Include="WebSharper.FSharp" Version="10.1.5.674" />
+    <PackageReference Include="WebSharper.FSharp" Version="10.1.7.680" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.2.63]" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.3.3]" />
   </ItemGroup>
 
   <ItemGroup>
