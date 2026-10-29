@@ -81,6 +81,12 @@ type TaRendererDisplayTime =
 
 [<JavaScript>]
 module TaWorkspaceRenderer =
+    let applyResolvedViewportWindow total window (current: TaRendererUiState) =
+        { current with
+            Window = window
+            FollowLatest = window.StartIndex = RendererModel.viewportMaximumStart total window
+            CursorIndex = None }
+
     let flushViewportIntentNowAndAfterFrame flush scheduleFallback =
         flush ()
         scheduleFallback flush
@@ -698,36 +704,57 @@ module TaWorkspaceRenderer =
             ] :> Doc)
         |> Doc.EmbedView
 
-    let residentTimeAxisWithPalette palette (displayTime: TaRendererDisplayTime) (timestamps: string array) =
+    let renderResidentTimeAxisWithPalette palette (displayTime: TaRendererDisplayTime) scaleMinutes boundaryKind makeTicks =
         View.Map2 (fun width zone -> width, zone) axisViewportWidth.View displayTime.Zone
         |> View.Map (fun (width, zone) ->
-            let hourly, ticks = RendererModel.residentCalendarTicks zone timestamps
+            let monthly = scaleMinutes > 60.0
+            let ticks: RendererModel.ResidentCalendarTick array = makeTicks zone
             let mutable lastDateX = -1000.0
             let mutable lastHourX = -1000.0
             div [
                 Attr.Create "data-testid" "ta-overview-time-axis"
-                Attr.Create "data-time-axis-kind" (if hourly then "resident-hourly" else "resident-daily")
+                Attr.Create "data-time-axis-kind" (if monthly then "resident-monthly" else "resident-daily")
+                Attr.Create "data-day-boundary-kind" boundaryKind
                 Attr.Create "data-display-time-zone" (SduiDisplayTimeZone.id zone)
-                attr.style ("position:relative;height:37px;overflow:hidden;background:" + palette.AxisSurface + ";color:" + palette.AxisText + ";font:10px Consolas,monospace;")
+                attr.style ("position:relative;height:37px;overflow:visible;pointer-events:none;background:" + palette.AxisSurface + ";color:" + palette.AxisText + ";font:10px Consolas,monospace;")
             ] [
-                for index, date, hour, dateChanged in ticks do
-                    let ratio = if timestamps.Length<=1 then 0.0 else float index / float (timestamps.Length-1)
+                for tick in ticks do
+                    let ratio = tick.Position
                     let left = fixedText (ratio*100.0) + "%"
                     let x = ratio * width
                     let transform = if x<40.0 then "none" elif x>width-40.0 then "translateX(-100%)" else "translateX(-50%)"
                     yield span [
-                        Attr.Create "data-time-axis-tick" (if hourly then "hour" else "day")
-                        Attr.Create "data-canonical-event-time" timestamps[index]
+                        Attr.Create "data-time-axis-tick" (if tick.IsMajor then (if monthly then "month" else "day") else (if monthly then "week" else "hour"))
+                        Attr.Create "data-canonical-event-time" tick.CanonicalUtc
+                        Attr.Create "data-tick-label" tick.Label
                         attr.style ("position:absolute;top:0;left:" + left + ";height:5px;border-left:1px solid " + palette.AxisText + ";")
                     ] []
-                    if dateChanged && x-lastDateX >= (if hourly then 38.0 else 66.0) then
+                    if tick.IsMajor then
+                        yield span [
+                            Attr.Create "data-testid" "ta-resident-calendar-gridline"
+                            Attr.Create "data-canonical-event-time" tick.CanonicalUtc
+                            Attr.Create "data-tick-label" tick.Label
+                            attr.style ("position:absolute;top:-82px;height:82px;left:" + left + ";border-left:1px solid " + palette.AxisText + ";opacity:0.35;")
+                        ] []
+                    if tick.IsMajor && x-lastDateX >= 70.0 then
                         lastDateX <- x
-                        yield span [ Attr.Create "data-time-axis-lane" "date"; attr.style ("position:absolute;top:6px;left:" + left + ";transform:" + transform + ";white-space:nowrap;") ] [ text date ]
-                    if x-lastHourX >= 24.0 then
+                        yield span [ Attr.Create "data-time-axis-lane" "date"; attr.style ("position:absolute;top:6px;left:" + left + ";transform:" + transform + ";white-space:nowrap;") ] [ text tick.Label ]
+                    elif not tick.IsMajor && x-lastHourX >= 24.0 then
                         lastHourX <- x
-                        yield span [ Attr.Create "data-time-axis-lane" "hour"; attr.style ("position:absolute;top:21px;left:" + left + ";transform:" + transform + ";") ] [ text hour ]
+                        yield span [ Attr.Create "data-time-axis-lane" (if monthly then "week" else "hour"); attr.style ("position:absolute;top:21px;left:" + left + ";transform:" + transform + ";") ] [ text tick.Label ]
             ] :> Doc)
         |> Doc.EmbedView
+
+    let residentTimeAxisForScaleWithPalette palette displayTime scaleMinutes timestamps =
+        renderResidentTimeAxisWithPalette palette displayTime scaleMinutes "calendar"
+            (fun zone -> RendererModel.residentCalendarGrid scaleMinutes zone timestamps)
+
+    let residentTimeAxisForTradingDatesWithPalette palette displayTime scaleMinutes timestamps tradingDates =
+        renderResidentTimeAxisWithPalette palette displayTime scaleMinutes "trading-date"
+            (fun zone -> RendererModel.residentTradingCalendarGrid scaleMinutes zone timestamps tradingDates)
+
+    let residentTimeAxisWithPalette palette displayTime timestamps =
+        residentTimeAxisForScaleWithPalette palette displayTime (RendererModel.residentCalendarScale timestamps) timestamps
 
     let timeAxis testId rowId timestamps =
         let zone = Var.Create SduiDisplayTimeZone.Utc
@@ -1247,7 +1274,7 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh (mainPlotInteractionMode: View<TaMainPlotInteractionMode>) currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
+    let compositeSvgReactivePreparedLiveWithYAxis yBounds palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh (mainPlotInteractionMode: View<TaMainPlotInteractionMode>) currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
@@ -1479,6 +1506,7 @@ module TaWorkspaceRenderer =
                 else
                     let padding = max ((scaleHigh - scaleLow) * 0.08) 0.0001
                     scaleLow - padding, scaleHigh + padding
+            let low, high = RendererModel.constrainYAxis yBounds (low, high)
             let readers =
                 preparedTraces
                 |> Array.map (fun (traceIndex, trace, candles, _) ->
@@ -2292,6 +2320,9 @@ module TaWorkspaceRenderer =
                 placements
                 stripes)
 
+    let compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
+        compositeSvgReactivePreparedLiveWithYAxis (None, None) palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
+
     let compositeSvgReactivePreparedLiveWithHeightPalette palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh =
         let interactionMode = Var.Create TaMainPlotInteractionMode.Cursor
         compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh interactionMode.View (fun () -> interactionMode.Value) (fun _ _ -> ()) (fun _ _ -> interactionMode.Value <- RendererModel.toggleMainPlotInteractionMode interactionMode.Value) (fun () -> false) (fun _ _ _ -> ())
@@ -2330,7 +2361,7 @@ module TaWorkspaceRenderer =
         let hasCursorEventCapability =
             traces
             |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Marker || trace.Kind = TaTraceKind.OverviewStripe)
-        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
+        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithYAxis (RendererModel.rowYAxisBounds row) palette displayTime row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
         let title = rowTitle row traces
         let heightBounds = RendererModel.rowHeightBounds row traces
         let cursorTag =
@@ -2880,17 +2911,14 @@ module TaWorkspaceRenderer =
                     if total > 0 then
                         let maximumVisibleBars = maximumVisibleBarsFor document
                         let window =
-                            RendererModel.initialViewportWindow
+                            RendererModel.initialViewportWindowForCoverage
                                 options.MinimumVisibleBars
                                 options.DefaultVisibleBars
                                 maximumVisibleBars
                                 total
                                 document.DefaultView
-                        setUiState
-                            { uiState.Value with
-                                Window = window
-                                FollowLatest = true
-                                CursorIndex = None }
+                                (coverageProjection state)
+                        setUiState (applyResolvedViewportWindow total window uiState.Value)
                         cursorIndex.Value <- None
                         defaultViewportAppliedToCanvas <- Some scopeKey
         let mutable actionSequence = 0
@@ -3364,12 +3392,13 @@ module TaWorkspaceRenderer =
                         if viewportScopeChanged && not eventRangeSettlementOwnsViewportScope then
                             pendingBoundaryPan <- None
                             Some(
-                                RendererModel.initialViewportWindow
+                                RendererModel.initialViewportWindowForCoverage
                                     options.MinimumVisibleBars
                                     options.DefaultVisibleBars
                                     maximumVisibleBars
                                     nextTimeline.Length
-                                    document.DefaultView)
+                                    document.DefaultView
+                                    (coverageProjection next))
                         else
                             match pendingBoundaryPan with
                             | Some pending ->
@@ -3449,12 +3478,7 @@ module TaWorkspaceRenderer =
                             | _ -> None
                     match reanchored with
                     | Some window ->
-                        let followLatest = window.StartIndex = RendererModel.viewportMaximumStart nextTimeline.Length window
-                        setUiState
-                            { currentUi with
-                                Window = window
-                                FollowLatest = followLatest
-                                CursorIndex = None }
+                        setUiState (applyResolvedViewportWindow nextTimeline.Length window currentUi)
                         cursorIndex.Value <- None
                         if viewportScopeChanged then
                             defaultViewportAppliedToCanvas <- Some(viewportScopeKey next document)
@@ -3580,11 +3604,7 @@ module TaWorkspaceRenderer =
                                 previousProjection
                                 currentProjection
                             |> Option.iter (fun window ->
-                                setUiState
-                                    { uiState.Value with
-                                        Window = window
-                                        FollowLatest = true
-                                        CursorIndex = None }
+                                setUiState (applyResolvedViewportWindow currentReferenceLength window uiState.Value)
                                 cursorIndex.Value <- None)
                         | _ -> ()
                         // Document/view metadata may advance without scheduling another data preparation.
@@ -3678,7 +3698,6 @@ module TaWorkspaceRenderer =
                 else
                     observedDataState <- next
             else
-                settleGlobalResidentProjection next
                 if dataChanged then
                     if viewportScopeChanged then
                         queuedViewportIntent <- None
@@ -6386,10 +6405,12 @@ module TaWorkspaceRenderer =
                                                                     rawEvent
                                                             | None -> ())
                                                         finishNavigatorDragFromElement
-                                                    residentTimeAxisWithPalette
+                                                    residentTimeAxisForTradingDatesWithPalette
                                                         currentPlotPalette
                                                         displayTime
-                                                        overviewReferenceTimeline
+                                                        (RendererModel.residentCalendarScale currentReferenceTimeline)
+                                                        currentReferenceTimeline
+                                                        (RendererModel.referenceTradingDatesForDocumentPrepared currentDocument currentPreparedData)
                                                 ]
                                             match currentCoverageProjection |> Option.bind _.GlobalOverview with
                                             | None ->
@@ -6461,6 +6482,10 @@ module TaWorkspaceRenderer =
                                                             globalPoints
                                                             globalSelectionWindow
                                                             (fun element ->
+                                                                // Runtime receipt is not a rendered-frame handoff. Keep the
+                                                                // optimistic GLOBAL position until this replacement navigator
+                                                                // is actually mounted; the outgoing shell still owns old geometry.
+                                                                settleGlobalResidentProjection renderedState
                                                                 activeGlobalResidentCursor
                                                                 |> Option.iter (fun cursor ->
                                                                     element.SetAttribute("data-drag-outcome", "tracking")

@@ -1932,6 +1932,39 @@ module RendererModel =
             |> Option.defaultValue [||]
         | None -> referenceTimelinePrepared document.Rows prepared
 
+    let referenceTradingDatesForDocumentPrepared (document: TaWorkspaceDocument) prepared =
+        let timeline = referenceTimelineForDocumentPrepared document prepared
+        let visibleRows = document.Rows |> Array.filter _.Visible
+        let baseRow =
+            document.BaseRowId
+            |> Option.bind (fun rowId -> visibleRows |> Array.tryFind (fun row -> row.RowId = rowId))
+            |> Option.orElseWith (fun () ->
+                visibleRows |> Array.sortByDescending (fun row -> rowTimelinePrepared row prepared |> Array.length) |> Array.tryHead)
+        let dates =
+            baseRow
+            |> Option.map (fun row ->
+                let dataRef =
+                    effectiveTraces row
+                    |> Array.filter _.Visible
+                    |> Array.tryFind (fun trace -> trace.DataRef = row.DataRef)
+                    |> Option.map (fun trace ->
+                        trace.CandleDataRefs |> Option.map _.OpenRef |> Option.defaultValue trace.DataRef)
+                    |> Option.defaultValue row.DataRef
+                resolvedSeriesPrepared dataRef prepared
+                |> Array.choose (fun point ->
+                    point.Payload |> Option.bind tryObject
+                    |> Option.bind (fun fields ->
+                        let timestamp =
+                            point.Temporal |> Option.map presentationTimestamp
+                            |> Option.orElseWith (fun () -> objectText "t" fields)
+                        match timestamp, objectNumber "tradingDate" fields with
+                        | Some time, Some date when date >= 10000101.0 && date <= 99991231.0 && date = Math.Truncate date ->
+                            Some(time, string (int date))
+                        | _ -> None))
+                |> Map.ofArray)
+            |> Option.defaultValue Map.empty
+        timeline |> Array.map (fun timestamp -> Map.tryFind timestamp dates)
+
     let traceReferencePoints (trace: TaTraceSpec) data =
         match trace.Kind with
         | TaTraceKind.Candlestick
@@ -2518,6 +2551,24 @@ module RendererModel =
         else
             bounded
 
+    let tryCoverageActiveLocalWindow total (projection: TaLoadedCoverageProjection) =
+        let active = projection.ActiveDetail
+        // Coverage segment ordinals belong to the active bar axis. GLOBAL may
+        // instead use the 1K authority and cannot provide a 930K/60K local index.
+        let residentStart =
+            match projection.Segments with
+            | [|segment|] when segment.ObservationCount=int64 total -> Some segment.StartObservationOrdinal
+            | _ ->
+                match projection.GlobalOverview with
+                | Some overview when overview.AxisRef=active.BaseAxisRef && overview.ResidentObservationCount=total ->
+                    Some overview.ResidentStartObservationOrdinal
+                | _ when active.ObservationCount=total -> Some active.StartObservationOrdinal
+                | _ -> None
+        residentStart |> Option.bind (fun first ->
+            let offset = active.StartObservationOrdinal-first
+            if total<=0 || active.ObservationCount<=0 || offset<0L || offset+int64 active.ObservationCount>int64 total then None
+            else Some {StartIndex=int offset;Count=active.ObservationCount})
+
     let initialViewportWindow minimumCount fallbackCount maximumCount total (defaultView: Map<string, SduiValue>) =
         let requestedCount =
             match Map.tryFind "visibleBars" defaultView with
@@ -2536,6 +2587,18 @@ module RendererModel =
             true
             { StartIndex = 0
               Count = requestedCount }
+
+    let initialViewportWindowForCoverage minimumCount fallbackCount maximumCount total defaultView projection =
+        let selected =
+            match Map.tryFind "initialVisibleEnd" defaultView with
+            | Some(SduiValue.Text value) when not(String.IsNullOrWhiteSpace value) ->
+                projection |> Option.bind (tryCoverageActiveLocalWindow total)
+            | _ -> None
+        match selected with
+        | Some window ->
+            let count = min maximumCount window.Count
+            {StartIndex=window.StartIndex+window.Count-count;Count=count}
+        | None -> initialViewportWindow minimumCount fallbackCount maximumCount total defaultView
 
     let tryBootstrapCoverageExpansionWindow
         minimumCount
@@ -2560,11 +2623,14 @@ module RendererModel =
             max 0 (min currentReferenceLength current.ActiveDetail.ObservationCount)
         let currentWindowCount = min maximumCount currentActiveCount
         let currentActiveStart =
-            match current.GlobalOverview with
-            | Some overview when overview.AxisRef = current.ActiveDetail.BaseAxisRef ->
-                let offset = current.ActiveDetail.StartObservationOrdinal - overview.ResidentStartObservationOrdinal
-                if offset < 0L || offset > int64 Int32.MaxValue then None else Some(int offset)
-            | _ -> Some(max 0 (currentReferenceLength - currentActiveCount))
+            match tryCoverageActiveLocalWindow currentReferenceLength current with
+            | Some window -> Some window.StartIndex
+            | None ->
+                match current.GlobalOverview with
+                | Some overview when overview.AxisRef = current.ActiveDetail.BaseAxisRef ->
+                    let offset = current.ActiveDetail.StartObservationOrdinal - overview.ResidentStartObservationOrdinal
+                    if offset < 0L || offset > int64 Int32.MaxValue then None else Some(int offset)
+                | _ -> Some(max 0 (currentReferenceLength - currentActiveCount))
 
         if
             not followLatest
@@ -3848,6 +3914,22 @@ module RendererModel =
             let valuePadding = max 0.0001 (valueRange * viewBoxPadding / denominator)
             low - valuePadding, high + valuePadding
 
+    let rowYAxisBounds (row: TaRowSpec) =
+        if row.Kind = TaRowKind.Dmi || row.Kind = TaRowKind.Adx then Some 0.0, Some 100.0
+        else
+            let bound key =
+                row.Options |> Map.tryFind key
+                |> Option.bind (function SduiValue.Number value when finiteNumber value -> Some value | _ -> None)
+            bound "yStart", bound "yEnd"
+
+    let constrainYAxis (yStart, yEnd) (automaticLow, automaticHigh) =
+        let span = max 1.0 (abs (automaticHigh - automaticLow))
+        match yStart, yEnd with
+        | Some low, Some high when low < high -> low, high
+        | Some low, None -> low, max automaticHigh (low + span * 0.08)
+        | None, Some high -> min automaticLow (high - span * 0.08), high
+        | _ -> automaticLow, automaticHigh
+
     let normalize low high top height value =
         if low = high then top + height / 2.0
         else top + height - ((value - low) / (high - low)) * height
@@ -3874,6 +3956,134 @@ module RendererModel =
                        int (Math.Round(float tickIndex * float (timestamps.Length - 1) / float (count - 1)))
                    yield sourceIndex, timestamps[sourceIndex] |]
             |> Array.distinctBy fst
+
+    type ResidentCalendarTick =
+        { Position: float
+          CanonicalUtc: string
+          Label: string
+          IsMajor: bool }
+
+    let overviewCanonicalUtc (value: string) =
+        if not(String.IsNullOrWhiteSpace value) && value.Length >= 19
+           && (value.Length = 19 || (value[19] = '.' && value.Substring(20) |> Seq.forall Char.IsDigit)) then value + "Z"
+        else value
+
+    let calendarDate (parts: TaDisplayTimeFormatter.UtcParts) =
+        // Field-only calendar arithmetic: never ask the OS/browser to convert zones.
+        DateTime(parts.Year, parts.Month, parts.Day, parts.Hour, parts.Minute, parts.Second)
+
+    let residentCalendarScale (timestamps: string array) =
+        let steps =
+            timestamps |> Array.choose (overviewCanonicalUtc >> TaDisplayTimeFormatter.tryParseCanonicalUtc >> Option.map calendarDate)
+            |> Array.pairwise
+            |> Array.choose (fun (left, right) ->
+                let minutes = (right - left).TotalMinutes
+                if minutes > 0.0 then Some minutes else None)
+        if steps.Length = 0 then 60.0 else Array.min steps
+
+    let residentCalendarGrid scaleMinutes zone (timestamps: string array) =
+        let parsed =
+            timestamps |> Array.mapi (fun index timestamp ->
+                let canonical = overviewCanonicalUtc timestamp
+                match TaDisplayTimeFormatter.tryParseCanonicalUtc canonical, TaDisplayTimeFormatter.tryFormat zone canonical with
+                | Some utc, Some local ->
+                    let localCanonical = local.DateText + "T" + local.ClockText.Substring(0, 8) + "Z"
+                    TaDisplayTimeFormatter.tryParseCanonicalUtc localCanonical
+                    |> Option.map (fun localParts -> index, calendarDate utc, calendarDate localParts)
+                | _ -> None) |> Array.choose id
+        let ticks = ResizeArray<ResidentCalendarTick>()
+        let monthly = scaleMinutes > 60.0
+        let hourStep = if scaleMinutes <= 5.0 then 8 else 4
+        let sampledGaps =
+            parsed |> Array.pairwise
+            |> Array.choose (fun ((_, left, _), (_, right, _)) ->
+                let gap = (right - left).TotalMinutes
+                if gap > 0.0 then Some gap else None)
+            |> Array.sort
+        let sampledStride = if sampledGaps.Length = 0 then scaleMinutes else sampledGaps[sampledGaps.Length / 2]
+        let weekOfMonth (date: DateTime) =
+            let first = DateTime(date.Year, date.Month, 1, 0, 0, 0)
+            let mondayOffset = (int first.DayOfWeek + 6) % 7
+            1 + (date.Day - 1 + mondayOffset) / 7
+        let add position canonical label isMajor =
+            ticks.Add { Position = position; CanonicalUtc = canonical; Label = label; IsMajor = isMajor }
+        let labelAt position (utc: DateTime) (local: DateTime) first =
+            let canonical = utc.ToString("yyyy-MM-ddTHH:mm:ssZ")
+            let major = first || (local.Hour = 0 && (not monthly || local.Day = 1))
+            if major then add position canonical (local.ToString("yyyyMMdd")) true
+            if monthly then
+                if first || local.Day = 1 || local.DayOfWeek = DayOfWeek.Monday then
+                    add position canonical ("w" + string (weekOfMonth local)) false
+            elif local.Minute = 0 && local.Hour % hourStep = 0 then
+                add position canonical (local.ToString("HH")) false
+        if parsed.Length > 0 then
+            let firstIndex, firstUtc, firstLocal = parsed[0]
+            let denominator = float (max 1 (timestamps.Length - 1))
+            labelAt (float firstIndex / denominator) firstUtc firstLocal true
+            for index in 1 .. parsed.Length - 1 do
+                let previousIndex, previousUtc, previousLocal = parsed[index - 1]
+                let currentIndex, currentUtc, currentLocal = parsed[index]
+                let gap = (currentUtc - previousUtc).TotalMinutes
+                // Interpolate calendar boundaries within sampled spans, never invent bars.
+                // Long market closures have no hourly ticks; resume at the next observed day.
+                if not monthly && gap > max 360.0 (sampledStride * 3.0) then
+                    if currentLocal.Date <> previousLocal.Date then
+                        labelAt (float currentIndex / denominator) currentUtc currentLocal true
+                elif currentLocal > previousLocal then
+                    let mutable boundary =
+                        if monthly then previousLocal.Date.AddDays 1.0
+                        else DateTime(previousLocal.Year, previousLocal.Month, previousLocal.Day, previousLocal.Hour, 0, 0).AddHours 1.0
+                    while boundary <= currentLocal do
+                        let fraction = (boundary - previousLocal).TotalMinutes / (currentLocal - previousLocal).TotalMinutes
+                        let position = (float previousIndex + float (currentIndex - previousIndex) * fraction) / denominator
+                        let utc = previousUtc.AddMinutes(gap * fraction)
+                        labelAt position utc boundary false
+                        boundary <- if monthly then boundary.AddDays 1.0 else boundary.AddHours 1.0
+        ticks.ToArray()
+
+    let residentTradingCalendarGrid scaleMinutes zone (timestamps: string array) (tradingDates: string option array) =
+        let ticks = ResizeArray<ResidentCalendarTick>()
+        let monthly = scaleMinutes > 60.0
+        let hourStep = if scaleMinutes <= 5.0 then 8 else 4
+        let denominator = float (max 1 (timestamps.Length - 1))
+        let weekOfMonth (date: DateTime) =
+            let first = DateTime(date.Year, date.Month, 1, 0, 0, 0)
+            1 + (date.Day - 1 + (int first.DayOfWeek + 6) % 7) / 7
+        let mutable previousTradingDay: DateTime option = None
+        for index in 0 .. timestamps.Length - 1 do
+            let canonical = overviewCanonicalUtc timestamps[index]
+            let position = float index / denominator
+            let add label isMajor =
+                ticks.Add { Position = position; CanonicalUtc = canonical; Label = label; IsMajor = isMajor }
+            let tradingDay =
+                if index >= tradingDates.Length then None
+                else
+                    tradingDates[index]
+                    |> Option.bind (fun date ->
+                        if date.Length <> 8 then None
+                        else
+                            date.Substring(0, 4) + "-" + date.Substring(4, 2) + "-" + date.Substring(6, 2) + "T00:00:00Z"
+                            |> TaDisplayTimeFormatter.tryParseCanonicalUtc
+                            |> Option.map calendarDate)
+            match tradingDay with
+            | Some date ->
+                let changedDay = previousTradingDay <> Some date
+                let changedMonth = previousTradingDay |> Option.forall (fun previous -> previous.Year <> date.Year || previous.Month <> date.Month)
+                if (monthly && changedMonth) || (not monthly && changedDay) then
+                    add (date.ToString("yyyyMMdd")) true
+                if monthly && (changedMonth || (previousTradingDay |> Option.forall (fun previous -> weekOfMonth previous <> weekOfMonth date))) then
+                    add ("w" + string (weekOfMonth date)) false
+                previousTradingDay <- Some date
+            | None -> () // No trading-day authority: do not invent a date from UTC or a display zone.
+            if not monthly then
+                match TaDisplayTimeFormatter.tryFormat zone canonical with
+                | Some local ->
+                    let clock = local.ClockText.Substring(0, 8)
+                    match Int32.TryParse(clock.Substring(0, 2)), Int32.TryParse(clock.Substring(3, 2)) with
+                    | (true, hour), (true, 0) when hour % hourStep = 0 -> add (clock.Substring(0, 2)) false
+                    | _ -> ()
+                | None -> ()
+        ticks.ToArray()
 
     let residentCalendarTicks zone (timestamps: string array) =
         // Overview timelines are UTC; some durable producers omit the trailing Z.

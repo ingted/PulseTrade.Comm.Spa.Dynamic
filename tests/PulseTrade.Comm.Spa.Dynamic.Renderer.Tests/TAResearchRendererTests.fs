@@ -31,6 +31,54 @@ let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc avai
 
 let tests =
     testList "TA renderer model" [
+        testCase "DYN-T-752 resident day grid interpolates midnight instead of labelling the sampled hour" <| fun _ ->
+            let timestamps = [| "2026-10-29T23:30:00Z"; "2026-10-30T00:30:00Z" |]
+            let ticks = RendererModel.residentCalendarGrid 30.0 SduiDisplayTimeZone.Utc timestamps
+            let midnight = ticks |> Array.find (fun tick -> tick.IsMajor && tick.Label = "20261030")
+            Expect.floatClose Accuracy.high midnight.Position 0.5 "The day line belongs between anchors, not at the 00:30 sample."
+            Expect.equal midnight.CanonicalUtc "2026-10-30T00:00:00Z" "The tick has an exact calendar boundary."
+            Expect.contains (ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) "00" "Midnight is also an hourly tick."
+            let shifted = RendererModel.residentCalendarGrid 5.0 SduiDisplayTimeZone.FixedUtcPlus8 [| "2026-10-29T15:30:00Z"; "2026-10-29T16:30:00Z" |]
+            let midnight8 = shifted |> Array.find (fun tick -> tick.IsMajor && tick.Label = "20261030")
+            Expect.equal midnight8.CanonicalUtc "2026-10-29T16:00:00Z" "Display-zone boundaries retain canonical UTC identity."
+            Expect.floatClose Accuracy.high midnight8.Position 0.5 "Zone conversion changes labels and grid positions together."
+
+        testCase "DYN-T-753 resident monthly grid uses Monday weeks including a partial first week" <| fun _ ->
+            let dates = [| for day in 0 .. 33 -> DateTime(2026,10,1,0,0,0,DateTimeKind.Utc).AddDays(float day).ToString("yyyy-MM-ddTHH:mm:ssZ") |]
+            let ticks = RendererModel.residentCalendarGrid 930.0 SduiDisplayTimeZone.Utc dates
+            let weeks = ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map (fun tick -> tick.CanonicalUtc.Substring(0,10), tick.Label)
+            Expect.contains weeks ("2026-10-01", "w1") "Partial opening week is w1."
+            Expect.contains weeks ("2026-10-05", "w2") "Monday begins the next week."
+            Expect.contains weeks ("2026-10-26", "w5") "Later weeks retain month-relative numbering."
+            Expect.contains weeks ("2026-11-01", "w1") "A new month resets the number."
+            Expect.contains weeks ("2026-11-02", "w2") "The next Monday advances after the partial week."
+            Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| "20261001"; "20261101" |] "Only months get full-height major lines."
+
+        testCase "DYN-T-754 resident intraday ticks use clock multiples and tolerate empty input" <| fun _ ->
+            let times = [| for hour in 0 .. 23 -> sprintf "2026-10-29T%02d:00:00Z" hour |]
+            let labels scale = RendererModel.residentCalendarGrid scale SduiDisplayTimeZone.Utc times |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label
+            Expect.equal (labels 1.0) [| "00"; "08"; "16" |] "1K uses eight-hour marks."
+            Expect.equal (labels 5.0) (labels 1.0) "5K uses the same clock marks."
+            Expect.equal (labels 30.0) [| "00"; "04"; "08"; "12"; "16"; "20" |] "30K uses four-hour marks."
+            Expect.equal (labels 60.0) (labels 30.0) "60K uses the same clock marks."
+            Expect.isEmpty (RendererModel.residentCalendarGrid 30.0 SduiDisplayTimeZone.Utc [||]) "No generated observations."
+
+        testCase "DYN-T-751 row Y bounds retain fixed ends and DMI always uses 0..100" <| fun _ ->
+            let row = { RowId = "test"; Kind = TaRowKind.Dmi; DataRef = "data"; HeightWeight = 1.0; Visible = true
+                        Options = Map [ "yStart", SduiValue.Number 20.0; "yEnd", SduiValue.Number 80.0 ]; Traces = [||] }
+            Expect.equal (RendererModel.rowYAxisBounds row) (Some 0.0, Some 100.0) "DMI has an invariant domain even with authored bounds."
+            Expect.equal (RendererModel.constrainYAxis (RendererModel.rowYAxisBounds row) (19.0, 67.0)) (0.0, 100.0) "Do not pad or auto-fit DMI."
+            let plain = { row with Kind = TaRowKind.Sma }
+            Expect.equal (RendererModel.constrainYAxis (RendererModel.rowYAxisBounds plain) (-10.0, 120.0)) (20.0, 80.0) "Both ends are exact."
+            Expect.equal (RendererModel.constrainYAxis (Some 0.0, None) (-10.0, 60.0)) (0.0, 60.0) "Only bottom is fixed."
+            Expect.equal (RendererModel.constrainYAxis (None, Some 100.0) (20.0, 120.0)) (20.0, 100.0) "Only top is fixed."
+            let low, high = RendererModel.constrainYAxis (Some 100.0, None) (0.0, 1.0)
+            Expect.equal low 100.0 "An empty/out-of-range series cannot move the fixed bottom."
+            Expect.isGreaterThan high low "The automatic end must leave a usable domain."
+            let low, high = RendererModel.constrainYAxis (None, Some -100.0) (0.0, 1.0)
+            Expect.equal high -100.0 "An empty/out-of-range series cannot move the fixed top."
+            Expect.isLessThan low high "The automatic end must leave a usable domain."
+
         testCase "DYN-T-750 superseded range completion cannot undo the latest resize" <| fun _ ->
             let oldReply = TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 1202; Count = 1500 }
             let latestReply = TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 1202; Count = 356 }
@@ -4567,7 +4615,14 @@ let tests =
             let residentStart = source.IndexOf("let residentOverview =", StringComparison.Ordinal)
             let residentEnd = source.IndexOf("match currentCoverageProjection", residentStart, StringComparison.Ordinal)
             let residentBody = source.Substring(residentStart, residentEnd - residentStart)
-            Expect.stringContains residentBody "residentTimeAxisWithPalette" "RESIDENT must render its daily/hourly two-lane axis."
+            Expect.stringContains residentBody "residentTimeAxisForTradingDatesWithPalette" "RESIDENT must use authoritative trading dates for day boundaries."
+            Expect.stringContains residentBody "referenceTradingDatesForDocumentPrepared currentDocument currentPreparedData" "Session identity must come from the same complete atomic frame as the navigator."
+            Expect.stringContains residentBody "RendererModel.residentCalendarScale currentReferenceTimeline" "Scale must come from the full bar timeline, not downsampled overview anchors."
+            Expect.stringContains globalBody "settleGlobalResidentProjection renderedState" "GLOBAL preview settles against the newly mounted atomic frame."
+            let globalSvgStart = source.IndexOf("let globalOverviewSvgWithPalette", StringComparison.Ordinal)
+            let globalSvgBody = source.Substring(globalSvgStart, source.IndexOf("on.mouseMove", globalSvgStart, StringComparison.Ordinal) - globalSvgStart)
+            Expect.stringContains globalSvgBody "on.afterRender (fun element ->" "GLOBAL must invoke readiness only after the replacement SVG mounts."
+            Expect.stringContains globalSvgBody "onReady element" "The mounted GLOBAL callback must perform settlement."
 
         testCase "DYN-T-697 bootstrap renders actual GLOBAL read-only before authoritative state" <| fun _ ->
             let source =
@@ -5009,6 +5064,105 @@ let tests =
                 (TaWorkspaceRenderer.appendBoundedNavigatorTrace 3 "a|b|c" "d")
                 "b|c|d"
                 "The shared document-root trace must retain only the most recent bounded publication and pointer events."
+
+        testCase "DYN-T-755 day lines follow TradingDate, not midnight or a closed weekend" <| fun _ ->
+            let times =
+                [| "2026-05-27T22:00:00Z"; "2026-05-28T00:00:00Z"; "2026-05-28T20:30:00Z"
+                   "2026-05-28T22:00:00Z"; "2026-05-29T00:00:00Z"; "2026-05-29T20:30:00Z"
+                   "2026-05-31T22:00:00Z"; "2026-06-01T00:00:00Z" |]
+            let days = [| "20260528"; "20260528"; "20260528"; "20260529"; "20260529"; "20260529"; "20260601"; "20260601" |] |> Array.map Some
+            let ticks = RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.Utc times days
+            let major = ticks |> Array.filter _.IsMajor
+            Expect.equal (major |> Array.map _.Label) [| "20260528"; "20260529"; "20260601" |] "No May 30/31 trading day may be invented"
+            Expect.equal (major |> Array.map _.CanonicalUtc) [| times[0]; times[3]; times[6] |] "The first real K of each session owns the line"
+            Expect.floatClose Accuracy.high major[1].Position (3.0 / 7.0) "Use the complete bar axis, not sampled timestamp interpolation"
+
+        testCase "DYN-T-756 display zone changes hours but not TradingDate boundaries" <| fun _ ->
+            let times = [| "2026-05-28T22:00:00Z"; "2026-05-29T00:00:00Z"; "2026-05-29T04:00:00Z" |]
+            let days = Array.create times.Length (Some "20260529")
+            let utc = RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.Utc times days
+            let plus8 = RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.FixedUtcPlus8 times days
+            Expect.equal (utc |> Array.filter _.IsMajor) (plus8 |> Array.filter _.IsMajor) "Session date and position are independent of display zone"
+            Expect.equal (utc |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "00"; "04" |] "UTC hour marks"
+            Expect.equal (plus8 |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "08"; "12" |] "Displayed hour marks still follow UTC+8"
+
+        testCase "DYN-T-757 monthly and Monday-week ticks follow traded dates" <| fun _ ->
+            let times = [| "2026-04-30T22:00:00Z"; "2026-05-03T22:00:00Z"; "2026-05-10T22:00:00Z"; "2026-05-31T22:00:00Z" |]
+            let days = [| "20260501"; "20260504"; "20260511"; "20260601" |] |> Array.map Some
+            let ticks = RendererModel.residentTradingCalendarGrid 930.0 SduiDisplayTimeZone.Utc times days
+            Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| "20260501"; "20260601" |] "Monthly boundary belongs to the first traded date"
+            Expect.equal (ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "w1"; "w2"; "w3"; "w1" |] "Partial month week counts as w1 and Monday advances the week"
+
+        testCase "DYN-T-758 missing trading-day metadata never falls back to UTC date" <| fun _ ->
+            let times = [| "2026-05-28T22:00:00Z"; "2026-05-29T00:00:00Z" |]
+            let ticks = RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.Utc times [| None; Some "invalid" |]
+            Expect.isEmpty (ticks |> Array.filter _.IsMajor) "No fabricated session identity"
+            Expect.isEmpty (RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.Utc [||] [||]) "Empty input is safe"
+
+        testCase "DYN-T-759 trading dates survive component candles and line-only base rows" <| fun _ ->
+            let refs = { OpenRef="o"; HighRef="h"; LowRef="l"; CloseRef="c"; VolumeRef="v" }
+            let trace: TaTraceSpec =
+                { TraceId="price"; Kind=TaTraceKind.Candlestick; DataRef="price"; Label="price"
+                  Color=""; Width=1.0; Visible=true; CandleDataRefs=Some refs; Options=Map.empty }
+            let row: TaRowSpec =
+                { RowId="base"; Kind=TaRowKind.Candlestick; DataRef="price"; HeightWeight=1.0
+                  Visible=true; Options=Map.empty; Traces=[|trace|] }
+            let document: TaWorkspaceDocument =
+                { WorkspaceId="trading-date-fixture"; Title="fixture"; RowsRef="rows"; StatusRef="status"
+                  SharedTimeAxis=true; TemporalAxisRefs=[||]; BaseRowId=Some "base"; Rows=[|row|]
+                  EditorSchemas=[||]; AllowedActions=[||]; DefaultView=Map.empty }
+            let points =
+                [| "2026-05-28T22:00:00Z"; "2026-05-29T00:00:00Z" |]
+                |> Array.map (fun time -> SduiValue.Object(Map [ "t",SduiValue.Text time; "v",SduiValue.Number 100.0; "tradingDate",SduiValue.Number 20260529.0 ]))
+                |> SduiValue.Array
+            let prepared = [ "o"; "h"; "l"; "c"; "v"; "line" ] |> List.map (fun key -> key,points) |> Map.ofList |> RendererModel.prepareData
+            Expect.equal (RendererModel.referenceTradingDatesForDocumentPrepared document prepared) [| Some "20260529"; Some "20260529" |] "A component candle has no duplicate price series to read"
+            let lineTrace = { trace with Kind=TaTraceKind.Line; DataRef="line"; CandleDataRefs=None }
+            let lineDocument = { document with Rows=[| { row with Kind=TaRowKind.Sma; DataRef="line"; Traces=[|lineTrace|] } |] }
+            Expect.equal (RendererModel.referenceTradingDatesForDocumentPrepared lineDocument prepared) [| Some "20260529"; Some "20260529" |] "A line-only chart also retains the authoritative date"
+            Expect.equal (RendererModel.lineSeriesPrepared "line" prepared |> Array.map _.Value) [|100.0;100.0|] "Metadata must not change numeric parsing"
+
+        testCase "DYN-T-760 authored initial right edge uses active-axis coverage rather than resident tail" <| fun _ ->
+            // Metadata-only reproduction of the real 4401-bar 930K history.
+            let projection count start visible : TaLoadedCoverageProjection =
+                { CoverageIdentity="initial-date-fixture"; CoverageRevision=2L; QueryGeneration=0L
+                  Completeness=TaCoverageCompleteness.Partial; TotalObservationCount=None
+                  Segments=[|{SegmentId="resident";StartEventTimeUtc="2020-01-01T00:00:00Z";EndEventTimeExclusiveUtc="2026-07-11T00:00:00Z"
+                              StartObservationOrdinal=8000L;ObservationCount=int64 count}|]
+                  OverviewAxisRef="axis.930k-overview"; OverviewAnchors=[||]
+                  ActiveDetail={StartObservationOrdinal=8000L+int64 start;ObservationCount=visible;BaseAxisRef="axis.930k"}
+                  GlobalOverview=Some {TotalObservationCount=3000000L;AxisRef="axis.1k";Anchors=[||]
+                                       ResidentStartObservationOrdinal=100L;ResidentObservationCount=2999900} }
+            let authored = Map ["visibleBars",SduiValue.Number 1500.0;"initialVisibleEnd",SduiValue.Text "202606011200"]
+            let current = projection 4401 2842 1500
+            let resolve view coverage = RendererModel.initialViewportWindowForCoverage 12 48 1500 4401 view coverage
+            Expect.equal (resolve authored (Some current)) {StartIndex=2842;Count=1500} "The final 59 resident bars are not part of the authored initial viewport"
+            Expect.equal (resolve (Map.remove "initialVisibleEnd" authored) (Some current)) {StartIndex=2901;Count=1500} "Legacy default remains follow-latest"
+            Expect.equal (resolve authored None) {StartIndex=2901;Count=1500} "Absent coverage does not invent an ordinal"
+            Expect.equal (resolve authored (Some(projection 4401 0 1))) {StartIndex=0;Count=1} "An early single real bar must not expand past the requested right edge"
+            Expect.equal (resolve authored (Some(projection 4000 2842 1500))) {StartIndex=2901;Count=1500} "A different resident axis cannot supply local ordinals"
+            let previous = {projection 32 0 32 with CoverageRevision=1L}
+            let expand follow window next = RendererModel.tryBootstrapCoverageExpansionWindow 1 1500 32 4401 follow window previous next
+            Expect.equal (expand true {StartIndex=0;Count=32} current) (Some {StartIndex=2842;Count=1500}) "Same-scope provisional replacement also preserves the active right edge"
+            Expect.isNone (expand false {StartIndex=0;Count=32} current) "Do not overwrite a user's manual viewport"
+            Expect.isNone (expand true {StartIndex=0;Count=8} current) "A resized provisional viewport is not an untouched bootstrap"
+            Expect.isNone (expand true {StartIndex=0;Count=32} {current with QueryGeneration=1L}) "A different query is not a bootstrap expansion"
+
+        testCase "DYN-T-761 resolved bootstrap viewport cannot be undone by follow-latest on the next render" <| fun _ ->
+            let before: TaRendererUiState =
+                { Window={StartIndex=0;Count=32};FollowLatest=true
+                  HiddenRows=Set.singleton "hidden";HiddenTraces=Set.singleton("row","trace")
+                  RemovedTraces=Set.empty;AddRowOpen=true;CursorIndex=Some 12
+                  PendingActionId=Some "pending";Feedback="unchanged" }
+            for total, start in [4401,2842;2203,674] do
+                let selected = {StartIndex=start;Count=1500}
+                let after = TaWorkspaceRenderer.applyResolvedViewportWindow total selected before
+                Expect.equal after {before with Window=selected;FollowLatest=false;CursorIndex=None} "Applying the active range also commits its follow mode and preserves unrelated UI state"
+                Expect.equal (RendererModel.resolveWindow 1 1500 total after.FollowLatest after.Window) selected "The next render must keep June 1, not snap to the July resident tail"
+                let tail = {StartIndex=total-1500;Count=1500}
+                let atTail = TaWorkspaceRenderer.applyResolvedViewportWindow total tail before
+                Expect.isTrue atTail.FollowLatest "Only a viewport actually ending at the resident tail follows latest"
+                Expect.equal (RendererModel.resolveWindow 1 1500 (total+1) atTail.FollowLatest atTail.Window) {tail with StartIndex=tail.StartIndex+1} "Legacy follow-latest still advances with a new bar"
 
         testCase "DYN-T-729B atomic frame document supersedes the cached shell document" <| fun _ ->
             let document title =
