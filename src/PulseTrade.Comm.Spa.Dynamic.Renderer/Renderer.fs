@@ -704,54 +704,94 @@ module TaWorkspaceRenderer =
             ] :> Doc)
         |> Doc.EmbedView
 
-    let renderResidentTimeAxisWithPalette palette (displayTime: TaRendererDisplayTime) scaleMinutes boundaryKind makeTicks =
-        View.Map2 (fun width zone -> width, zone) axisViewportWidth.View displayTime.Zone
-        |> View.Map (fun (width, zone) ->
+    let renderTradingTimeAxisWithPalette palette (displayTime: TaRendererDisplayTime) scaleMinutes boundaryKind isMainPlot testId rowId (plotHeight: View<int>) makeTicks =
+        let viewport = View.Map2 (fun width zone -> width, zone) axisViewportWidth.View displayTime.Zone
+        View.Map2 (fun (viewportWidth, zone) height ->
+            let width = max 1.0 (viewportWidth - if isMainPlot then 136.0 else 0.0)
             let monthly = scaleMinutes > 60.0
-            let ticks: RendererModel.ResidentCalendarTick array = makeTicks zone
+            let ticks: RendererModel.TradingSessionAxisTick array = makeTicks zone
             let mutable lastDateX = -1000.0
-            let mutable lastHourX = -1000.0
+            // Select opening labels before ordinary hours so a nearby white label cannot
+            // hide the session hour. Keep all tick marks even where text cannot fit.
+            let selectedHours = ResizeArray<float * string>()
+            for opening in [ true; false ] do
+                for tick in ticks do
+                    if not tick.IsMajor && tick.Label <> "" && tick.IsSessionStart = opening then
+                        let x = tick.Position * width
+                        if selectedHours |> Seq.forall (fun (other, _) -> abs (x - other) >= 24.0) then
+                            selectedHours.Add(x, tick.CanonicalUtc)
+            let hourLabels = selectedHours |> Seq.map snd |> Set.ofSeq
             div [
-                Attr.Create "data-testid" "ta-overview-time-axis"
-                Attr.Create "data-time-axis-kind" (if monthly then "resident-monthly" else "resident-daily")
+                Attr.Create "data-testid" testId
+                Attr.Create "data-time-axis-row-id" rowId
+                Attr.Create "data-time-axis-kind" (if isMainPlot then "plot-trading-day" elif monthly then "resident-monthly" else "resident-daily")
                 Attr.Create "data-day-boundary-kind" boundaryKind
                 Attr.Create "data-display-time-zone" (SduiDisplayTimeZone.id zone)
-                attr.style ("position:relative;height:37px;overflow:visible;pointer-events:none;background:" + palette.AxisSurface + ";color:" + palette.AxisText + ";font:10px Consolas,monospace;")
+                attr.style ("position:relative;height:37px;min-height:37px;flex:0 0 37px;overflow:visible;pointer-events:none;"
+                            + (if isMainPlot then "margin:0 68px;" else "")
+                            + "background:" + palette.AxisSurface + ";color:" + palette.AxisText + ";font:10px Consolas,monospace;")
             ] [
                 for tick in ticks do
                     let ratio = tick.Position
                     let left = fixedText (ratio*100.0) + "%"
                     let x = ratio * width
                     let transform = if x<40.0 then "none" elif x>width-40.0 then "translateX(-100%)" else "translateX(-50%)"
-                    yield span [
-                        Attr.Create "data-time-axis-tick" (if tick.IsMajor then (if monthly then "month" else "day") else (if monthly then "week" else "hour"))
-                        Attr.Create "data-canonical-event-time" tick.CanonicalUtc
-                        Attr.Create "data-tick-label" tick.Label
-                        attr.style ("position:absolute;top:0;left:" + left + ";height:5px;border-left:1px solid " + palette.AxisText + ";")
-                    ] []
-                    if tick.IsMajor then
+                    let color = if tick.IsSessionStart && not tick.IsMajor then "#facc15" elif not tick.IsMajor && not monthly then "#ffffff" else palette.AxisText
+                    if not tick.IsMajor then
                         yield span [
-                            Attr.Create "data-testid" "ta-resident-calendar-gridline"
+                            Attr.Create "data-time-axis-tick" (if monthly then "week" else "hour")
                             Attr.Create "data-canonical-event-time" tick.CanonicalUtc
                             Attr.Create "data-tick-label" tick.Label
-                            attr.style ("position:absolute;top:-82px;height:82px;left:" + left + ";border-left:1px solid " + palette.AxisText + ";opacity:0.35;")
+                            Attr.Create "data-session-start" (if tick.IsSessionStart then "true" else "false")
+                            attr.style ("position:absolute;top:0;left:" + left + ";height:5px;border-left:1px solid " + color + ";")
+                        ] []
+                    if tick.IsMajor then
+                        yield span [
+                            Attr.Create "data-testid" (if isMainPlot then "ta-plot-calendar-gridline" else "ta-resident-calendar-gridline")
+                            Attr.Create "data-time-axis-tick" (if monthly then "month" else "day")
+                            Attr.Create "data-canonical-event-time" tick.CanonicalUtc
+                            Attr.Create "data-tick-label" tick.Label
+                            attr.style ("position:absolute;top:-" + string height + "px;height:" + string height + "px;left:" + left + ";z-index:1;border-left:1px "
+                                        + (if isMainPlot then "dashed " else "solid ") + palette.AxisText + ";opacity:0.35;")
                         ] []
                     if tick.IsMajor && x-lastDateX >= 70.0 then
                         lastDateX <- x
                         yield span [ Attr.Create "data-time-axis-lane" "date"; attr.style ("position:absolute;top:6px;left:" + left + ";transform:" + transform + ";white-space:nowrap;") ] [ text tick.Label ]
-                    elif not tick.IsMajor && x-lastHourX >= 24.0 then
-                        lastHourX <- x
-                        yield span [ Attr.Create "data-time-axis-lane" (if monthly then "week" else "hour"); attr.style ("position:absolute;top:21px;left:" + left + ";transform:" + transform + ";") ] [ text tick.Label ]
-            ] :> Doc)
+                    elif not tick.IsMajor && Set.contains tick.CanonicalUtc hourLabels then
+                        yield span [
+                            Attr.Create "data-time-axis-lane" (if monthly then "week" else "hour")
+                            Attr.Create "data-session-start" (if tick.IsSessionStart then "true" else "false")
+                            Attr.Create "data-canonical-event-time" tick.CanonicalUtc
+                            attr.style ("position:absolute;top:21px;left:" + left + ";transform:" + transform + ";color:" + color + ";")
+                        ] [ text tick.Label ]
+            ] :> Doc) viewport plotHeight
         |> Doc.EmbedView
+
+    let renderResidentTimeAxisWithPalette palette displayTime scaleMinutes boundaryKind makeTicks =
+        renderTradingTimeAxisWithPalette palette displayTime scaleMinutes boundaryKind false "ta-overview-time-axis" "" (View.Const 82)
+            (fun zone -> makeTicks zone |> Array.map (fun (tick: RendererModel.ResidentCalendarTick) ->
+                { RendererModel.TradingSessionAxisTick.Position = tick.Position; CanonicalUtc = tick.CanonicalUtc
+                  Label = tick.Label; IsMajor = tick.IsMajor; IsSessionStart = false }))
 
     let residentTimeAxisForScaleWithPalette palette displayTime scaleMinutes timestamps =
         renderResidentTimeAxisWithPalette palette displayTime scaleMinutes "calendar"
             (fun zone -> RendererModel.residentCalendarGrid scaleMinutes zone timestamps)
 
     let residentTimeAxisForTradingDatesWithPalette palette displayTime scaleMinutes timestamps tradingDates =
-        renderResidentTimeAxisWithPalette palette displayTime scaleMinutes "trading-date"
-            (fun zone -> RendererModel.residentTradingCalendarGrid scaleMinutes zone timestamps tradingDates)
+        renderTradingTimeAxisWithPalette palette displayTime scaleMinutes "trading-date" false "ta-overview-time-axis" "" (View.Const 82)
+            (fun zone -> RendererModel.tradingSessionAxisGrid false scaleMinutes zone timestamps tradingDates)
+
+    let mainTradingTimeAxisWithPalette palette displayTime row (dataView: View<TaPreparedRendererData>) timestamps plotHeight =
+        dataView |> View.Map (fun prepared ->
+            let scale = RendererModel.rowCalendarScalePrepared row prepared
+            if scale > 60.0 then
+                // The 930K/day TA-axis design remains unchanged pending the new demo review.
+                timeAxisWithPalette palette displayTime ("ta-time-axis-" + row.RowId) row.RowId timestamps
+            else
+                let dates = RendererModel.tradingDatesForRowTimelinePrepared row timestamps prepared
+                renderTradingTimeAxisWithPalette palette displayTime scale "trading-date" true ("ta-time-axis-" + row.RowId) row.RowId plotHeight
+                    (fun zone -> RendererModel.tradingSessionAxisGrid true scale zone timestamps dates))
+        |> Doc.EmbedView
 
     let residentTimeAxisWithPalette palette displayTime timestamps =
         residentTimeAxisForScaleWithPalette palette displayTime (RendererModel.residentCalendarScale timestamps) timestamps
@@ -2424,7 +2464,7 @@ module TaWorkspaceRenderer =
                 ]
                 yield chart
                 if showSharedTimeAxis then
-                    yield timeAxisWithPalette palette displayTime ("ta-time-axis-" + row.RowId) row.RowId timestamps
+                    yield mainTradingTimeAxisWithPalette palette displayTime row dataView timestamps rowHeight.View
             ]
         let children = [ rowPlot :> Doc ]
         let metadata =
@@ -2498,7 +2538,11 @@ module TaWorkspaceRenderer =
                                 ] [ text initialValue ]
                             ]
             ]
-        let frameHeight = rowHeight.View |> View.Map (fun value -> value + 114 + if showSharedTimeAxis then 16 else 0)
+        let axisExtraHeight =
+            if not showSharedTimeAxis then 0
+            elif RendererModel.rowCalendarScalePrepared row preparedData > 60.0 then 16
+            else 35
+        let frameHeight = rowHeight.View |> View.Map (fun value -> value + 114 + axisExtraHeight)
         div [ Attr.Create "data-testid" ("ta-row-shell-" + row.RowId); attr.style "display:flex; flex-direction:column; min-width:0;" ] [
             chartFrame title [ metadata ] legend ("ta-row-" + row.RowId) frameHeight children
             rowResizeHandle row.RowId heightBounds rowHeight

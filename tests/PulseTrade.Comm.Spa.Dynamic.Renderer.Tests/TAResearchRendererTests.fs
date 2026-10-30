@@ -66,14 +66,71 @@ let tests =
             for scale, expected in
                 [ 1.0, [| "00"; "04"; "08"; "12"; "16"; "20" |]
                   5.0, [| "00"; "04"; "08"; "12"; "16"; "20" |]
-                  30.0, [| "00"; "08"; "16" |]
-                  60.0, [| "00"; "08"; "16" |] ] do
+                  30.0, [||]
+                  60.0, [||] ] do
                 for zone in [ SduiDisplayTimeZone.Utc; SduiDisplayTimeZone.FixedUtcPlus8 ] do
                     let ticks = RendererModel.residentTradingCalendarGrid scale zone times days
                     let hours = ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label
-                    Expect.equal (Array.sort hours) expected "Trading-date axes use the same scale-specific clock multiples in each display zone."
+                    let expected = if scale <= 5.0 then expected elif zone = SduiDisplayTimeZone.Utc then [| "22" |] else [| "06" |]
+                    Expect.equal (Array.sort hours) expected "Fine-scale overviews mark four-hour multiples; 30K/60K only mark the session opening."
                     Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| "20261029" |] "Hourly density never changes the authoritative trading-day line."
                 Expect.isEmpty (RendererModel.residentTradingCalendarGrid scale SduiDisplayTimeZone.Utc [||] [||]) "Empty trading-date input is safe."
+
+        testCase "DYN-T-760 overview opening hours follow ET daylight saving and display zone" <| fun _ ->
+            for scale in [ 30.0; 60.0 ] do
+                for time, day, plus8 in [ "2026-06-17T22:00:00Z", "20260618", "06"; "2026-01-05T23:00:00Z", "20260106", "07" ] do
+                    let times = [| time |]
+                    let dates = [| Some day |]
+                    for zone, expected in [ SduiDisplayTimeZone.AmericaNewYork, "18"; SduiDisplayTimeZone.FixedUtcPlus8, plus8 ] do
+                        let ticks = RendererModel.tradingSessionAxisGrid false scale zone times dates
+                        let hours = ticks |> Array.filter (fun tick -> not tick.IsMajor)
+                        Expect.equal (hours |> Array.map _.Label) [| expected |] "No intermediate hourly ticks are emitted."
+                        Expect.isTrue hours[0].IsSessionStart "Opening hour is yellow."
+                        Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| day |] "Trading date is authoritative in both zones."
+                        Expect.floatClose Accuracy.high hours[0].Position 0.5 "One observation is centred."
+
+        testCase "DYN-T-761 main 30K and 60K only mark opening and eight-hour clock multiples" <| fun _ ->
+            let times = [| for hour in 0 .. 22 -> DateTime(2026,6,17,22,0,0,DateTimeKind.Utc).AddHours(float hour).ToString("yyyy-MM-ddTHH:mm:ssZ") |]
+            let dates = Array.create times.Length (Some "20260618")
+            for scale in [ 30.0; 60.0 ] do
+                let ticks = RendererModel.tradingSessionAxisGrid true scale SduiDisplayTimeZone.FixedUtcPlus8 times dates
+                let hours = ticks |> Array.filter (fun tick -> not tick.IsMajor)
+                Expect.equal (hours |> Array.map (fun tick -> tick.Label, tick.IsSessionStart)) [| "06", true; "08", false; "16", false; "00", false |] "Only the opening is yellow; 00/08/16 are white."
+                Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.CanonicalUtc) [| times[0] |] "UTC midnight is not a day boundary."
+
+        testCase "DYN-T-762 main 1K and 5K have hourly ticks but selected text only" <| fun _ ->
+            let times = [| for halfHour in 0 .. 45 -> DateTime(2026,6,17,22,0,0,DateTimeKind.Utc).AddMinutes(float halfHour * 30.0).ToString("yyyy-MM-ddTHH:mm:ssZ") |]
+            let dates = Array.create times.Length (Some "20260618")
+            for scale in [ 1.0; 5.0 ] do
+                let minor main = RendererModel.tradingSessionAxisGrid main scale SduiDisplayTimeZone.FixedUtcPlus8 times dates |> Array.filter (fun tick -> not tick.IsMajor)
+                let main = minor true
+                Expect.equal main.Length 23 "Every observed whole hour gets one short tick."
+                Expect.equal (main |> Array.filter (fun tick -> tick.Label <> "") |> Array.map (fun tick -> tick.Label, tick.IsSessionStart))
+                    [| "06", true; "08", false; "12", false; "16", false; "20", false; "00", false; "04", false |] "Unlabelled hourly marks do not add unwanted hour text."
+                let overview = minor false
+                Expect.equal (overview |> Array.map _.Label) [| "08"; "12"; "16"; "20"; "00"; "04" |] "The overview does not get every-hour ticks or an extra session-hour label."
+                Expect.isFalse (overview |> Array.exists _.IsSessionStart) "The fine-scale overview uses ordinary hour marks only."
+
+        testCase "DYN-T-763 clipped windows and unavailable metadata never invent session openings" <| fun _ ->
+            let times = [| "2026-06-18T00:00:00Z"; "2026-06-18T08:00:00Z" |]
+            for main in [ false; true ] do
+                let clipped = RendererModel.tradingSessionAxisGrid main 30.0 SduiDisplayTimeZone.Utc times (Array.create 2 (Some "20260618"))
+                Expect.isEmpty (clipped |> Array.filter (fun tick -> tick.IsMajor || tick.IsSessionStart)) "First visible bar is not the session opening."
+                let missing = RendererModel.tradingSessionAxisGrid main 30.0 SduiDisplayTimeZone.Utc [| "2026-06-17T22:00:00Z"; "invalid" |] [| None; Some "invalid" |]
+                Expect.isEmpty missing "Neither an invalid date nor a missing authoritative date can create a boundary."
+                Expect.isEmpty (RendererModel.tradingSessionAxisGrid main 1.0 SduiDisplayTimeZone.Utc [||] [||]) "Empty axes stay empty."
+
+        testCase "DYN-T-764 tick identity and positions survive display-zone changes" <| fun _ ->
+            let times = [| "2026-06-17T22:00:00Z"; "2026-06-17T22:30:00Z"; "2026-06-18T00:00:00Z"; "2026-06-18T22:00:00Z" |]
+            let dates = [| Some "20260618"; Some "20260618"; Some "20260618"; Some "20260619" |]
+            for zone in [ SduiDisplayTimeZone.Utc; SduiDisplayTimeZone.FixedUtcPlus8; SduiDisplayTimeZone.AmericaNewYork; SduiDisplayTimeZone.AmericaChicago ] do
+                for scale in [ 1.0; 5.0; 30.0; 60.0 ] do
+                    let ticks = RendererModel.tradingSessionAxisGrid true scale zone times dates
+                    let minor = ticks |> Array.filter (fun tick -> not tick.IsMajor)
+                    Expect.equal (minor |> Array.distinctBy _.CanonicalUtc |> Array.length) minor.Length "One short tick per hour, including opening hours."
+                    let major = ticks |> Array.filter _.IsMajor
+                    Expect.equal (major |> Array.map _.Label) [| "20260618"; "20260619" |] "Display-zone changes never change trading-day identity."
+                    Expect.equal (major |> Array.map _.Position) [| 0.125; 0.875 |] "Boundaries line up with candle slot centres on the shared reference axis."
 
         testCase "DYN-T-751 authored Y bounds override DMI defaults without changing unconfigured rows" <| fun _ ->
             let row = { RowId = "test"; Kind = TaRowKind.Dmi; DataRef = "data"; HeightWeight = 1.0; Visible = true
@@ -5097,7 +5154,7 @@ let tests =
             let major = ticks |> Array.filter _.IsMajor
             Expect.equal (major |> Array.map _.Label) [| "20260528"; "20260529"; "20260601" |] "No May 30/31 trading day may be invented"
             Expect.equal (major |> Array.map _.CanonicalUtc) [| times[0]; times[3]; times[6] |] "The first real K of each session owns the line"
-            Expect.floatClose Accuracy.high major[1].Position (3.0 / 7.0) "Use the complete bar axis, not sampled timestamp interpolation"
+            Expect.floatClose Accuracy.high major[1].Position (3.5 / 8.0) "Use the complete candle slot axis, not sampled timestamp interpolation"
 
         testCase "DYN-T-756 display zone changes hours but not TradingDate boundaries" <| fun _ ->
             let times = [| "2026-05-28T22:00:00Z"; "2026-05-29T00:00:00Z"; "2026-05-29T04:00:00Z" |]
@@ -5105,8 +5162,8 @@ let tests =
             let utc = RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.Utc times days
             let plus8 = RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.FixedUtcPlus8 times days
             Expect.equal (utc |> Array.filter _.IsMajor) (plus8 |> Array.filter _.IsMajor) "Session date and position are independent of display zone"
-            Expect.equal (utc |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "00" |] "30K only marks eight-hour multiples in UTC"
-            Expect.equal (plus8 |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "08" |] "30K only marks eight-hour multiples in UTC+8"
+            Expect.equal (utc |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "22" |] "30K overview only marks the actual ET session opening hour."
+            Expect.equal (plus8 |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "06" |] "The summer opening is 06 in UTC+8, not an eight-hour grid."
 
         testCase "DYN-T-757 monthly and Monday-week ticks follow traded dates" <| fun _ ->
             let times = [| "2026-04-30T22:00:00Z"; "2026-05-03T22:00:00Z"; "2026-05-10T22:00:00Z"; "2026-05-31T22:00:00Z" |]

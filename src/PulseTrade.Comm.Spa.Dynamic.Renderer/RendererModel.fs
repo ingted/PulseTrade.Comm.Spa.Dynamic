@@ -1932,6 +1932,29 @@ module RendererModel =
             |> Option.defaultValue [||]
         | None -> referenceTimelinePrepared document.Rows prepared
 
+    let tradingDatesForRowTimelinePrepared (row: TaRowSpec) (timeline: string array) prepared =
+        let dataRef =
+            effectiveTraces row
+            |> Array.filter _.Visible
+            |> Array.tryFind (fun trace -> trace.DataRef = row.DataRef)
+            |> Option.map (fun trace ->
+                trace.CandleDataRefs |> Option.map _.OpenRef |> Option.defaultValue trace.DataRef)
+            |> Option.defaultValue row.DataRef
+        let dates =
+            resolvedSeriesPrepared dataRef prepared
+            |> Array.choose (fun point ->
+                point.Payload |> Option.bind tryObject
+                |> Option.bind (fun fields ->
+                    let timestamp =
+                        point.Temporal |> Option.map presentationTimestamp
+                        |> Option.orElseWith (fun () -> objectText "t" fields)
+                    match timestamp, objectNumber "tradingDate" fields with
+                    | Some time, Some date when date >= 10000101.0 && date <= 99991231.0 && date = Math.Truncate date ->
+                        Some(time, string (int date))
+                    | _ -> None))
+            |> Map.ofArray
+        timeline |> Array.map (fun timestamp -> Map.tryFind timestamp dates)
+
     let referenceTradingDatesForDocumentPrepared (document: TaWorkspaceDocument) prepared =
         let timeline = referenceTimelineForDocumentPrepared document prepared
         let visibleRows = document.Rows |> Array.filter _.Visible
@@ -1940,30 +1963,9 @@ module RendererModel =
             |> Option.bind (fun rowId -> visibleRows |> Array.tryFind (fun row -> row.RowId = rowId))
             |> Option.orElseWith (fun () ->
                 visibleRows |> Array.sortByDescending (fun row -> rowTimelinePrepared row prepared |> Array.length) |> Array.tryHead)
-        let dates =
-            baseRow
-            |> Option.map (fun row ->
-                let dataRef =
-                    effectiveTraces row
-                    |> Array.filter _.Visible
-                    |> Array.tryFind (fun trace -> trace.DataRef = row.DataRef)
-                    |> Option.map (fun trace ->
-                        trace.CandleDataRefs |> Option.map _.OpenRef |> Option.defaultValue trace.DataRef)
-                    |> Option.defaultValue row.DataRef
-                resolvedSeriesPrepared dataRef prepared
-                |> Array.choose (fun point ->
-                    point.Payload |> Option.bind tryObject
-                    |> Option.bind (fun fields ->
-                        let timestamp =
-                            point.Temporal |> Option.map presentationTimestamp
-                            |> Option.orElseWith (fun () -> objectText "t" fields)
-                        match timestamp, objectNumber "tradingDate" fields with
-                        | Some time, Some date when date >= 10000101.0 && date <= 99991231.0 && date = Math.Truncate date ->
-                            Some(time, string (int date))
-                        | _ -> None))
-                |> Map.ofArray)
-            |> Option.defaultValue Map.empty
-        timeline |> Array.map (fun timestamp -> Map.tryFind timestamp dates)
+        baseRow
+        |> Option.map (fun row -> tradingDatesForRowTimelinePrepared row timeline prepared)
+        |> Option.defaultWith (fun () -> Array.create timeline.Length None)
 
     let traceReferencePoints (trace: TaTraceSpec) data =
         match trace.Kind with
@@ -3963,6 +3965,13 @@ module RendererModel =
           Label: string
           IsMajor: bool }
 
+    type TradingSessionAxisTick =
+        { Position: float
+          CanonicalUtc: string
+          Label: string
+          IsMajor: bool
+          IsSessionStart: bool }
+
     let overviewCanonicalUtc (value: string) =
         if not(String.IsNullOrWhiteSpace value) && value.Length >= 19
            && (value.Length = 19 || (value[19] = '.' && value.Substring(20) |> Seq.forall Char.IsDigit)) then value + "Z"
@@ -4041,20 +4050,31 @@ module RendererModel =
                         boundary <- if monthly then boundary.AddDays 1.0 else boundary.AddHours 1.0
         ticks.ToArray()
 
-    let residentTradingCalendarGrid scaleMinutes zone (timestamps: string array) (tradingDates: string option array) =
-        let ticks = ResizeArray<ResidentCalendarTick>()
+    let rowCalendarScalePrepared row prepared =
+        rowTemporalMetadataPrepared row prepared
+        |> Array.tryPick (fun value ->
+            let key = value.ScaleKey.ToUpper()
+            if key.EndsWith "K" then
+                match Int32.TryParse(key.Substring(0, key.Length - 1)) with
+                | true, scale when scale > 0 -> Some(float scale)
+                | _ -> None
+            else None)
+        |> Option.defaultWith (fun () -> rowTimelinePrepared row prepared |> residentCalendarScale)
+
+    let tradingSessionAxisGrid isMainPlot scaleMinutes zone (timestamps: string array) (tradingDates: string option array) =
+        let ticks = ResizeArray<TradingSessionAxisTick>()
         let monthly = scaleMinutes > 60.0
-        let hourStep = if scaleMinutes <= 5.0 then 4 else 8
-        let denominator = float (max 1 (timestamps.Length - 1))
+        let fineScale = scaleMinutes <= 5.0
         let weekOfMonth (date: DateTime) =
             let first = DateTime(date.Year, date.Month, 1, 0, 0, 0)
             1 + (date.Day - 1 + (int first.DayOfWeek + 6) % 7) / 7
         let mutable previousTradingDay: DateTime option = None
         for index in 0 .. timestamps.Length - 1 do
             let canonical = overviewCanonicalUtc timestamps[index]
-            let position = float index / denominator
-            let add label isMajor =
-                ticks.Add { Position = position; CanonicalUtc = canonical; Label = label; IsMajor = isMajor }
+            // Both SVG plots place observations at slot centres, not index/(count-1).
+            let position = (float index + 0.5) / float timestamps.Length
+            let add label isMajor isSessionStart =
+                ticks.Add { Position = position; CanonicalUtc = canonical; Label = label; IsMajor = isMajor; IsSessionStart = isSessionStart }
             let tradingDay =
                 if index >= tradingDates.Length then None
                 else
@@ -4065,14 +4085,19 @@ module RendererModel =
                             date.Substring(0, 4) + "-" + date.Substring(4, 2) + "-" + date.Substring(6, 2) + "T00:00:00Z"
                             |> TaDisplayTimeFormatter.tryParseCanonicalUtc
                             |> Option.map calendarDate)
+            let sessionStart =
+                tradingDay.IsSome
+                && (TaDisplayTimeFormatter.tryFormat SduiDisplayTimeZone.AmericaNewYork canonical
+                    |> Option.exists (fun local -> local.ClockText.StartsWith "18:00:00"))
             match tradingDay with
             | Some date ->
-                let changedDay = previousTradingDay <> Some date
                 let changedMonth = previousTradingDay |> Option.forall (fun previous -> previous.Year <> date.Year || previous.Month <> date.Month)
-                if (monthly && changedMonth) || (not monthly && changedDay) then
-                    add (date.ToString("yyyyMMdd")) true
+                // A clipped viewport may begin halfway through a session. Its first bar
+                // is not a trading-day boundary and must not acquire a yellow opening hour.
+                if (monthly && changedMonth) || (not monthly && sessionStart) then
+                    add (date.ToString("yyyyMMdd")) true sessionStart
                 if monthly && (changedMonth || (previousTradingDay |> Option.forall (fun previous -> weekOfMonth previous <> weekOfMonth date))) then
-                    add ("w" + string (weekOfMonth date)) false
+                    add ("w" + string (weekOfMonth date)) false false
                 previousTradingDay <- Some date
             | None -> () // No trading-day authority: do not invent a date from UTC or a display zone.
             if not monthly then
@@ -4080,10 +4105,23 @@ module RendererModel =
                 | Some local ->
                     let clock = local.ClockText.Substring(0, 8)
                     match Int32.TryParse(clock.Substring(0, 2)), Int32.TryParse(clock.Substring(3, 2)) with
-                    | (true, hour), (true, 0) when hour % hourStep = 0 -> add (clock.Substring(0, 2)) false
+                    | (true, hour), (true, 0) when clock.Substring(6, 2) = "00" ->
+                        let openingLabel = sessionStart && (isMainPlot || not fineScale)
+                        let regularLabel = hour % (if fineScale then 4 else 8) = 0 && (isMainPlot || fineScale)
+                        let shortTick = openingLabel || regularLabel || (isMainPlot && fineScale)
+                        if shortTick then
+                            add (if openingLabel || regularLabel then clock.Substring(0, 2) else "") false openingLabel
                     | _ -> ()
                 | None -> ()
         ticks.ToArray()
+
+    let residentTradingCalendarGrid scaleMinutes zone timestamps tradingDates =
+        tradingSessionAxisGrid false scaleMinutes zone timestamps tradingDates
+        |> Array.map (fun tick ->
+            { ResidentCalendarTick.Position = tick.Position
+              CanonicalUtc = tick.CanonicalUtc
+              Label = tick.Label
+              IsMajor = tick.IsMajor })
 
     let residentCalendarTicks zone (timestamps: string array) =
         // Overview timelines are UTC; some durable producers omit the trailing Z.
