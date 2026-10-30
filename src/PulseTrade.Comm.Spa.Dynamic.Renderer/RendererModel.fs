@@ -3993,7 +3993,7 @@ module RendererModel =
                 | _ -> None) |> Array.choose id
         let ticks = ResizeArray<ResidentCalendarTick>()
         let monthly = scaleMinutes > 60.0
-        let hourStep = if scaleMinutes <= 5.0 then 8 else 4
+        let hourStep = if scaleMinutes <= 5.0 then 4 else 8
         let sampledGaps =
             parsed |> Array.pairwise
             |> Array.choose (fun ((_, left, _), (_, right, _)) ->
@@ -4044,7 +4044,7 @@ module RendererModel =
     let residentTradingCalendarGrid scaleMinutes zone (timestamps: string array) (tradingDates: string option array) =
         let ticks = ResizeArray<ResidentCalendarTick>()
         let monthly = scaleMinutes > 60.0
-        let hourStep = if scaleMinutes <= 5.0 then 8 else 4
+        let hourStep = if scaleMinutes <= 5.0 then 4 else 8
         let denominator = float (max 1 (timestamps.Length - 1))
         let weekOfMonth (date: DateTime) =
             let first = DateTime(date.Year, date.Month, 1, 0, 0, 0)

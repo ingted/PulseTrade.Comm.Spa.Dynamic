@@ -57,11 +57,23 @@ let tests =
         testCase "DYN-T-754 resident intraday ticks use clock multiples and tolerate empty input" <| fun _ ->
             let times = [| for hour in 0 .. 23 -> sprintf "2026-10-29T%02d:00:00Z" hour |]
             let labels scale = RendererModel.residentCalendarGrid scale SduiDisplayTimeZone.Utc times |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label
-            Expect.equal (labels 1.0) [| "00"; "08"; "16" |] "1K uses eight-hour marks."
+            Expect.equal (labels 1.0) [| "00"; "04"; "08"; "12"; "16"; "20" |] "1K uses four-hour marks."
             Expect.equal (labels 5.0) (labels 1.0) "5K uses the same clock marks."
-            Expect.equal (labels 30.0) [| "00"; "04"; "08"; "12"; "16"; "20" |] "30K uses four-hour marks."
+            Expect.equal (labels 30.0) [| "00"; "08"; "16" |] "30K uses eight-hour marks."
             Expect.equal (labels 60.0) (labels 30.0) "60K uses the same clock marks."
             Expect.isEmpty (RendererModel.residentCalendarGrid 30.0 SduiDisplayTimeZone.Utc [||]) "No generated observations."
+            let days = Array.create times.Length (Some "20261029")
+            for scale, expected in
+                [ 1.0, [| "00"; "04"; "08"; "12"; "16"; "20" |]
+                  5.0, [| "00"; "04"; "08"; "12"; "16"; "20" |]
+                  30.0, [| "00"; "08"; "16" |]
+                  60.0, [| "00"; "08"; "16" |] ] do
+                for zone in [ SduiDisplayTimeZone.Utc; SduiDisplayTimeZone.FixedUtcPlus8 ] do
+                    let ticks = RendererModel.residentTradingCalendarGrid scale zone times days
+                    let hours = ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label
+                    Expect.equal (Array.sort hours) expected "Trading-date axes use the same scale-specific clock multiples in each display zone."
+                    Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| "20261029" |] "Hourly density never changes the authoritative trading-day line."
+                Expect.isEmpty (RendererModel.residentTradingCalendarGrid scale SduiDisplayTimeZone.Utc [||] [||]) "Empty trading-date input is safe."
 
         testCase "DYN-T-751 authored Y bounds override DMI defaults without changing unconfigured rows" <| fun _ ->
             let row = { RowId = "test"; Kind = TaRowKind.Dmi; DataRef = "data"; HeightWeight = 1.0; Visible = true
@@ -5093,15 +5105,16 @@ let tests =
             let utc = RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.Utc times days
             let plus8 = RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.FixedUtcPlus8 times days
             Expect.equal (utc |> Array.filter _.IsMajor) (plus8 |> Array.filter _.IsMajor) "Session date and position are independent of display zone"
-            Expect.equal (utc |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "00"; "04" |] "UTC hour marks"
-            Expect.equal (plus8 |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "08"; "12" |] "Displayed hour marks still follow UTC+8"
+            Expect.equal (utc |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "00" |] "30K only marks eight-hour multiples in UTC"
+            Expect.equal (plus8 |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "08" |] "30K only marks eight-hour multiples in UTC+8"
 
         testCase "DYN-T-757 monthly and Monday-week ticks follow traded dates" <| fun _ ->
             let times = [| "2026-04-30T22:00:00Z"; "2026-05-03T22:00:00Z"; "2026-05-10T22:00:00Z"; "2026-05-31T22:00:00Z" |]
             let days = [| "20260501"; "20260504"; "20260511"; "20260601" |] |> Array.map Some
-            let ticks = RendererModel.residentTradingCalendarGrid 930.0 SduiDisplayTimeZone.Utc times days
-            Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| "20260501"; "20260601" |] "Monthly boundary belongs to the first traded date"
-            Expect.equal (ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "w1"; "w2"; "w3"; "w1" |] "Partial month week counts as w1 and Monday advances the week"
+            for scale in [ 930.0; 1380.0 ] do
+                let ticks = RendererModel.residentTradingCalendarGrid scale SduiDisplayTimeZone.Utc times days
+                Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| "20260501"; "20260601" |] "930K and daily monthly boundaries belong to the first traded date"
+                Expect.equal (ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "w1"; "w2"; "w3"; "w1" |] "Partial month week counts as w1 and Monday advances the week"
 
         testCase "DYN-T-758 missing trading-day metadata never falls back to UTC date" <| fun _ ->
             let times = [| "2026-05-28T22:00:00Z"; "2026-05-29T00:00:00Z" |]
