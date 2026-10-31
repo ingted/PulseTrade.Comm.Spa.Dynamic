@@ -1,0 +1,19 @@
+# PTCS 0.3.4 dependency alignment
+
+## Pre-work plan
+
+- 背景／上下文：user GO授權PTCS CPU小修及Host/GW套件同步；producer G:/PulseTrade2.fs；統籌 G:/PulseTrade.fs/log/20261031/20261031094004.ptcs_registry_incremental_state.log。
+- 目標／scope／owner：agent.asteer，只同步5個direct PTCS consumers及必要exact references，不修改Renderer／Interactive／Research行為或他人source。
+- 起點：branch20260915_033.ptcs_group_support HEAD87d6209。5個fsproj clean；ACL/Login各兩個generated JS已dirty，保留，不覆寫／不提交。
+- 版本計畫：PTCS0.3.3→0.3.4；Dynamic0.1.43→0.1.44、Ptcs0.2.2→0.2.3、Ptcs.Client0.2.6→0.2.7。共用PackageId依public index及G canonical發版保留全球唯一：G ACL0.2.6/C ACL0.2.7；G Login0.2.5/C Login0.2.6，不混用兩種source。
+- 步驟：encoding／exact diff→non-public build/package與對應tests→source checkpoint→local-copy SHA→受控public發布→Host exact採用。
+- 驗收／不變事項：ABI／UI／資料格式不變；新增版本只因PTCS依賴；不以build代替tests；保留renderer等owner版本。不改其他dirty。
+- 風險／停止條件：公開push待producer gate；相依不明／既有source WIP會進package時先停，禁止建立nuget.config或曝露key。
+
+## Operations
+
+- 10:08 +08:00：metadata與NuGet index已核對；ACL0.2.5、Login0.2.4、Dynamic0.1.43、Ptcs0.2.2、Ptcs.Client0.2.6為各public最新stable。producer focused40/40；全套仍進行／分析。
+- 10:20：producer full1750中26個既有失敗已全部於官方0.3.3 DLL重現；等待user發布例外決策。本repo尚未改任何fsproj／產品碼，未build／pack／push NuGet；只保存盤點pre-work紀錄，generated JS WIP保持原樣。
+- 假設（原plan補明）：保持PTCS public ABI不變時，本repo只需dependency metadata／package同步，不需Renderer產品改動；尚待實際consumer gates，不宣稱相容性已驗。checkpoint只包含本log與DevLog新增段；log目錄目前git-ignored，政策要求的intentional work log以exact path -f納管，不加入generated artifacts。
+- Correction 10:34：已撤回曾插在pre-work段的欄位索引，只保留Operations追加說明，維持原log prefix；未動任何產品檔。
+- Checkpoint結果：canonical checker PASS19/WARN3/FAIL0；WARN為原plan欄位索引、commit前dirty、既有traceability。僅exact-stage本log（-f intentional work log）與DevLog新增段，再commit/push；不含任何產品或generated JS檔。實際Git結果以commit／remote readback為準。
