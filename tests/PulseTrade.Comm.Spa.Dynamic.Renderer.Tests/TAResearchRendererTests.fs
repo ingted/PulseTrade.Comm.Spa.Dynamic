@@ -31,6 +31,103 @@ let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc avai
 
 let tests =
     testList "TA renderer model" [
+        testCase "DYN-T-765 main zoom reveals four-hour labels instead of keeping only eight-hour candidates" <| fun _ ->
+            let start = DateTime(2026,10,19,0,0,0,DateTimeKind.Utc)
+            let times = Array.init 375 (fun index -> start.AddMinutes(float (index * 30)).ToString("yyyy-MM-ddTHH:mm:ssZ"))
+            let dates = Array.create times.Length (Some "20261019")
+            let step, ticks, guides = RendererModel.mainTradingTimeAxisGrid 1600.0 30.0 SduiDisplayTimeZone.Utc times dates
+            let hours = ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label
+            Expect.contains hours "04" "At 375 half-hour bars on a wide plot, four-hour labels fit and must be candidates."
+            Expect.equal step 4 "Four-hour spacing fits without forcing a count-based threshold."
+            Expect.equal (guides |> Array.map _.Label |> Array.distinct) [| "00"; "04"; "08"; "12"; "16"; "20" |] "Four-hour clock multiples get plot guides."
+
+        testCase "DYN-T-766 main axis density follows observation width and viewport pixels" <| fun _ ->
+            let start = DateTime(2026,10,19,0,0,0,DateTimeKind.Utc)
+            let layout width count =
+                let times = Array.init count (fun index -> start.AddMinutes(float (index * 30)).ToString("yyyy-MM-ddTHH:mm:ssZ"))
+                RendererModel.mainTradingTimeAxisGrid width 30.0 SduiDisplayTimeZone.Utc times (Array.create count (Some "20261019"))
+            let broadStep, _, broadGuides = layout 1600.0 1500
+            Expect.equal broadStep 8 "Full-range main plots retain sparse hour candidates."
+            Expect.isEmpty broadGuides "Four-hour guides would clutter the broad view."
+            let smallStep, smallTicks, _ = layout 1600.0 140
+            Expect.equal smallStep 2 "A narrower range reveals even hours."
+            Expect.contains (smallTicks |> Array.map _.Label) "02" "New labels actually exist, not just a density marker."
+            let smallestStep, _, _ = layout 1600.0 40
+            Expect.equal smallestStep 1 "Individual hours fit on a short range."
+            let narrowScreenStep, _, _ = layout 600.0 375
+            Expect.equal narrowScreenStep 8 "The same data on a narrow screen must not force four-hour labels."
+
+        testCase "DYN-T-767 adaptive main labels preserve opening identity and use the display clock for guides" <| fun _ ->
+            let times = [| for hour in 0..23 -> sprintf "2026-10-19T%02d:00:00Z" hour |]
+            let dates = Array.create times.Length (Some "20261020")
+            for zone, opening in [ SduiDisplayTimeZone.Utc, "22"; SduiDisplayTimeZone.AmericaNewYork, "18"; SduiDisplayTimeZone.FixedUtcPlus8, "06" ] do
+                let step, ticks, guides = RendererModel.mainTradingTimeAxisGrid 1200.0 60.0 zone times dates
+                Expect.equal step 1 "There is room for all hours."
+                let session = ticks |> Array.find (fun tick -> not tick.IsMajor && tick.IsSessionStart)
+                Expect.equal session.Label opening "Only presentation changes with the display zone."
+                Expect.equal session.CanonicalUtc "2026-10-19T22:00:00Z" "The real ET session boundary is unchanged."
+                Expect.isTrue (guides |> Array.forall (fun tick -> int tick.Label % 4 = 0)) "Guides follow local four-hour multiples."
+                Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| "20261020" |] "Dates still come from trading-day authority."
+            let winter = [| "2026-11-16T22:00:00Z"; "2026-11-16T23:00:00Z" |]
+            let _, ticks, _ = RendererModel.mainTradingTimeAxisGrid 800.0 60.0 SduiDisplayTimeZone.FixedUtcPlus8 winter [|Some "20261116";Some "20261117"|]
+            Expect.equal (ticks |> Array.find (fun tick -> not tick.IsMajor && tick.IsSessionStart)).Label "07" "Winter opening follows DST, not a hard-coded UTC hour."
+
+        testCase "DYN-T-768 adaptive main axis keeps fine-scale hourly marks and overviews unchanged" <| fun _ ->
+            let start = DateTime(2026,10,19,0,0,0,DateTimeKind.Utc)
+            for scale in [ 1; 5 ] do
+                let times = Array.init 1500 (fun index -> start.AddMinutes(float (index * scale)).ToString("yyyy-MM-ddTHH:mm:ssZ"))
+                let dates = Array.create times.Length (Some "20261019")
+                let _, main, _ = RendererModel.mainTradingTimeAxisGrid 1200.0 (float scale) SduiDisplayTimeZone.Utc times dates
+                Expect.equal (main |> Array.filter (fun tick -> not tick.IsMajor) |> Array.length) (1500 * scale / 60) "Every observed full hour still has a fine-scale tick."
+                let resident = RendererModel.tradingSessionAxisGrid false (float scale) SduiDisplayTimeZone.Utc times dates
+                Expect.isTrue (resident |> Array.filter (fun tick -> not tick.IsMajor) |> Array.forall (fun tick -> int tick.Label % 4 = 0)) "Fine-scale overview does not inherit adaptive hours."
+            let times = [| for hour in 0..23 -> sprintf "2026-10-19T%02d:00:00Z" hour |]
+            let resident = RendererModel.tradingSessionAxisGrid false 30.0 SduiDisplayTimeZone.Utc times (Array.create 24 (Some "20261020"))
+            Expect.equal (resident |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "22" |] "30K overview still labels only the opening hour."
+
+        testCase "DYN-T-769 adaptive main axis handles empty invalid and sub-hour windows" <| fun _ ->
+            for times in [ [||]; [| "not-a-time" |] ] do
+                let _, ticks, guides = RendererModel.mainTradingTimeAxisGrid Double.NaN 30.0 SduiDisplayTimeZone.Utc times [||]
+                Expect.isEmpty ticks "No invented observations or invalid coordinates."
+                Expect.isEmpty guides "Invalid input has no guides."
+            let _, ticks, guides = RendererModel.mainTradingTimeAxisGrid 1200.0 1.0 SduiDisplayTimeZone.Utc [| "2026-10-19T01:31:00Z"; "2026-10-19T01:45:00Z" |] [||]
+            Expect.equal (ticks |> Array.map _.Label) [| "01:31" |] "A narrow view without whole hours still displays an observed timestamp."
+            Expect.isFalse ticks[0].IsSessionStart "Missing trading dates do not become an opening."
+            Expect.floatClose Accuracy.high ticks[0].Position 0.25 "Fallback remains aligned with the observed slot centre."
+            Expect.isEmpty guides "Fallback is not a four-hour boundary."
+
+        testCase "DYN-T-770 adaptive main guides and labels survive closures without dilution or duplicates" <| fun _ ->
+            let times = Array.append [| for hour in 0..20 -> sprintf "2026-10-16T%02d:00:00Z" hour |] [| for hour in 22..23 -> sprintf "2026-10-18T%02d:00:00Z" hour |]
+            let step, ticks, guides = RendererModel.mainTradingTimeAxisGrid 1200.0 60.0 SduiDisplayTimeZone.Utc times (Array.create times.Length (Some "20261019"))
+            Expect.equal step 1 "Closed-market wall time must not suppress useful on-screen labels."
+            let hours = ticks |> Array.filter (fun tick -> not tick.IsMajor)
+            Expect.equal (hours |> Array.map _.CanonicalUtc |> Array.distinct |> Array.length) hours.Length "An opening and a clock tick share one label."
+            for tick in Array.append ticks guides do
+                Expect.contains times tick.CanonicalUtc "Every tick is attached to a real input slot."
+                Expect.isTrue (tick.Position > 0.0 && tick.Position < 1.0) "No boundary extends outside the plot."
+
+        testCase "DYN-T-771 non-candle legend colors match explicit and fallback trace paint" <| fun _ ->
+            let trace: TaTraceSpec =
+                { TraceId = "sma"; Kind = TaTraceKind.Line; DataRef = "sma-data"; Label = "SMA(7,CLOSE)"
+                  Color = "#ffd700"; Width = 1.0; Visible = true; CandleDataRefs = None; Options = Map.empty }
+            for value in [ "6625.31"; "-2.5"; "Unavailable" ] do
+                Expect.equal (RendererModel.traceLegendColors "#ffffff" 1 trace |> fun colors -> RendererModel.legendColorForValue colors value) "#ffd700" "Explicit FSSTL line color applies to label and value."
+            let fallback = { trace with Color = "" }
+            Expect.equal (RendererModel.traceColor 2 fallback) "#6a4ca3" "Existing paint palette remains unchanged."
+            Expect.equal (RendererModel.traceLegendColors "#ffffff" 2 fallback) ("#6a4ca3", "#6a4ca3") "Legend and SVG use the same palette index."
+            Expect.equal (RendererModel.traceLegendColors "#ffffff" 2 { trace with Kind = TaTraceKind.Candlestick }) ("#ffffff", "#ffffff") "Candlestick text keeps the existing neutral color."
+
+        testCase "DYN-T-772 histogram legend follows the active value polarity" <| fun _ ->
+            let trace: TaTraceSpec =
+                { TraceId = "macd-osc"; Kind = TaTraceKind.Histogram; DataRef = "osc-data"; Label = "OSC"
+                  Color = "#9333ea"; Width = 1.0; Visible = true; CandleDataRefs = None
+                  Options = TaHistogramTraceOptionsCodec.encode { PositiveColor = "#ef4444"; NegativeColor = "#22c55e" } }
+            let colors = RendererModel.traceLegendColors "#ffffff" 2 trace
+            Expect.equal (RendererModel.legendColorForValue colors "1.25") "#ef4444" "Positive value follows its FSSTL bar color."
+            Expect.equal (RendererModel.legendColorForValue colors "-1.25") "#22c55e" "Cursor movement to a negative value changes both legend texts."
+            Expect.equal (RendererModel.legendColorForValue colors "0") "#ef4444" "Zero follows positive histogram paint."
+            Expect.equal (RendererModel.legendColorForValue colors "Unavailable") "#ef4444" "Unavailable values have a stable non-stale color."
+
         testCase "DYN-T-752 resident day grid interpolates midnight instead of labelling the sampled hour" <| fun _ ->
             let timestamps = [| "2026-10-29T23:30:00Z"; "2026-10-30T00:30:00Z" |]
             let ticks = RendererModel.residentCalendarGrid 30.0 SduiDisplayTimeZone.Utc timestamps

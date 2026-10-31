@@ -492,6 +492,26 @@ type TaWorkspaceBootstrapPresentation =
 
 [<JavaScript; RequireQualifiedAccess>]
 module RendererModel =
+
+    let traceColor traceIndex (trace: TaTraceSpec) =
+        let palette = [| "#2764b0"; "#9b5b24"; "#6a4ca3"; "#0f766e"; "#b45309"; "#be185d"; "#475569"; "#0891b2" |]
+        if String.IsNullOrWhiteSpace trace.Color then palette[traceIndex % palette.Length] else trace.Color
+
+    let traceLegendColors candleText traceIndex (trace: TaTraceSpec) =
+        let color = traceColor traceIndex trace
+        match trace.Kind with
+        | TaTraceKind.Candlestick -> candleText, candleText
+        | TaTraceKind.Histogram ->
+            TaHistogramTraceOptionsCodec.tryDecode trace.Options
+            |> Option.map (fun style -> style.PositiveColor, style.NegativeColor)
+            |> Option.defaultValue (color, color)
+        | _ -> color, color
+
+    let legendColorForValue (positiveColor, negativeColor) (valueText: string) =
+        match Double.TryParse valueText with
+        | true, value when value < 0.0 -> negativeColor
+        | _ -> positiveColor
+
     [<Literal>]
     let ScheduledWorkBudgetMilliseconds = 4.0
 
@@ -4061,7 +4081,7 @@ module RendererModel =
             else None)
         |> Option.defaultWith (fun () -> rowTimelinePrepared row prepared |> residentCalendarScale)
 
-    let tradingSessionAxisGrid isMainPlot scaleMinutes zone (timestamps: string array) (tradingDates: string option array) =
+    let tradingSessionAxisGridWithHourStep isMainPlot scaleMinutes hourStep zone (timestamps: string array) (tradingDates: string option array) =
         let ticks = ResizeArray<TradingSessionAxisTick>()
         let monthly = scaleMinutes > 60.0
         let fineScale = scaleMinutes <= 5.0
@@ -4107,13 +4127,59 @@ module RendererModel =
                     match Int32.TryParse(clock.Substring(0, 2)), Int32.TryParse(clock.Substring(3, 2)) with
                     | (true, hour), (true, 0) when clock.Substring(6, 2) = "00" ->
                         let openingLabel = sessionStart && (isMainPlot || not fineScale)
-                        let regularLabel = hour % (if fineScale then 4 else 8) = 0 && (isMainPlot || fineScale)
+                        let regularLabel = hour % (max 1 hourStep) = 0 && (isMainPlot || fineScale)
                         let shortTick = openingLabel || regularLabel || (isMainPlot && fineScale)
                         if shortTick then
                             add (if openingLabel || regularLabel then clock.Substring(0, 2) else "") false openingLabel
                     | _ -> ()
                 | None -> ()
         ticks.ToArray()
+
+    let tradingSessionAxisGrid isMainPlot scaleMinutes zone timestamps tradingDates =
+        tradingSessionAxisGridWithHourStep isMainPlot scaleMinutes (if scaleMinutes <= 5.0 then 4 else 8) zone timestamps tradingDates
+
+    let mainTradingTimeAxisGrid plotWidth scaleMinutes zone (timestamps: string array) tradingDates =
+        // Only the main plot adapts. Its positions use actual observation slots, so
+        // weekends and session gaps must not dilute the apparent on-screen density.
+        let hourly = tradingSessionAxisGridWithHourStep true scaleMinutes 1 zone timestamps tradingDates
+        let hourTicks = hourly |> Array.filter (fun tick -> not tick.IsMajor)
+        let width = if Double.IsNaN plotWidth || Double.IsInfinity plotWidth then 1.0 else max 1.0 plotWidth
+        let spacings =
+            hourTicks |> Array.pairwise
+            |> Array.map (fun (left, right) -> (right.Position - left.Position) * width)
+            |> Array.filter (fun spacing -> spacing > 0.0)
+            |> Array.sort
+        let pixelsPerHour =
+            if spacings.Length > 0 then spacings[spacings.Length / 2]
+            else width * 60.0 / (max 1.0 (residentCalendarScale timestamps) * float (max 1 timestamps.Length))
+        let hourStep = [| 1; 2; 4; 8 |] |> Array.tryFind (fun step -> float step * pixelsPerHour >= 32.0) |> Option.defaultValue 8
+        let hourOf (tick: TradingSessionAxisTick) =
+            match Int32.TryParse tick.Label with
+            | true, hour -> Some hour
+            | _ -> None
+        let ticks =
+            hourly |> Array.choose (fun tick ->
+                if tick.IsMajor || tick.IsSessionStart then Some tick
+                elif hourOf tick |> Option.exists (fun hour -> hour % hourStep = 0) then Some tick
+                elif scaleMinutes <= 5.0 then Some { tick with Label = "" }
+                else None)
+        let guides =
+            if hourStep > 4 then [||]
+            else hourTicks |> Array.filter (fun tick -> hourOf tick |> Option.exists (fun hour -> hour % 4 = 0))
+        if ticks |> Array.exists (fun tick -> not tick.IsMajor && tick.Label <> "") then hourStep, ticks, guides
+        else
+            // A very narrow view can contain no whole hour (for example 01:31–01:45).
+            // Label an observed timestamp; do not invent a boundary or market point.
+            let fallback =
+                timestamps |> Array.mapi (fun index timestamp ->
+                    let canonical = overviewCanonicalUtc timestamp
+                    TaDisplayTimeFormatter.tryFormat zone canonical
+                    |> Option.map (fun local ->
+                        { Position = (float index + 0.5) / float timestamps.Length
+                          CanonicalUtc = canonical; Label = local.ClockText.Substring(0,5)
+                          IsMajor = false; IsSessionStart = false }))
+                |> Array.tryPick id
+            hourStep, (match fallback with Some tick -> Array.append ticks [| tick |] | None -> ticks), guides
 
     let residentTradingCalendarGrid scaleMinutes zone timestamps tradingDates =
         tradingSessionAxisGrid false scaleMinutes zone timestamps tradingDates

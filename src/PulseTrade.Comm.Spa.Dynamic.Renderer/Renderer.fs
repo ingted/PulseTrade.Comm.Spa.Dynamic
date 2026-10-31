@@ -709,7 +709,7 @@ module TaWorkspaceRenderer =
         View.Map2 (fun (viewportWidth, zone) height ->
             let width = max 1.0 (viewportWidth - if isMainPlot then 136.0 else 0.0)
             let monthly = scaleMinutes > 60.0
-            let ticks: RendererModel.TradingSessionAxisTick array = makeTicks zone
+            let hourStep, ticks, guides: int * RendererModel.TradingSessionAxisTick array * RendererModel.TradingSessionAxisTick array = makeTicks width zone
             let mutable lastDateX = -1000.0
             // Select opening labels before ordinary hours so a nearby white label cannot
             // hide the session hour. Keep all tick marks even where text cannot fit.
@@ -727,10 +727,19 @@ module TaWorkspaceRenderer =
                 Attr.Create "data-time-axis-kind" (if isMainPlot then "plot-trading-day" elif monthly then "resident-monthly" else "resident-daily")
                 Attr.Create "data-day-boundary-kind" boundaryKind
                 Attr.Create "data-display-time-zone" (SduiDisplayTimeZone.id zone)
+                Attr.Create "data-hour-step" (string hourStep)
                 attr.style ("position:relative;height:37px;min-height:37px;flex:0 0 37px;overflow:visible;pointer-events:none;"
                             + (if isMainPlot then "margin:0 68px;" else "")
                             + "background:" + palette.AxisSurface + ";color:" + palette.AxisText + ";font:10px Consolas,monospace;")
             ] [
+                for tick in guides do
+                    yield span [
+                        Attr.Create "data-testid" "ta-plot-four-hour-gridline"
+                        Attr.Create "data-canonical-event-time" tick.CanonicalUtc
+                        Attr.Create "data-tick-label" tick.Label
+                        attr.style ("position:absolute;top:-" + string height + "px;height:" + string height + "px;left:" + fixedText (tick.Position*100.0)
+                                    + "%;z-index:1;border-left:1px dashed " + palette.AxisText + ";opacity:0.22;")
+                    ] []
                 for tick in ticks do
                     let ratio = tick.Position
                     let left = fixedText (ratio*100.0) + "%"
@@ -769,9 +778,9 @@ module TaWorkspaceRenderer =
 
     let renderResidentTimeAxisWithPalette palette displayTime scaleMinutes boundaryKind makeTicks =
         renderTradingTimeAxisWithPalette palette displayTime scaleMinutes boundaryKind false "ta-overview-time-axis" "" (View.Const 82)
-            (fun zone -> makeTicks zone |> Array.map (fun (tick: RendererModel.ResidentCalendarTick) ->
+            (fun _ zone -> 0, (makeTicks zone |> Array.map (fun (tick: RendererModel.ResidentCalendarTick) ->
                 { RendererModel.TradingSessionAxisTick.Position = tick.Position; CanonicalUtc = tick.CanonicalUtc
-                  Label = tick.Label; IsMajor = tick.IsMajor; IsSessionStart = false }))
+                  Label = tick.Label; IsMajor = tick.IsMajor; IsSessionStart = false })), [||])
 
     let residentTimeAxisForScaleWithPalette palette displayTime scaleMinutes timestamps =
         renderResidentTimeAxisWithPalette palette displayTime scaleMinutes "calendar"
@@ -779,7 +788,7 @@ module TaWorkspaceRenderer =
 
     let residentTimeAxisForTradingDatesWithPalette palette displayTime scaleMinutes timestamps tradingDates =
         renderTradingTimeAxisWithPalette palette displayTime scaleMinutes "trading-date" false "ta-overview-time-axis" "" (View.Const 82)
-            (fun zone -> RendererModel.tradingSessionAxisGrid false scaleMinutes zone timestamps tradingDates)
+            (fun _ zone -> 0, RendererModel.tradingSessionAxisGrid false scaleMinutes zone timestamps tradingDates, [||])
 
     let mainTradingTimeAxisWithPalette palette displayTime row (dataView: View<TaPreparedRendererData>) timestamps plotHeight =
         dataView |> View.Map (fun prepared ->
@@ -790,7 +799,7 @@ module TaWorkspaceRenderer =
             else
                 let dates = RendererModel.tradingDatesForRowTimelinePrepared row timestamps prepared
                 renderTradingTimeAxisWithPalette palette displayTime scale "trading-date" true ("ta-time-axis-" + row.RowId) row.RowId plotHeight
-                    (fun zone -> RendererModel.tradingSessionAxisGrid true scale zone timestamps dates))
+                    (fun width zone -> RendererModel.mainTradingTimeAxisGrid width scale zone timestamps dates))
         |> Doc.EmbedView
 
     let residentTimeAxisWithPalette palette displayTime timestamps =
@@ -1320,9 +1329,7 @@ module TaWorkspaceRenderer =
         let height = if hasCandles then 250.0 else 112.0
         let top = if hasCandles then 0.0 else 10.0
         let plotHeight = if hasCandles then height else 92.0
-        let tracePalette = [| "#2764b0"; "#9b5b24"; "#6a4ca3"; "#0f766e"; "#b45309"; "#be185d"; "#475569"; "#0891b2" |]
-        let color index (trace: TaTraceSpec) =
-            if String.IsNullOrWhiteSpace trace.Color then tracePalette[index % tracePalette.Length] else trace.Color
+        let color = RendererModel.traceColor
 
         let xAt index =
             RendererModel.slotCenter width referenceTimestamps.Length index
@@ -2521,17 +2528,22 @@ module TaWorkspaceRenderer =
                             match trace.Kind with
                             | TaTraceKind.Candlestick -> "46ch"
                             | _ -> "16ch"
+                        let legendColors = RendererModel.traceLegendColors palette.LegendText index trace
+                        let legendColor = RendererModel.legendColorForValue legendColors initialValue
                         yield
                             span [
                                 Attr.Create "data-testid" ("ta-row-value-" + row.RowId + "-" + trace.TraceId)
                                 Attr.Create "data-ta-row-value-token" "true"
-                                attr.style "display:inline-flex; align-items:baseline; gap:4px; flex:0 0 auto; height:20px; line-height:20px; white-space:nowrap;"
+                                attr.style ("display:inline-flex; align-items:baseline; gap:4px; flex:0 0 auto; height:20px; line-height:20px; white-space:nowrap;color:" + legendColor + ";")
                             ] [
                                 span [ Attr.Create "data-ta-row-value-label" "true"; attr.style "font-weight:650;" ] [ text label ]
                                 span [
                                     Attr.Create "data-ta-row-value-index" (string index)
                                     Attr.Create "data-ta-row-value-row-id" row.RowId
                                     Attr.Create "data-ta-row-value-text" "true"
+                                    Attr.Create "data-legend-positive-color" (fst legendColors)
+                                    Attr.Create "data-legend-negative-color" (snd legendColors)
+                                    Attr.Create "data-legend-current-color" legendColor
                                     Attr.Create "data-value-state" (if initialValue = "Unavailable" then "undefined" else "defined")
                                     attr.title (label + " value")
                                     attr.style ("display:inline-block; width:" + valueWidth + "; min-width:" + valueWidth + "; max-width:" + valueWidth + "; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:tabular-nums;")
@@ -5116,6 +5128,12 @@ module TaWorkspaceRenderer =
                 for node, nextValue, nextState in legendUpdates do
                     if setElementTextIfChanged nextValue node then textWrites <- textWrites + 1
                     if setElementAttributeIfChanged "data-value-state" nextState node then attributeWrites <- attributeWrites + 1
+                    let colors = node.GetAttribute("data-legend-positive-color"), node.GetAttribute("data-legend-negative-color")
+                    let nextColor = RendererModel.legendColorForValue colors nextValue
+                    let token = node.ParentNode |> As<Element>
+                    if not (isNull token) && setElementAttributeIfChanged "data-legend-current-color" nextColor node then
+                        (token |> As<HTMLElement>).Style.SetProperty("color", nextColor)
+                        attributeWrites <- attributeWrites + 1
                 for node, nextTime in rowTimeUpdates do
                     if setElementTextIfChanged nextTime node then textWrites <- textWrites + 1
                 match cursorTimeUpdate, time with
