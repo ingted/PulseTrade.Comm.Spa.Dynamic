@@ -4,7 +4,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Ptcs.Client</PackageId>
-    <Version>0.2.6</Version>
+    <Version>0.2.8</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Pure WebSharper same-origin PTCS transient client adapter for Dynamic TA Research.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -27,7 +27,7 @@
     <PackageReference Include="FSharp.Core" Version="[10.1.402]" />
     <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.41]" />
     <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="0.3.21" />
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.3.3]" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.3.5]" />
     <PackageReference Include="WebSharper.FSharp" Version="10.1.7.680" />
     <PackageReference Include="WebSharper.UI" Version="10.1.6.680" />
   </ItemGroup>

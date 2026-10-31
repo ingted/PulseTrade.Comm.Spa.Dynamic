@@ -17,3 +17,7 @@
 - 假設（原plan補明）：保持PTCS public ABI不變時，本repo只需dependency metadata／package同步，不需Renderer產品改動；尚待實際consumer gates，不宣稱相容性已驗。checkpoint只包含本log與DevLog新增段；log目錄目前git-ignored，政策要求的intentional work log以exact path -f納管，不加入generated artifacts。
 - Correction 10:34：已撤回曾插在pre-work段的欄位索引，只保留Operations追加說明，維持原log prefix；未動任何產品檔。
 - Checkpoint結果：canonical checker PASS19/WARN3/FAIL0；WARN為原plan欄位索引、commit前dirty、既有traceability。僅exact-stage本log（-f intentional work log）與DevLog新增段，再commit/push；不含任何產品或generated JS檔。實際Git結果以commit／remote readback為準。
+- 10:49 user授權恢復CPU修復的consumer同步／發版／部署；只更新PTCS0.3.4相關exact dependency closure與必要版本，保留既有generated JS dirty。producer既有26失敗另於CPU上線量測完成後處理，不宣稱全套綠燈。
+- 11:38：producer0.3.4漏assets後改用完整0.3.5，8個consumer/test fsproj已同步exact closure；Dynamic0.1.45／Ptcs0.2.4／Ptcs.Client0.2.8／ACL0.2.9／Login0.2.8均build/pack/local-copy SHA核對，public push皆Created，當時索引尚未可見。正式Host已用Dynamic0.1.45與PTCS0.3.5且health200；current pointers補寫受tool policy阻擋，無繞過。
+- 本輪22個跨repo fsproj strict UTF8／BOM／NUL／U+FFFD檢查PASS。user明示先部署、完整測試放後；本repo完整tests尚未執行完，不以build當PASS。不修改Renderer／Research產品碼，保留既有及外部新增Program.fs、lib-packs.txt、generated JS與舊log變更；checkpoint只含8個owned fsproj、DevLog與本log。
+- 11:46 canonical checker PASS26／WARN4／FAIL0；WARN為既有traceability、原plan欄位索引、commit前dirty等，version bump及active package refs同步PASS。沿用原session/state/log/notes/watch paths；敏感掃描後僅exact-stage上述10檔（本log因repo ignore使用-f），不stage他人WIP。

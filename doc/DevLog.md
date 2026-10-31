@@ -2467,3 +2467,7 @@ RF10 package versions（shutdown physical retirement closure；目前僅Core57 l
 2026-10-29 08:32:31 +08:00 user重新授權`src/` direct PTCS consumers rollout：5個fsproj已改exact`PulseTrade.Comm.Spa [0.3.3]`；Dynamic0.1.43、Dynamic.Ptcs0.2.2、Dynamic.Ptcs.Client0.2.6、共用PackageId的ACL0.2.5/Login0.2.4已Release pack/publish，NuGet push皆Created。WebSharper同步10.1.7.680、Core direct dependencies0.1.2；只處理project metadata/build，未動Renderer/Research產品碼或其shared dirty。Host以exact package closure部署並通過正式Playwright。工作紀錄`log/20261029/20261029072955.ptcs_033_dynamic_consumers.log`（repo ignore，未作git authority）。
 
 2026-10-31 10:20 +08:00 PTCS CPU修正consumer準備：僅盤點5個direct refs／public versions與generated JS WIP；尚未改fsproj或產品碼。producer focused40/40，full1750有26個已於正式0.3.3 DLL重現的既有失敗；等待user是否維持CPU scope並另列追蹤的決策，不先發布／部署。pre-work log：`log/20261031/20261031100833.ptcs_registry_consumer_bump.log`；主線 `G:/PulseTrade.fs/log/20261031/20261031094004.ptcs_registry_incremental_state.log`。
+
+2026-10-31 11:37 +08:00 user授權先部署後完整測試。8個active consumer/test fsproj同步PTCS0.3.5 exact closure；Dynamic0.1.45、Ptcs0.2.4、Ptcs.Client0.2.8、ACL0.2.9、Login0.2.8均build/pack/local-copy SHA核對與NuGet push Created，public indexing尚待確認。版本跳過未公開中間候選係因producer0.3.4漏assets，已改完整0.3.5；此repo未改Renderer等產品碼，保留generated JS與他人Program.fs/lib-packs/log WIP。正式G Host使用Dynamic0.1.45與PTCS0.3.5、health正常；部署current pointers仍待工具政策允許同步，完整測試未宣稱通過。詳本輪log與主線log。
+
+2026-10-31 11:50 +08:00 public indexing已完成：跨repo13個新package均可見，官方nuspec66條dependencies與local一致；本repo canonical checker PASS26/WARN4/FAIL0，完整tests仍待後續，不把metadata gates當測試完成。
