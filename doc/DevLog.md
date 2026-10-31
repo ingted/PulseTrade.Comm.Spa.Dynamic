@@ -2475,3 +2475,9 @@ RF10 package versions（shutdown physical retirement closure；目前僅Core57 l
 2026-10-31 RNCPU-01：依user先部署後回歸授權，這輪本repo只同步PTCS0.3.6 exact依賴與active tests；Dynamic0.1.45→0.1.46、Ptcs0.2.4→0.2.5、Ptcs.Client0.2.8→0.2.9、ACL0.2.9→0.2.11、Login0.2.8→0.2.10（同ID G來源先用0.2.10／0.2.9）。五包build/pack/local-copy/hash及NuGet push成功；三個test project restore/build/test exit0，待核實際counts。未改UI產品碼、未重啟SPA/GW；正式RN CPU/GC改善由G root evidence負責。public indexing/check/commit收尾中；log/20261031/20261031123200.rn_cpu_dependency_alignment.log。
 
 收尾補驗：三專案33/33、15/15、17/17，共65/65，無ignored/failed/error；全部新版public payload/dependencies與local一致。最近canonical check為22 PASS／6 WARN／0 FAIL，剩餘為unchanged／shared dirty／既有traceability與pre-work欄位格式WARN，保留原始結果。final source commit/push對照統一記在G:/PulseTrade.fs/log/20261031/20261031120023.rn_cpu_diagnosis.log。
+
+## 2026-10-31 PTCS 0.3.7 consumer closure
+
+經user GO及agent.daedilus明確scope確認，五個active consumer producer與對應test metadata同步exact PTCS[0.3.7]：PulseTrade.Comm.Spa.Dynamic 0.1.46→0.1.47；PulseTrade.Comm.Spa.Dynamic.Ptcs 0.2.5→0.2.6；PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.2.9→0.2.10；PulseTrade.Comm.Spa.ACL 0.2.11→0.2.13；PulseTrade.Comm.Spa.Login 0.2.10→0.2.12。ACL/Login中間版已由G來源發布，使用下一個未占用stable版，不覆寫package。
+
+五包build/pack/local-feed SHA-before-push成功，public payload/nuspec比對一致、Dependencies頁200。三個對應Expecto專案各restore/build/run exit0，Dynamic33/33、Ptcs15/15、PtcsTaClient17/17，共65/65，無ignored/failed/error。未動Research/Renderer/Interactive、Ptcs.Client既有Renderer pin及他人Program.fs/lib-packs/generated JS。G正式Host已使用Dynamic0.1.47/Ptcs0.2.6/Ptcs.Client0.2.10，PTCS0.3.7三Host DLL/10個health已驗；不把此結果宣稱Research UI驗收。詳log/20261031/20261031190000.ptcs_037_consumer_release.log與public receipts。

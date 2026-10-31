@@ -1,0 +1,18 @@
+# PTCS 0.3.7 consumer release
+
+## Pre-work plan
+
+- 背景／上下文：user GO，將已完成的 PTCS chunk payload guard 發版部署；agent.daedilus 於 msg-fsi-0fcebf0b84f54a6297ca78dd0c7c3223 確認沒有進行中 build/pack/push，五個 PTCS consumer 由 agent.asteer 依既有 release scope 同步。
+- 目標／scope：只更新直接 PTCS consumer Dynamic、Dynamic.Ptcs、Dynamic.Ptcs.Client、ACL、Login 的版本／相依與對應測試，不 bump/publish Research/Renderer/Interactive 鏈。
+- Canonical root：C:/Users/Administrator/test_gemini/PulseTrade.Comm.Spa.Dynamic；起點 HEAD9bc6cb7，87d6209 為 ancestor；main coordination log=G:/PulseTrade.fs/log/20261031/20261031190000.ptcs_037_release_deploy.log。
+- 假設／不變量：PTCS0.3.7 無 wire/storage/API change；既有 UI gate 與 public NuGet 待辦仍屬 daedilus，不能當本次通過。保留 lib-packs.txt、Ptcs.Tests/Program.fs、generated JS、historical log、scratch 等 WIP。
+- 步驟：exact dependency bump→restore/build/pack→local-feed SHA copy→既有三個對應 test projects→public publication/readback→main Host 引用同步→精確 commit/push。
+- 驗收：五包 exact PTCS[0.3.7]、對應 tests 實際執行、package bytes 與 public payload 可追、未動其他 UI source。
+- 風險／停止條件：ACL/Login 與 main 同 ID producer 先查 public latest、使用未發布 stable 版本；不覆寫現有版本。若需改 owner UI source，先停與 daedilus 對齊。
+
+## Operations
+
+- 19:10：收到 daedilus scope 確認，已以 replyToMessageId 正式回覆接受；root/src AGENTS.md 與 GEMINI.md 無檔，遵 user 本輪規範與現有 doc/Verification.md。
+- 五包pack/local SHA-before-push/public payload/nuspec與Dependencies頁成功，收據20261031190000.ptcs_037_public_packages.json。三對應test projects實際restore/build/run exit0：33/33、15/15、17/17，共65/65，ignored/failed/errored0。
+- 版本：Dynamic0.1.47、Ptcs0.2.6、Ptcs.Client0.2.10、ACL0.2.13、Login0.2.12，均exact PTCS[0.3.7]；ACL/Login中間版已由G來源使用，沒有覆寫公開版本。主Host新版closure已部署，agent.daedilus已收到狀態；未動其Research/Renderer/Interactive，並保留其Program.fs/lib-packs/generated JS WIP。
+- 晚間canonical check：28 PASS／2 WARN／0 FAIL；精確提交本輪8個metadata、2份current docs、log與public receipts。final commit/push對照由G主release_deploy.log彙整，這裡不是Research UI gate通過聲明。

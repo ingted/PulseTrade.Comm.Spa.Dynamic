@@ -1,0 +1,47 @@
+[
+  {
+    "PackageId": "PulseTrade.Comm.Spa.Dynamic",
+    "Version": "0.1.47",
+    "LocalSha256": "D23477FFF17D51F6A3A81989B938BB8467143EB9BDCB91A2C390EA72A7C198EE",
+    "PublicSha256": "D2FD20502BE2FC5E2351F19D3026008DF5236A9BBF7E5368C51BFF1C97C62DCE",
+    "PayloadEntryCount": 834,
+    "PayloadAndDependenciesMatch": true,
+    "DependenciesPageStatus": 200
+  },
+  {
+    "PackageId": "PulseTrade.Comm.Spa.Dynamic.Ptcs",
+    "Version": "0.2.6",
+    "LocalSha256": "A5B30FB589217FE0E5B1A6402505E13B89D052BB91025C88A9798A65443D8F56",
+    "PublicSha256": "F379B2E98E3FC96A81C607DB766C273A010F9991187C09725D5E1DC892508153",
+    "PayloadEntryCount": 2,
+    "PayloadAndDependenciesMatch": true,
+    "DependenciesPageStatus": 200
+  },
+  {
+    "PackageId": "PulseTrade.Comm.Spa.Dynamic.Ptcs.Client",
+    "Version": "0.2.10",
+    "LocalSha256": "601E4BFF0F36B960B8F1ED60C8A0F5503D5EA79141A72D1F5F8C6FC6672FBFF3",
+    "PublicSha256": "E110D97D040127CCEF17DFC18EB12DE9636A61D136037EA7FEC342D1280F2910",
+    "PayloadEntryCount": 2,
+    "PayloadAndDependenciesMatch": true,
+    "DependenciesPageStatus": 200
+  },
+  {
+    "PackageId": "PulseTrade.Comm.Spa.ACL",
+    "Version": "0.2.13",
+    "LocalSha256": "A4971E220DFDA72A688ED22EFBF4801A50D2920152B511C781FF2A05F28531D8",
+    "PublicSha256": "ED165C8BDA6E443670E767B20AFC4DE4E7BBA071AE0CB0B09A6067688F6CAEA4",
+    "PayloadEntryCount": 7,
+    "PayloadAndDependenciesMatch": true,
+    "DependenciesPageStatus": 200
+  },
+  {
+    "PackageId": "PulseTrade.Comm.Spa.Login",
+    "Version": "0.2.12",
+    "LocalSha256": "3CE844501E8EAEFDBEB4D1AAC57A0A209B900EE6974A68DA4AC7761FCF47EAFB",
+    "PublicSha256": "A1C7B96001534BD7CD7EE9A024F04863C3A183AC688B6CA153B71176725CDDDB",
+    "PayloadEntryCount": 7,
+    "PayloadAndDependenciesMatch": true,
+    "DependenciesPageStatus": 200
+  }
+]

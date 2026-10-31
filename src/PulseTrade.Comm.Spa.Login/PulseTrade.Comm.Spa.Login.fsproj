@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <PackageId>PulseTrade.Comm.Spa.Login</PackageId>
-    <Version>0.2.10</Version>
+    <Version>0.2.12</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Open PTCS Login extension facade for PulseTrade.Comm.Spa.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -25,7 +25,7 @@
 
   <ItemGroup>
     <PackageReference Include="WebSharper.FSharp" Version="10.1.7.680" />
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.3.6]" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.3.7]" />
     <PackageReference Include="PulseTrade.Comm.Login.Core" Version="[0.1.2]" />
     <PackageReference Include="PulseTrade.Comm.ACL.Core" Version="[0.1.2]" />
   </ItemGroup>
