@@ -1,0 +1,15 @@
+# RNCPU-03 dependency alignment
+
+## Pre-work plan
+
+- 目標／授權：延續CPU修復；RN已部署PTCS0.3.6並20秒平均CPU12.165%→1.797%，本repo只同步active consumer exact refs及發新版，不重啟任何服務、不改UI邏輯。
+- canonical root：C:/Users/Administrator/test_gemini/PulseTrade.Comm.Spa.Dynamic；branch20260915_033.ptcs_group_support，baseline de4aa36309c38bcd34377ecfb29d0e8b86b9dbe9。選定fsproj均無既有dirty；其他Program.fs／lib-packs／generated WIP保留。
+- 來源：G:/PulseTrade.fs/doc/RFC/RFC-RNCPU-0001.exact-result-read.md與log/20261031/20261031120023.rn_cpu_diagnosis.log；producer G:/PulseTrade2.fs/PTCS0.3.6新增exact key read，儲存格式／API既有行為不變。
+- 步驟／驗收：exact dependency closure→本機pack/copy/hash→target restore/build/test→public publication/hash→checks/commit/push。本repo不承擔RN live驗收，真實數據在root log。
+- 版本：Dynamic0.1.45→0.1.46、Ptcs0.2.4→0.2.5、Ptcs.Client0.2.8→0.2.9；ACL/Login同ID另有G root來源，按最新已發布版次序分配，禁止覆寫既有版本。
+
+## Operations
+
+- 開工：已確認selected project metadata clean；僅依明確舊版mapping機械更新，不擴及TAResearch舊0.1.149引用。
+- 12:41：三個test project實際restore/build/test完成：Dynamic.Tests33/33、Dynamic.Ptcs.Tests15/15、PtcsTaClient.Tests17/17，無ignored/failed/error。五包與G root其餘closure皆push Created；第一次官方index尚404後重查，14包public payload/nuspec890entries一致、Dependencies頁可讀。本repo版本最終為0.1.46/0.2.5/0.2.9/ACL0.2.11/Login0.2.10。接checks與exact-path commit/push。
+- pre-work欄位補明（原範圍與驗收已列於plan）：背景/上下文=RN CPU修復使PTCS進0.3.6；假設=additive server API不改既有Dynamic行為；範圍=8個active project refs與release metadata，不改UI；風險=兩repo的ACL/Login同ID可能撞版，故順序配號並核對官方payload/dependencies。

@@ -2471,3 +2471,7 @@ RF10 package versions（shutdown physical retirement closure；目前僅Core57 l
 2026-10-31 11:37 +08:00 user授權先部署後完整測試。8個active consumer/test fsproj同步PTCS0.3.5 exact closure；Dynamic0.1.45、Ptcs0.2.4、Ptcs.Client0.2.8、ACL0.2.9、Login0.2.8均build/pack/local-copy SHA核對與NuGet push Created，public indexing尚待確認。版本跳過未公開中間候選係因producer0.3.4漏assets，已改完整0.3.5；此repo未改Renderer等產品碼，保留generated JS與他人Program.fs/lib-packs/log WIP。正式G Host使用Dynamic0.1.45與PTCS0.3.5、health正常；部署current pointers仍待工具政策允許同步，完整測試未宣稱通過。詳本輪log與主線log。
 
 2026-10-31 11:50 +08:00 public indexing已完成：跨repo13個新package均可見，官方nuspec66條dependencies與local一致；本repo canonical checker PASS26/WARN4/FAIL0，完整tests仍待後續，不把metadata gates當測試完成。
+
+2026-10-31 RNCPU-01：依user先部署後回歸授權，這輪本repo只同步PTCS0.3.6 exact依賴與active tests；Dynamic0.1.45→0.1.46、Ptcs0.2.4→0.2.5、Ptcs.Client0.2.8→0.2.9、ACL0.2.9→0.2.11、Login0.2.8→0.2.10（同ID G來源先用0.2.10／0.2.9）。五包build/pack/local-copy/hash及NuGet push成功；三個test project restore/build/test exit0，待核實際counts。未改UI產品碼、未重啟SPA/GW；正式RN CPU/GC改善由G root evidence負責。public indexing/check/commit收尾中；log/20261031/20261031123200.rn_cpu_dependency_alignment.log。
+
+收尾補驗：三專案33/33、15/15、17/17，共65/65，無ignored/failed/error；全部新版public payload/dependencies與local一致。最近canonical check為22 PASS／6 WARN／0 FAIL，剩餘為unchanged／shared dirty／既有traceability與pre-work欄位格式WARN，保留原始結果。final source commit/push對照統一記在G:/PulseTrade.fs/log/20261031/20261031120023.rn_cpu_diagnosis.log。

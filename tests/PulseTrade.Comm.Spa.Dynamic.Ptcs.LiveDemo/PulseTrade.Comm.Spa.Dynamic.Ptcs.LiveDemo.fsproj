@@ -16,10 +16,10 @@
 
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="[10.1.402]" />
-    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.3.5]" />
+    <PackageReference Include="PulseTrade.Comm.Spa" Version="[0.3.6]" />
     <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.41]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs" Version="[0.2.4]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs.Client" Version="[0.2.8]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs" Version="[0.2.5]" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Ptcs.Client" Version="[0.2.9]" />
     <PackageReference Include="WebSharper.FSharp" Version="10.1.7.680" />
     <PackageReference Include="WebSharper.UI" Version="10.1.6.680" />
   </ItemGroup>
