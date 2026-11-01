@@ -637,3 +637,8 @@ RF20-Form61：InProgress source33/33PASS (含9新增)，開始202610071912，已
 ## 2026-10-31 PTCS 0.3.7 consumer release
 
 Dynamic0.1.47、Ptcs0.2.6、Ptcs.Client0.2.10、ACL0.2.13、Login0.2.12：五包pack/local SHA/public payload/dependencies成功；三個對應project均restore/build/run，Expecto33/33、15/15、17/17，共65/65，0 ignored/failed/error。G正式Host已載入新版Dynamic closure且PTCS0.3.7 health正常；未動Research/Renderer/Interactive，不代表其UI驗收。Evidence：log/20261031/20261031190000.ptcs_037_consumer_release.log與public package receipts。
+
+
+## 2026-11-02 PTCS 0.3.8 consumer regression
+
+Dynamic33 / Ptcs15 / TaClient17 均 0 ignored/failed/error，實際 restore/build/run；source metadata only，不是 Research / Renderer / Interactive UI 驗收。完整 scope / package / deployment evidence 回鏈 G:/PulseTrade.fs/log/20261102/20261102035400.ptc_cpu_security_audit.log。

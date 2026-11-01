@@ -1,0 +1,39 @@
+# PTCS 0.3.8 observability consumer alignment
+
+- 使用者已授權在 logging 測試通過後直接發版部署 PTCS / GW / RN。
+- Canonical root: C:/Users/Administrator/test_gemini/PulseTrade.Comm.Spa.Dynamic；沿既有 branch，禁止建立 worktree / 切 branch。
+- 範圍：五個直接 PTCS consumer fsproj 與相依 test refs 的 exact 版本同步；不改 Research / Renderer / Interactive 行為。
+- 既有 dirty：lib-packs.txt、歷史 log、generated JS、tests/PulseTrade.Comm.Spa.Dynamic.Ptcs.Tests/Program.fs；保留，沒有覆蓋或代交 owner WIP。
+- 已讀 README；root 無 AGENTS / GEMINI，沿用 session 中使用者規範。通知 agent.daedilus msg-fsi-a004a53c57a24c6584088c3883ca4cbe。
+- SA / SD / 驗收：G:/PulseTrade.fs/doc/RFC/RFC-PTCOBS-0001.SafeHostRequestAndCpuLogging.md。
+- 流程：核 public versions / 相依圖→exact metadata 修改→固定 bin/obj pack→local feed SHA→focused consumer tests→publish→主 repo deployment/readback。
+- 風險：同 PackageId 的 main / Dynamic ACL、Login 各有 producer，須使用不衝突 stable 新版；不得覆寫已發布 nupkg。
+
+## Operations
+
+- 04:36：metadata audit 完成；本 repo direct PTCS refs 仍 0.3.7。後續只更改既有 release graph 的必要 consumer metadata。
+
+## Process correction / Planned steps（收尾欄位補記）
+
+Canonical checker 首輪指出原計畫用「流程／最小變更」等敘述，缺少其辨識的欄位名稱；Dynamic 因此有 latest_log_has_plan FAIL。保留原紀錄及首輪 FAIL，本段於收尾補齊，不冒稱早於實作。
+- 背景/上下文：使用者因三 Host CPU 尖峰要求入侵調查與 logging，後續明准測試後發版部署。
+- 目標：三 Host binary-local HTTP/CPU logging 可驗、敏感資料不落盤；交付區分 source、package、deployed、real-path。
+- 假設：CPU 可由正常內部活動觸發，單憑百分比不構成入侵證據；本次 HTTP instrumentation 不改既有 wire/auth/actor 行為。
+- 範圍：既有 exact package consumer graph；三 repo 各保留既有 owner WIP。producer 為 Suave seam、Dynamic 為 fsproj metadata / 對應測試、main 為三 Host與部署驗證。
+- 風險：公開 feed 延遲或 key 失效、同名雙 producer version 衝突、冷啟動與原有活動；以 local-first SHA、序列 installer、health / 實際 log gates 控制，不改 Defender / 安全策略。
+- 計畫步驟：完成剩餘正式 readback / CPU attribution → exact sensitive / encoding / canonical check → exact-path commit/push / COMM handoff。
+- 驗收：HTTP 結果保留、來源與路由安全分類、bounded/rotating logs、CPU/GC counters、三 Host healthy、無丟棄/寫入失敗；初始尖峰未捕捉的侷限保留。
+
+## Plan Correction
+
+本段是收尾欄位補記，不冒稱原先即有完整欄位；原紀錄與首次 checker FAIL 均保留。
+- 背景/上下文：使用者要求調查 PTCS / GW / RN CPU 尖峰與入侵跡象，並補強不足的 logging。
+- 目標：完成三 Host 請求與 CPU/GC 記錄、敏感資料保護、測試、發版部署與實際 readback。
+- 假設：既有 args / auth / PCSL 資料與 binary-local 設定維持；不以缺少事件證明未受入侵。
+- 步驟：依原先既有流程核來源與 metadata、測試、local feed SHA、發布、部署與 readback；本補記未改變已執行的順序。
+- 範圍：PTCS Suave observer、三 Host audit、必要 consumer package refs、驗證與文件；不改行情/UI、既有 inbox 演算法、Defender 或 firewall。
+- 驗收：logging 19 案例、consumer 69 案例（其中 GW 4 案例重疊）通過；三 Host observability verifier 1/1、health 10/10；14 public nupkg/dependencies 與部署 hash 一致。
+- 風險：原始歷史 request 記錄不足；PTCS inbox 輪詢熱點仍未修；CPU 為 4 核全機口徑，不將 sampled-thread-time 的等待百分比稱為 CPU 比例。
+- 2026-11-02 05:40:17 +08:00：本段僅補欄位，不補造 pre-work plan。
+
+- 2026-11-02 05:44:08 +08:00：開始 exact-path commit/push；canonical checks 三 repo exit=0；僅提交 release-owned-paths 的本輪範圍，保留既有 WIP。

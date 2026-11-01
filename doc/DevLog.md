@@ -2481,3 +2481,33 @@ RF10 package versions（shutdown physical retirement closure；目前僅Core57 l
 經user GO及agent.daedilus明確scope確認，五個active consumer producer與對應test metadata同步exact PTCS[0.3.7]：PulseTrade.Comm.Spa.Dynamic 0.1.46→0.1.47；PulseTrade.Comm.Spa.Dynamic.Ptcs 0.2.5→0.2.6；PulseTrade.Comm.Spa.Dynamic.Ptcs.Client 0.2.9→0.2.10；PulseTrade.Comm.Spa.ACL 0.2.11→0.2.13；PulseTrade.Comm.Spa.Login 0.2.10→0.2.12。ACL/Login中間版已由G來源發布，使用下一個未占用stable版，不覆寫package。
 
 五包build/pack/local-feed SHA-before-push成功，public payload/nuspec比對一致、Dependencies頁200。三個對應Expecto專案各restore/build/run exit0，Dynamic33/33、Ptcs15/15、PtcsTaClient17/17，共65/65，無ignored/failed/error。未動Research/Renderer/Interactive、Ptcs.Client既有Renderer pin及他人Program.fs/lib-packs/generated JS。G正式Host已使用Dynamic0.1.47/Ptcs0.2.6/Ptcs.Client0.2.10，PTCS0.3.7三Host DLL/10個health已驗；不把此結果宣稱Research UI驗收。詳log/20261031/20261031190000.ptcs_037_consumer_release.log與public receipts。
+
+
+## 2026-11-02 PTCS 0.3.8 dependency alignment
+
+五個 direct consumer exact PTCS 0.3.8；Dynamic 0.1.47→0.1.48、Ptcs 0.2.6→0.2.7、Ptcs.Client 0.2.10→0.2.11、ACL 0.2.13→0.2.15、Login 0.2.12→0.2.14（同名 main producer 先占用下一 stable 版）。只改 fsproj metadata / test refs；Research/Renderer/Interactive 與既有 Ptcs.Tests Program.fs WIP 保留未改。三 test projects 實際 restore/build/run：33/33、15/15、17/17，0 ignored/failed/error；包皆 local SHA gate / public push accepted。正式 Host deployment 尚在 main repo 執行，未宣稱 UI acceptance。pre-work：log/20261102/20261102043600.ptcs_observability_alignment.log；SA/SD：G:/PulseTrade.fs/doc/RFC/RFC-PTCOBS-0001.SafeHostRequestAndCpuLogging.md。
+
+
+Package 進版（相依同步；14 個 public push accepted）：
+
+| Producer | Package | 舊版 | 新版 |
+|---|---|---|---|
+| Producer | PulseTrade.Comm.Spa | 0.3.7 | 0.3.8 |
+| Main | PulseTrade.Comm.ResourceNode.DurableProxy | 0.2.11 | 0.2.12 |
+| Main | PulseTrade.Comm.ResourceNode.Pcsl | 0.2.12 | 0.2.13 |
+| Main | PulseTrade.Comm.ResourceNode.SqlServer | 0.2.11 | 0.2.12 |
+| Main | PulseTrade.Comm.Login.Pcsl | 0.2.7 | 0.2.8 |
+| Main | PulseTrade.Comm.GW.PTCS | 1.1.7 | 1.1.8 |
+| Main | PulseTrade.Comm.Mcp.Server | 0.1.11 | 0.1.12 |
+| Main | PulseTrade.Comm.Spa.ACL | 0.2.12 | 0.2.14 |
+| Main | PulseTrade.Comm.Spa.Login | 0.2.11 | 0.2.13 |
+| Dynamic | PulseTrade.Comm.Spa.Dynamic | 0.1.47 | 0.1.48 |
+| Dynamic | PulseTrade.Comm.Spa.Dynamic.Ptcs | 0.2.6 | 0.2.7 |
+| Dynamic | PulseTrade.Comm.Spa.Dynamic.Ptcs.Client | 0.2.10 | 0.2.11 |
+| Dynamic | PulseTrade.Comm.Spa.ACL | 0.2.13 | 0.2.15 |
+| Dynamic | PulseTrade.Comm.Spa.Login | 0.2.12 | 0.2.14 |
+
+
+正式更新：三 Host 已上0.3.8，10 health200、三DLL與package一致、舊參數差異0；14公開包payload/nuspec一致。主evidence G:/PulseTrade.fs/log/20261102/20261102035400.deployed.json / public-packages.json（後者同timestamp prefix）。本source/consumer工作已交付，不宣稱CPU根治或已排除入侵。
+
+- Correction：公開套件驗證的完整evidence path為 G:/PulseTrade.fs/log/20261102/20261102035400.public-packages.json。
