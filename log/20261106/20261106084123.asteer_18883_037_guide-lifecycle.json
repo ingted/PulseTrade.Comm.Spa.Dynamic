@@ -1,0 +1,1231 @@
+{
+  "crossEscPan": {
+    "closed": [
+      "Close ExtraInfo editor for 202607101230-30K-kbar",
+      "Close ExtraInfo editor for 202607100830-30K-kbar"
+    ],
+    "before": {
+      "at": "2026-11-06T06:08:33.811Z",
+      "visible": "Loaded 4500 bars · Viewing 4453-4500",
+      "mode": "cross",
+      "guides": [
+        {
+          "orientation": "horizontal",
+          "time": "2026-07-10T12:30:00.0000000+00:00",
+          "value": "7570.429775280899",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-macd-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-price-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-dmi-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-macd-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-ha-60k"
+        }
+      ],
+      "tagStatus": "TARGET 202607101230-30K-kbar / PointId 5566441 / BAR / ExtraInfo 0",
+      "editorVisible": true,
+      "editorTabs": "",
+      "pressed": [
+        "ta-guide-cross-price-30k",
+        "ta-guide-cross-macd-30k",
+        "ta-guide-cross-price-60k",
+        "ta-guide-cross-dmi-60k",
+        "ta-guide-cross-macd-60k",
+        "ta-guide-cross-ha-60k"
+      ]
+    },
+    "crossEsc": {
+      "at": "2026-11-06T06:08:33.970Z",
+      "visible": "Loaded 4500 bars · Viewing 4453-4500",
+      "mode": "none",
+      "guides": [
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "horizontal",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "horizontal",
+          "time": "2026-07-10T12:30:00.0000000+00:00",
+          "value": "7570.429775280899",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-composite-macd-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-macd-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-candle-price-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-price-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-composite-dmi-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-dmi-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-composite-macd-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-macd-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-candle-ha-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-ha-60k"
+        }
+      ],
+      "tagStatus": "TARGET 202607101230-30K-kbar / PointId 5566441 / BAR / ExtraInfo 0",
+      "editorVisible": true,
+      "editorTabs": "",
+      "pressed": []
+    },
+    "afterPan": {
+      "at": "2026-11-06T06:08:35.734Z",
+      "visible": "Loaded 4500 bars · Viewing 4405-4452",
+      "mode": "none",
+      "guides": [
+        {
+          "orientation": "horizontal",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "horizontal",
+          "time": "2026-07-10T12:30:00.0000000+00:00",
+          "value": "7570.429775280899",
+          "row": "ta-candle-price-30k"
+        }
+      ],
+      "tagStatus": "TAGGING DATAPOINT RESOLVE / price-30k / fsstl.sma-30k-13 / 2026-07-10T01:30:00.0000000+00:00",
+      "editorVisible": true,
+      "editorTabs": "",
+      "pressed": []
+    },
+    "pageErrors": []
+  },
+  "restoreClear": {
+    "restored": {
+      "at": "2026-11-06T06:10:22.484Z",
+      "visible": "Loaded 4500 bars · Viewing 4453-4500",
+      "mode": "none",
+      "guides": [
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "horizontal",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "horizontal",
+          "time": "2026-07-10T12:30:00.0000000+00:00",
+          "value": "7570.429775280899",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-composite-macd-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-macd-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-candle-price-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-price-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-composite-dmi-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-dmi-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-composite-macd-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-macd-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T01:30:00.0000000+00:00",
+          "value": "7585.009831460674",
+          "row": "ta-candle-ha-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-ha-60k"
+        }
+      ],
+      "tagStatus": "TARGET 202607100130-30K-sma13 / PointId 42972035 / SMA / ExtraInfo 0",
+      "editorVisible": true,
+      "editorTabs": "202607100130-30K-sma13",
+      "pressed": []
+    },
+    "cleared": {
+      "at": "2026-11-06T06:10:22.939Z",
+      "visible": "Loaded 4500 bars · Viewing 4453-4500",
+      "mode": "none",
+      "guides": [],
+      "tagStatus": "TARGET 202607100130-30K-sma13 / PointId 42972035 / SMA / ExtraInfo 0",
+      "editorVisible": true,
+      "editorTabs": "",
+      "pressed": []
+    },
+    "plots": [
+      {
+        "testid": "ta-candle-price-30k",
+        "attrs": [
+          [
+            "data-testid",
+            "ta-candle-price-30k"
+          ],
+          [
+            "data-ptcs-ta-point-surface",
+            "true"
+          ],
+          [
+            "data-ptcs-ta-point-row-id",
+            "price-30k"
+          ],
+          [
+            "data-plot-surface-theme",
+            "dark"
+          ],
+          [
+            "data-point-count",
+            "48"
+          ],
+          [
+            "data-ta-guide-tool",
+            "none"
+          ],
+          [
+            "data-main-plot-interaction-mode",
+            "cursor"
+          ]
+        ],
+        "paths": [
+          {
+            "part": "normal-up-wick",
+            "trace": "fsstl.es-30k",
+            "d": "413 M 802.0833333333333 61.81051921780178 L 802.0833333333333 84.01550910316917 M 822.9166666666666 50.407956844234775 L 822.9166666666666 80.41469993256905 M 843.75 52.20836142953482 L 843.75 66.61159811193525 M 885.4166666666666 36.004720161834314 L 885.4166666666666 55.20903573836824 M 906.25 35.40458530006762 L 906.25 45.00674308833459 M 927.0833333333333 22.801753202967205 L 927.0833333333333 40.20566419420109 M 968.75 23.401888064733896 L 968.75 40.80579905596778 M 989.5833333333333 15.000000000000313 L 989.5833333333333 26.40256237356732"
+          },
+          {
+            "part": "normal-up-body",
+            "trace": "fsstl.es-30k",
+            "d": "002697235333812 h -13.333333333333332 Z M 878.75 42.606203641267854 h 13.333333333333332 v 10.802427511800317 h -13.333333333333332 Z M 899.5833333333334 39.6055293324344 h 13.333333333333332 v 2.4005394470667625 h -13.333333333333332 Z M 920.4166666666666 29.403236682400774 h 13.333333333333332 v 10.202292650033627 h -13.333333333333332 Z M 962.0833333333334 24.602157788267277 h 13.333333333333332 v 9.002022926500274 h -13.333333333333332 Z M 982.9166666666666 21.601483479433853 h 13.333333333333332 v 3.0006743088334247 h -13.333333333333332 Z"
+          },
+          {
+            "part": "normal-down-wick",
+            "trace": "fsstl.es-30k",
+            "d": "M 489.5833333333333 138.62778152393756 L 489.5833333333333 148.8300741739712 M 593.75 102.61968981793643 L 593.75 116.4227916385702 M 614.5833333333333 115.82265677680351 L 614.5833333333333 130.22589345920395 M 718.75 70.2124072825354 L 718.75 100.81928523263636 M 739.5833333333333 77.41402562373563 L 739.5833333333333 197.44099797707275 M 781.25 68.41200269723532 L 781.25 117.62306136210356 M 864.5833333333333 43.206338503034544 L 864.5833333333333 56.409305461901624 M 947.9166666666666 18.600809170600428 L 947.9166666666666 41.40593391773447"
+          },
+          {
+            "part": "normal-down-body",
+            "trace": "fsstl.es-30k",
+            "d": "33333333333332 v 8.401888064733598 h -13.333333333333332 Z M 712.0833333333334 80.41469993256905 h 13.333333333333332 v 8.401888064733583 h -13.333333333333332 Z M 732.9166666666666 89.41672285906932 h 13.333333333333332 v 32.40728253540104 h -13.333333333333332 Z M 774.5833333333334 71.41267700606878 h 13.333333333333332 v 12.002697235333699 h -13.333333333333332 Z M 857.9166666666666 52.80849629130148 h 13.333333333333332 v 1.2 h -13.333333333333332 Z M 941.25 29.403236682400774 h 13.333333333333332 v 4.801078894133468 h -13.333333333333332 Z"
+          },
+          {
+            "part": "projected-up-wick",
+            "trace": "fsstl.es-30k",
+            "d": ""
+          },
+          {
+            "part": "projected-up-body",
+            "trace": "fsstl.es-30k",
+            "d": ""
+          },
+          {
+            "part": "projected-down-wick",
+            "trace": "fsstl.es-30k",
+            "d": ""
+          },
+          {
+            "part": "projected-down-body",
+            "trace": "fsstl.es-30k",
+            "d": ""
+          }
+        ]
+      },
+      {
+        "testid": "ta-candle-price-60k",
+        "attrs": [
+          [
+            "data-testid",
+            "ta-candle-price-60k"
+          ],
+          [
+            "data-ptcs-ta-point-surface",
+            "true"
+          ],
+          [
+            "data-ptcs-ta-point-row-id",
+            "price-60k"
+          ],
+          [
+            "data-plot-surface-theme",
+            "dark"
+          ],
+          [
+            "data-point-count",
+            "48"
+          ],
+          [
+            "data-ta-guide-tool",
+            "none"
+          ],
+          [
+            "data-main-plot-interaction-mode",
+            "cursor"
+          ]
+        ],
+        "paths": [
+          {
+            "part": "normal-up-wick",
+            "trace": "fsstl.es-60k",
+            "d": ""
+          },
+          {
+            "part": "normal-up-body",
+            "trace": "fsstl.es-60k",
+            "d": ""
+          },
+          {
+            "part": "normal-down-wick",
+            "trace": "fsstl.es-60k",
+            "d": ""
+          },
+          {
+            "part": "normal-down-body",
+            "trace": "fsstl.es-60k",
+            "d": ""
+          },
+          {
+            "part": "projected-up-wick",
+            "trace": "fsstl.es-60k",
+            "d": "22.9166666666666 72.61971321610443 M 843.75 38.548926270929655 L 843.75 58.08952466595639 M 864.5833333333333 38.548926270929655 L 864.5833333333333 58.08952466595639 M 885.4166666666666 32.0353934725874 L 885.4166666666666 48.56974596068693 M 906.25 32.0353934725874 L 906.25 48.56974596068693 M 927.0833333333333 18.006245906927177 L 927.0833333333333 37.04580331746604 M 947.9166666666666 18.006245906927177 L 947.9166666666666 37.04580331746604 M 968.75 15 L 968.75 36.544762332978195 M 989.5833333333333 15 L 989.5833333333333 36.544762332978195"
+          },
+          {
+            "part": "projected-up-body",
+            "trace": "fsstl.es-60k",
+            "d": "523942643220892 h -13.333333333333332 Z M 899.5833333333334 35.54268036400245 h 13.333333333333332 v 11.523942643220892 h -13.333333333333332 Z M 920.4166666666666 31.033311503611657 h 13.333333333333332 v 4.5093688603907935 h -13.333333333333332 Z M 941.25 31.033311503611657 h 13.333333333333332 v 4.5093688603907935 h -13.333333333333332 Z M 962.0833333333334 20.51145082936651 h 13.333333333333332 v 10.020819689757303 h -13.333333333333332 Z M 982.9166666666666 20.51145082936651 h 13.333333333333332 v 10.020819689757303 h -13.333333333333332 Z"
+          },
+          {
+            "part": "projected-down-wick",
+            "trace": "fsstl.es-60k",
+            "d": "1666666666663 113.70507394410936 L 385.41666666666663 131.74254938567248 M 406.25 113.70507394410936 L 406.25 131.74254938567248 M 427.0833333333333 113.70507394410936 L 427.0833333333333 133.74671332362396 M 447.91666666666663 113.70507394410936 L 447.91666666666663 133.74671332362396 M 593.75 88.15198373522827 L 593.75 111.19986902167003 M 614.5833333333333 88.15198373522827 L 614.5833333333333 111.19986902167003 M 718.75 61.095770572883566 L 718.75 167.3164592843109 M 739.5833333333333 61.095770572883566 L 739.5833333333333 167.3164592843109"
+          },
+          {
+            "part": "projected-down-body",
+            "trace": "fsstl.es-60k",
+            "d": "15049 h -13.333333333333332 Z M 441.24999999999994 124.72797560284238 h 13.333333333333332 v 3.507286891415049 h -13.333333333333332 Z M 587.0833333333334 92.16031161113116 h 13.333333333333332 v 14.029147565660196 h -13.333333333333332 Z M 607.9166666666666 92.16031161113116 h 13.333333333333332 v 14.029147565660196 h -13.333333333333332 Z M 712.0833333333334 69.61346730917725 h 13.333333333333332 v 34.571827929662675 h -13.333333333333332 Z M 732.9166666666666 69.61346730917725 h 13.333333333333332 v 34.571827929662675 h -13.333333333333332 Z"
+          }
+        ]
+      }
+    ],
+    "pageErrors": []
+  },
+  "clearInitiallyBlocked": {
+    "scrollY": 3932,
+    "viewport": {
+      "w": 1600,
+      "h": 773
+    },
+    "visible": "Loaded 4500 bars · Viewing 4453-4500",
+    "guides": 14,
+    "clears": [
+      {
+        "rect": {
+          "x": 1455.5,
+          "y": 375,
+          "w": 55,
+          "h": 23
+        },
+        "hit": "<textarea></textarea>"
+      }
+    ],
+    "editors": [
+      "Close ExtraInfo editor for 202607100130-30K-sma13"
+    ],
+    "selects": [
+      {
+        "id": "",
+        "testid": "display-time-zone",
+        "value": "0",
+        "options": [
+          {
+            "text": "UTC",
+            "value": "0"
+          },
+          {
+            "text": "CT",
+            "value": "1"
+          },
+          {
+            "text": "ET",
+            "value": "2"
+          },
+          {
+            "text": "UTC+8",
+            "value": "3"
+          }
+        ]
+      },
+      {
+        "id": "research-script-file",
+        "testid": "research-script-file",
+        "value": "",
+        "options": [
+          {
+            "text": "目前編輯內容／未選擇檔案",
+            "value": ""
+          },
+          {
+            "text": "00-spaa-default.fsstl",
+            "value": "00-spaa-default.fsstl"
+          },
+          {
+            "text": "01-historical-1k-dmi-strength.fsstl",
+            "value": "01-historical-1k-dmi-strength.fsstl"
+          },
+          {
+            "text": "02-history-live-1k-5k-sma.fsstl",
+            "value": "02-history-live-1k-5k-sma.fsstl"
+          },
+          {
+            "text": "03-dmi-full-range-backtest.strategy.fsstl",
+            "value": "03-dmi-full-range-backtest.strategy.fsstl"
+          },
+          {
+            "text": "04-dmi-5k-dual-threshold-entry-score-exit.fsstl",
+            "value": "04-dmi-5k-dual-threshold-entry-score-exit.fsstl"
+          },
+          {
+            "text": "06-60k-sma13x34-dmi-cross-backtest.fsstl",
+            "value": "06-60k-sma13x34-dmi-cross-backtest.fsstl"
+          },
+          {
+            "text": "07.spaa.20260929.fsstl",
+            "value": "07.spaa.20260929.fsstl"
+          },
+          {
+            "text": "08.spaa.20260930.fsstl",
+            "value": "08.spaa.20260930.fsstl"
+          },
+          {
+            "text": "09.spaa.backtest-from-20260102.fsstl",
+            "value": "09.spaa.backtest-from-20260102.fsstl"
+          },
+          {
+            "text": "09.spaa.values.fsstl",
+            "value": "09.spaa.values.fsstl"
+          },
+          {
+            "text": "10.日K.fsstl",
+            "value": "10.日K.fsstl"
+          },
+          {
+            "text": "11.spaa.multi-parameters.fsstl",
+            "value": "11.spaa.multi-parameters.fsstl"
+          },
+          {
+            "text": "12.spaa.global-contract-parallel.fsstl",
+            "value": "12.spaa.global-contract-parallel.fsstl"
+          },
+          {
+            "text": "30k_60k_001.fsstl",
+            "value": "30k_60k_001.fsstl"
+          }
+        ]
+      },
+      {
+        "id": "research-fsxstl-file",
+        "testid": "research-fsxstl-file",
+        "value": "",
+        "options": [
+          {
+            "text": "目前編輯內容／未選擇檔案",
+            "value": ""
+          },
+          {
+            "text": "09.spaa.backtest.fsxstl",
+            "value": "09.spaa.backtest.fsxstl"
+          }
+        ]
+      },
+      {
+        "id": "",
+        "testid": "ptcs-tag-search-matcher",
+        "value": "literal",
+        "options": [
+          {
+            "text": "包含",
+            "value": "literal"
+          },
+          {
+            "text": "Wildcard",
+            "value": "wildcard"
+          },
+          {
+            "text": "Regex",
+            "value": "regex"
+          }
+        ]
+      },
+      {
+        "id": "",
+        "testid": "ta-interval",
+        "value": "30",
+        "options": [
+          {
+            "text": "1m",
+            "value": "1"
+          },
+          {
+            "text": "5m",
+            "value": "5"
+          },
+          {
+            "text": "30m",
+            "value": "30"
+          },
+          {
+            "text": "60m",
+            "value": "60"
+          },
+          {
+            "text": "Session",
+            "value": "930"
+          }
+        ]
+      }
+    ],
+    "navigators": [
+      {
+        "testid": "research-global-overview-title",
+        "text": "GLOBAL · 全歷史縮圖",
+        "attrs": []
+      },
+      {
+        "testid": "research-global-overview-range",
+        "text": "2018-01-01 → 2026-07-10 · 可視 1500 根 · 拖曳選取框，放開後切換",
+        "attrs": []
+      },
+      {
+        "testid": "ta-main-boundary-times-price-30k",
+        "text": "首根 2026-07-09 20:00:00 UTC末根 2026-07-10 20:30:00 UTC",
+        "attrs": [
+          [
+            "data-ta-main-boundary-row",
+            "price-30k"
+          ],
+          [
+            "data-canonical-start",
+            "2026-07-09T20:00:00.0000000+00:00"
+          ],
+          [
+            "data-canonical-end",
+            "2026-07-10T20:30:00.0000000+00:00"
+          ],
+          [
+            "data-preview",
+            "false"
+          ],
+          [
+            "data-time-approximate",
+            "false"
+          ],
+          [
+            "data-default-start-text",
+            "首根 2026-07-09 20:00:00 UTC"
+          ],
+          [
+            "data-default-end-text",
+            "末根 2026-07-10 20:30:00 UTC"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-main-boundary-times-macd-30k",
+        "text": "首根 2026-07-09 20:00:00 UTC末根 2026-07-10 20:30:00 UTC",
+        "attrs": [
+          [
+            "data-ta-main-boundary-row",
+            "macd-30k"
+          ],
+          [
+            "data-canonical-start",
+            "2026-07-09T20:00:00.0000000+00:00"
+          ],
+          [
+            "data-canonical-end",
+            "2026-07-10T20:30:00.0000000+00:00"
+          ],
+          [
+            "data-preview",
+            "false"
+          ],
+          [
+            "data-time-approximate",
+            "false"
+          ],
+          [
+            "data-default-start-text",
+            "首根 2026-07-09 20:00:00 UTC"
+          ],
+          [
+            "data-default-end-text",
+            "末根 2026-07-10 20:30:00 UTC"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-main-boundary-times-price-60k",
+        "text": "首根 2026-07-09 20:00:00 UTC末根 2026-07-10 20:30:00 UTC",
+        "attrs": [
+          [
+            "data-ta-main-boundary-row",
+            "price-60k"
+          ],
+          [
+            "data-canonical-start",
+            "2026-07-09T20:00:00.0000000+00:00"
+          ],
+          [
+            "data-canonical-end",
+            "2026-07-10T20:30:00.0000000+00:00"
+          ],
+          [
+            "data-preview",
+            "false"
+          ],
+          [
+            "data-time-approximate",
+            "false"
+          ],
+          [
+            "data-default-start-text",
+            "首根 2026-07-09 20:00:00 UTC"
+          ],
+          [
+            "data-default-end-text",
+            "末根 2026-07-10 20:30:00 UTC"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-main-boundary-times-dmi-60k",
+        "text": "首根 2026-07-09 20:00:00 UTC末根 2026-07-10 20:30:00 UTC",
+        "attrs": [
+          [
+            "data-ta-main-boundary-row",
+            "dmi-60k"
+          ],
+          [
+            "data-canonical-start",
+            "2026-07-09T20:00:00.0000000+00:00"
+          ],
+          [
+            "data-canonical-end",
+            "2026-07-10T20:30:00.0000000+00:00"
+          ],
+          [
+            "data-preview",
+            "false"
+          ],
+          [
+            "data-time-approximate",
+            "false"
+          ],
+          [
+            "data-default-start-text",
+            "首根 2026-07-09 20:00:00 UTC"
+          ],
+          [
+            "data-default-end-text",
+            "末根 2026-07-10 20:30:00 UTC"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-main-boundary-times-macd-60k",
+        "text": "首根 2026-07-09 20:00:00 UTC末根 2026-07-10 20:30:00 UTC",
+        "attrs": [
+          [
+            "data-ta-main-boundary-row",
+            "macd-60k"
+          ],
+          [
+            "data-canonical-start",
+            "2026-07-09T20:00:00.0000000+00:00"
+          ],
+          [
+            "data-canonical-end",
+            "2026-07-10T20:30:00.0000000+00:00"
+          ],
+          [
+            "data-preview",
+            "false"
+          ],
+          [
+            "data-time-approximate",
+            "false"
+          ],
+          [
+            "data-default-start-text",
+            "首根 2026-07-09 20:00:00 UTC"
+          ],
+          [
+            "data-default-end-text",
+            "末根 2026-07-10 20:30:00 UTC"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-main-boundary-times-ha-60k",
+        "text": "首根 2026-07-09 20:00:00 UTC末根 2026-07-10 20:30:00 UTC",
+        "attrs": [
+          [
+            "data-ta-main-boundary-row",
+            "ha-60k"
+          ],
+          [
+            "data-canonical-start",
+            "2026-07-09T20:00:00.0000000+00:00"
+          ],
+          [
+            "data-canonical-end",
+            "2026-07-10T20:30:00.0000000+00:00"
+          ],
+          [
+            "data-preview",
+            "false"
+          ],
+          [
+            "data-time-approximate",
+            "false"
+          ],
+          [
+            "data-default-start-text",
+            "首根 2026-07-09 20:00:00 UTC"
+          ],
+          [
+            "data-default-end-text",
+            "末根 2026-07-10 20:30:00 UTC"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-viewport-navigator",
+        "text": "GLOBAL2018-01-01 23:00:00 UTC – 2026-07-10 20:59:00 UTC / 2996994 total / 134869 resident載入首根 2026-02-24 06:30:00 UTC載入末",
+        "attrs": []
+      },
+      {
+        "testid": "ta-global-overview-with-axis",
+        "text": "GLOBAL2018-01-01 23:00:00 UTC – 2026-07-10 20:59:00 UTC / 2996994 total / 134869 resident載入首根 2026-02-24 06:30:00 UTC載入末",
+        "attrs": [
+          [
+            "data-total-observation-count",
+            "2996994"
+          ],
+          [
+            "data-resident-start-observation-ordinal",
+            "2862125"
+          ],
+          [
+            "data-resident-observation-count",
+            "134869"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-global-overview-label",
+        "text": "GLOBAL2018-01-01 23:00:00 UTC – 2026-07-10 20:59:00 UTC / 2996994 total / 134869 resident",
+        "attrs": [
+          [
+            "data-total-observation-count",
+            "2996994"
+          ],
+          [
+            "data-resident-observation-count",
+            "134869"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-global-overview-navigator",
+        "text": "",
+        "attrs": [
+          [
+            "data-plot-surface-theme",
+            "dark"
+          ],
+          [
+            "data-global-source-count",
+            "1500"
+          ],
+          [
+            "data-selection-left-ratio",
+            "0.9549985752390562"
+          ],
+          [
+            "data-selection-right-ratio",
+            "1"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-global-overview-interaction-surface",
+        "text": "",
+        "attrs": []
+      },
+      {
+        "testid": "ta-global-overview-price",
+        "text": "",
+        "attrs": []
+      },
+      {
+        "testid": "ta-global-overview-selection",
+        "text": "",
+        "attrs": [
+          [
+            "data-semantic-x",
+            "954.9985752390562"
+          ],
+          [
+            "data-semantic-width",
+            "45.00142476094379"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-global-overview-move-hit",
+        "text": "",
+        "attrs": [
+          [
+            "data-window-drag-mode",
+            "move"
+          ],
+          [
+            "data-semantic-x",
+            "954.9985752390562"
+          ],
+          [
+            "data-semantic-width",
+            "45.00142476094379"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-global-boundary-times",
+        "text": "載入首根 2026-02-24 06:30:00 UTC載入末根 2026-07-10 20:30:00 UTC",
+        "attrs": [
+          [
+            "data-ta-main-boundary-row",
+            ""
+          ],
+          [
+            "data-canonical-start",
+            "2026-02-24T06:30:00.0000000+00:00"
+          ],
+          [
+            "data-canonical-end",
+            "2026-07-10T20:30:00.0000000+00:00"
+          ],
+          [
+            "data-preview",
+            "false"
+          ],
+          [
+            "data-time-approximate",
+            "false"
+          ],
+          [
+            "data-default-start-text",
+            "載入首根 2026-02-24 06:30:00 UTC"
+          ],
+          [
+            "data-default-end-text",
+            "載入末根 2026-07-10 20:30:00 UTC"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-global-overview-time-axis",
+        "text": "20180306091220190306091220200306091220210306091220220306091220230306091220240306091220250306091220260306",
+        "attrs": [
+          [
+            "data-time-axis-row-id",
+            "global-overview"
+          ],
+          [
+            "data-time-axis-tick-count",
+            "43"
+          ],
+          [
+            "data-time-axis-kind",
+            "global-calendar"
+          ],
+          [
+            "data-global-calendar-lane-count",
+            "2"
+          ],
+          [
+            "data-plot-surface-theme",
+            "dark"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-resident-overview-shell",
+        "text": "RESIDENT134869 loaded / 48 visible首根 2026-07-09 20:00:00 UTC末根 2026-07-10 20:30:00 UTC2026022408001620260303080016202603",
+        "attrs": []
+      },
+      {
+        "testid": "ta-resident-overview-label",
+        "text": "RESIDENT134869 loaded / 48 visible",
+        "attrs": [
+          [
+            "data-resident-observation-count",
+            "134869"
+          ],
+          [
+            "data-visible-observation-count",
+            "48"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-resident-overview-slot",
+        "text": "首根 2026-07-09 20:00:00 UTC末根 2026-07-10 20:30:00 UTC20260224080016202603030800162026031008001620260317080016202603240800",
+        "attrs": [
+          [
+            "data-overview-sticky",
+            "true"
+          ],
+          [
+            "data-overview-sticky-top",
+            "60"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-overview-navigator",
+        "text": "",
+        "attrs": [
+          [
+            "data-plot-surface-theme",
+            "dark"
+          ],
+          [
+            "data-loaded-sample-count",
+            "280"
+          ],
+          [
+            "data-overview-source-count",
+            "4500"
+          ],
+          [
+            "data-drag-hit-target-css-pixels",
+            "24"
+          ],
+          [
+            "data-drag-event-binding",
+            "navigator-root"
+          ],
+          [
+            "data-drag-bounds-source",
+            "navigator-root"
+          ],
+          [
+            "data-selection-left-ratio",
+            "0.9893333333333333"
+          ],
+          [
+            "data-selection-right-ratio",
+            "1"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-resident-boundary-times",
+        "text": "首根 2026-07-09 20:00:00 UTC末根 2026-07-10 20:30:00 UTC",
+        "attrs": [
+          [
+            "data-ta-main-boundary-row",
+            ""
+          ],
+          [
+            "data-canonical-start",
+            "2026-07-09T20:00:00.0000000+00:00"
+          ],
+          [
+            "data-canonical-end",
+            "2026-07-10T20:30:00.0000000+00:00"
+          ],
+          [
+            "data-preview",
+            "false"
+          ],
+          [
+            "data-time-approximate",
+            "false"
+          ],
+          [
+            "data-default-start-text",
+            "首根 2026-07-09 20:00:00 UTC"
+          ],
+          [
+            "data-default-end-text",
+            "末根 2026-07-10 20:30:00 UTC"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-resident-calendar-gridline",
+        "text": "",
+        "attrs": [
+          [
+            "data-time-axis-tick",
+            "day"
+          ],
+          [
+            "data-canonical-event-time",
+            "2026-02-24T06:30:00Z"
+          ],
+          [
+            "data-tick-label",
+            "20260224"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-resident-calendar-gridline",
+        "text": "",
+        "attrs": [
+          [
+            "data-time-axis-tick",
+            "day"
+          ],
+          [
+            "data-canonical-event-time",
+            "2026-02-25T00:00:00Z"
+          ],
+          [
+            "data-tick-label",
+            "20260225"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-resident-calendar-gridline",
+        "text": "",
+        "attrs": [
+          [
+            "data-time-axis-tick",
+            "day"
+          ],
+          [
+            "data-canonical-event-time",
+            "2026-02-26T00:00:00Z"
+          ],
+          [
+            "data-tick-label",
+            "20260226"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-resident-calendar-gridline",
+        "text": "",
+        "attrs": [
+          [
+            "data-time-axis-tick",
+            "day"
+          ],
+          [
+            "data-canonical-event-time",
+            "2026-02-27T00:00:00Z"
+          ],
+          [
+            "data-tick-label",
+            "20260227"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-resident-calendar-gridline",
+        "text": "",
+        "attrs": [
+          [
+            "data-time-axis-tick",
+            "day"
+          ],
+          [
+            "data-canonical-event-time",
+            "2026-03-01T23:00:00Z"
+          ],
+          [
+            "data-tick-label",
+            "20260301"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-resident-calendar-gridline",
+        "text": "",
+        "attrs": [
+          [
+            "data-time-axis-tick",
+            "day"
+          ],
+          [
+            "data-canonical-event-time",
+            "2026-03-02T00:00:00Z"
+          ],
+          [
+            "data-tick-label",
+            "20260302"
+          ]
+        ]
+      },
+      {
+        "testid": "ta-resident-calendar-gridline",
+        "text": "",
+        "attrs": [
+          [
+            "data-time-axis-tick",
+            "day"
+          ],
+          [
+            "data-canonical-event-time",
+            "2026-03-03T00:00:00Z"
+          ],
+          [
+            "data-tick-label",
+            "20260303"
+          ]
+        ]
+      }
+    ]
+  }
+}

@@ -231,3 +231,5 @@ DYN-T-782：MainPlotPan／NavigatorWindow／NavigatorMove三用途typed codec ro
 
 
 DYN-T-798..800（public11容量）：11/67、16/128、per-row32有效；17列、129traces、33per-row精確拒絕，其他limits固定。Baseline59/59→RED62/66→GREEN66/66；正式public11 browser仍待新closure，詳Verification容量checkpoint。
+
+2026-11-06 真18883窄框move RED：48/4500的15.296px框中央被right-handle攔截。Renderer改走既有navigatorDragMode；228/228既有unit維持，真UI待下一候選與host完整overview axis合驗。guide rendering/Esc/pan/clear與timezone實測證據見Verification；Tagging互斥仍RED。

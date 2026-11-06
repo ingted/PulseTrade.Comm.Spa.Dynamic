@@ -1,0 +1,255 @@
+{
+  "candidate": {
+    "url": "http://127.0.0.1:18883",
+    "research": "0.1.64",
+    "renderer": "0.3.37",
+    "contracts": "0.1.44",
+    "bundleSHA256": "fad6d3babd667c61b59583f54d20d04be9d5c1ddaff6cad21ae106886aef8bf2"
+  },
+  "initial": {
+    "before": {
+      "at": "2026-11-06T05:55:50.925Z",
+      "visible": "Loaded 4500 bars · Viewing 4453-4500",
+      "mode": "none",
+      "guides": [],
+      "tagStatus": "Tagging idle / click a KBar, OHLCV cell, or TA datapoint",
+      "editorVisible": true,
+      "editorTabs": "",
+      "pressed": []
+    },
+    "vertical": {
+      "at": "2026-11-06T05:55:51.128Z",
+      "visible": "Loaded 4500 bars · Viewing 4453-4500",
+      "mode": "vertical",
+      "guides": [],
+      "tagStatus": "Tagging idle / click a KBar, OHLCV cell, or TA datapoint",
+      "editorVisible": true,
+      "editorTabs": "",
+      "pressed": [
+        "ta-guide-vertical-price-30k",
+        "ta-guide-vertical-macd-30k",
+        "ta-guide-vertical-price-60k",
+        "ta-guide-vertical-dmi-60k",
+        "ta-guide-vertical-macd-60k",
+        "ta-guide-vertical-ha-60k"
+      ]
+    },
+    "pageErrors": []
+  },
+  "settled": {
+    "vertical": {
+      "at": "2026-11-06T05:58:00.199Z",
+      "visible": "Loaded 4500 bars · Viewing 4453-4500",
+      "mode": "vertical",
+      "guides": [
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-macd-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-price-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-dmi-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-macd-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-ha-60k"
+        }
+      ],
+      "tagStatus": "Tagging idle / click a KBar, OHLCV cell, or TA datapoint",
+      "editorVisible": true,
+      "editorTabs": "",
+      "pressed": [
+        "ta-guide-vertical-price-30k",
+        "ta-guide-vertical-macd-30k",
+        "ta-guide-vertical-price-60k",
+        "ta-guide-vertical-dmi-60k",
+        "ta-guide-vertical-macd-60k",
+        "ta-guide-vertical-ha-60k"
+      ]
+    },
+    "horizontal": {
+      "at": "2026-11-06T05:58:01.177Z",
+      "visible": "Loaded 4500 bars · Viewing 4453-4500",
+      "mode": "horizontal",
+      "guides": [
+        {
+          "orientation": "horizontal",
+          "time": "2026-07-10T12:30:00.0000000+00:00",
+          "value": "7570.429775280899",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-price-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-macd-30k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-price-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-dmi-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-composite-macd-60k"
+        },
+        {
+          "orientation": "vertical",
+          "time": "2026-07-10T08:30:00.0000000+00:00",
+          "value": "7593.341292134832",
+          "row": "ta-candle-ha-60k"
+        }
+      ],
+      "tagStatus": "TAGGING DATAPOINT RESOLVE / price-30k / fsstl.es-30k / 2026-07-10T08:30:00.0000000+00:00",
+      "editorVisible": true,
+      "editorTabs": "",
+      "pressed": [
+        "ta-guide-horizontal-price-30k",
+        "ta-guide-horizontal-macd-30k",
+        "ta-guide-horizontal-price-60k",
+        "ta-guide-horizontal-dmi-60k",
+        "ta-guide-horizontal-macd-60k",
+        "ta-guide-horizontal-ha-60k"
+      ]
+    },
+    "stack": {
+      "data-chart-render-sequence": "7",
+      "data-chart-preparation-generation": "5",
+      "data-chart-render-reason": "viewport",
+      "data-local-visible-start": "4452",
+      "data-local-visible-count": "48",
+      "data-visible-start": "4453",
+      "data-visible-end": "4500",
+      "data-maximum-visible-bars": "1500",
+      "data-visible-value-query-scope": "cursor-panel+row-legends",
+      "data-query-generation": "0",
+      "data-preparation-pending": "false",
+      "data-ready-row-count": "6",
+      "data-viewport-dispatch-pending-action": "",
+      "data-viewport-dispatch-pending-boundary": "",
+      "data-viewport-dispatch-committed-ready": "true",
+      "data-query-viewport-settlement-pending": "false",
+      "data-query-viewport-settlement-intent-generation": "",
+      "data-query-viewport-settlement-latest-generation": "",
+      "data-query-viewport-settlement-baseline-query-generation": "",
+      "data-query-viewport-settlement-current-query-generation": "",
+      "data-visible-value-telemetry-sequence": "16",
+      "data-visible-value-query-ms": "0",
+      "data-visible-value-resolve-ms": "0",
+      "data-visible-value-write-ms": "1",
+      "data-visible-value-visibility-ms": "0",
+      "data-visible-value-total-ms": "1",
+      "data-visible-value-max-total-ms": "2",
+      "data-visible-value-text-writes": "55",
+      "data-visible-value-attribute-writes": "14",
+      "data-visible-value-visibility-writes": "0",
+      "data-visible-value-node-count": "98",
+      "data-visible-value-publication-ms": "0",
+      "data-visible-value-scheduler-ms": "0",
+      "data-visible-value-renderer-instance": "1",
+      "data-cursor-render-latency-sequence": "2",
+      "data-cursor-render-latency-ms": "9"
+    },
+    "pageErrors": []
+  },
+  "current": {
+    "at": "2026-11-06T05:59:14.228Z",
+    "visible": "Loaded 4500 bars · Viewing 4453-4500",
+    "mode": "horizontal",
+    "guides": [
+      {
+        "orientation": "horizontal",
+        "time": "2026-07-10T12:30:00.0000000+00:00",
+        "value": "7570.429775280899",
+        "row": "ta-candle-price-30k"
+      },
+      {
+        "orientation": "vertical",
+        "time": "2026-07-10T08:30:00.0000000+00:00",
+        "value": "7593.341292134832",
+        "row": "ta-candle-price-30k"
+      },
+      {
+        "orientation": "vertical",
+        "time": "2026-07-10T08:30:00.0000000+00:00",
+        "value": "7593.341292134832",
+        "row": "ta-composite-macd-30k"
+      },
+      {
+        "orientation": "vertical",
+        "time": "2026-07-10T08:30:00.0000000+00:00",
+        "value": "7593.341292134832",
+        "row": "ta-candle-price-60k"
+      },
+      {
+        "orientation": "vertical",
+        "time": "2026-07-10T08:30:00.0000000+00:00",
+        "value": "7593.341292134832",
+        "row": "ta-composite-dmi-60k"
+      },
+      {
+        "orientation": "vertical",
+        "time": "2026-07-10T08:30:00.0000000+00:00",
+        "value": "7593.341292134832",
+        "row": "ta-composite-macd-60k"
+      },
+      {
+        "orientation": "vertical",
+        "time": "2026-07-10T08:30:00.0000000+00:00",
+        "value": "7593.341292134832",
+        "row": "ta-candle-ha-60k"
+      }
+    ],
+    "tagStatus": "TARGET 202607100830-30K-kbar / PointId 5566433 / BAR / ExtraInfo 0",
+    "editorVisible": true,
+    "editorTabs": "202607100830-30K-kbar",
+    "pressed": [
+      "ta-guide-horizontal-price-30k",
+      "ta-guide-horizontal-macd-30k",
+      "ta-guide-horizontal-price-60k",
+      "ta-guide-horizontal-dmi-60k",
+      "ta-guide-horizontal-macd-60k",
+      "ta-guide-horizontal-ha-60k"
+    ]
+  },
+  "pageErrors": []
+}

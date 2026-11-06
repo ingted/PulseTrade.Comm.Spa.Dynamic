@@ -4855,18 +4855,9 @@ module TaWorkspaceRenderer =
                                 { StartIndex=int(Math.Round(fst ratios * float total))
                                   Count=int(Math.Round((snd ratios-fst ratios) * float total)) }
                         else priorCommitted
-                    let eventTarget: Element = JS.Get "target" rawEvent
-                    let semanticDrag =
-                        if isNull eventTarget then None
-                        else
-                            match eventTarget.GetAttribute("data-window-drag-mode") with
-                            | TaWindowDrag.Move -> Some TaWindowDrag.Move
-                            | TaWindowDrag.ResizeLeft -> Some TaWindowDrag.ResizeLeft
-                            | TaWindowDrag.ResizeRight -> Some TaWindowDrag.ResizeRight
-                            | _ -> None
+                    // Overlapping SVG handle targets must not hide a narrow selection's move zone.
                     let resolvedDrag =
-                        semanticDrag
-                        |> Option.orElseWith (fun () -> RendererModel.navigatorDragMode trackWidth 24.0 ratios pointerX)
+                        RendererModel.navigatorDragMode trackWidth 24.0 ratios pointerX
                     setDragDiagnostic "data-drag-runtime-document-revision" (string runtimeState.Value.DocumentRevision)
                     setDragDiagnostic "data-drag-runtime-data-revision" (string runtimeState.Value.DataRevision)
                     setDragDiagnostic "data-drag-prepared-reference-count" (string localTotal)
@@ -4883,7 +4874,7 @@ module TaWorkspaceRenderer =
                         (if renderedSelectionRatios.IsSome then "rendered-selection"
                          elif navigatorSelectionRatiosOverride.Value.IsSome then "gesture-override"
                          else "committed-window")
-                    setDragDiagnostic "data-drag-hit-source" (if semanticDrag.IsSome then "semantic-target" else "geometry-fallback")
+                    setDragDiagnostic "data-drag-hit-source" "selection-geometry"
                     setDragDiagnostic
                         "data-drag-baseline-source"
                         (if renderedNavigatorDraft.IsSome then "rendered-draft"
@@ -4925,11 +4916,7 @@ module TaWorkspaceRenderer =
                                 (float event.ClientX)
                         let frozenMoveSelectionBounds =
                             if drag = TaWindowDrag.Move then
-                                if semanticDrag = Some TaWindowDrag.Move && not (isNull eventTarget) then
-                                    let visualBounds = eventTarget.GetBoundingClientRect()
-                                    Some(visualBounds.Left - trackLeft, visualBounds.Width)
-                                else
-                                    Some(RendererModel.navigatorSelectionBounds trackWidth ratios)
+                                Some(RendererModel.navigatorSelectionBounds trackWidth ratios)
                             else
                                 None
                         let mutable latestRawDelta = 0

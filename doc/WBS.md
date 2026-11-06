@@ -251,3 +251,5 @@ RF20-Form61：Done100%，開始202610071912，已耗56分；source33、最終WS/
 
 
 2026-11-06 Y-axis gate：真18883 .64/.37/.44在1500/48bars及900px寬截圖/geometry正常，13秒後穩定。只關閉此候選Y聚集問題，其他Load03互動續驗；證據見Verification最新18883章節。
+
+- 2026-11-06 narrow navigator pointer routing：改由既有selection geometry決定move/resize並凍結相同bounds；source228/228。真18883 RED及host缺overview axis/guide capture交daedilus，下一候選UI仍pending；詳Verification當日窄縮圖交付。

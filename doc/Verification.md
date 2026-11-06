@@ -720,3 +720,16 @@ Evidence：log/20261106/20261106084123.asteer_contract-capacity-{baseline,red,gr
 Evidence：log/20261106/20261106084123.asteer_18883_037_y-{wide,narrow,responsive}.{json,png}及y-late.json；四份JSON已由程式核對tick/count/spacing/grid/quarter/左右一致，三張圖逐張目視。這只關閉Y軸塌陷的此候選gate；guides/tagging、動態時間、scale右端、反向及連續雙向外展、trade UI仍未完成。Chrome lease仍由asteer持有，18884未動。
 
 Driver紀錄：第一次禁cache reload後，工具VM不支援Node dynamic import，於Run前失敗；後續以瀏覽器Web Crypto取得served hash、送回cacheDisabled=false並執行唯一Run。console工具不允許直接存到E worktree，未寫檔且未繞過，改用不寫檔的console read取得0訊息。這些driver限制不是產品JS錯誤。
+## 2026-11-06 窄縮圖搬移與 guide 實測交付
+
+18883 Research0.1.64 / Renderer0.3.37 的48/4500選取框實寬15.296px；按框中央拖左80px，重疊的24px SVG把手使事件target成為right-handle，舊pointerdown優先semantic target而判成resize-right。Renderer.fs改用既有navigatorDragMode幾何判定，同一selectionRatios亦供凍結搬移邊界，取消DOM把手作第二個判定來源；既有普通／窄框／左右端幾何案例維持。
+
+Baseline228/228。Release最後一輪0errors/45既有warnings、43.78s；Renderer Expecto228/228、0ignored/failed/errored、0.8545311s。producer/testDLL相同SHA256 A94C528B0926DA5CE90DC0B2E7114A9516D296A88EFD2E8A722C4E1EA29A9CF4。兩次初始編譯失敗是移除semantic分支後尚留local引用，已消除，失敗原始log照留。只交source，不pack/bump/restart。新候選真窄框move仍待owner打包後驗，不把unit視為UI完成。
+
+同次drag回報Overview interval metadata is unavailable：host建立projection.OverviewAxis卻未由tryApplyHistoricalCoverageState送入snapshot.Data／document.TemporalAxisRefs。此共同producer seam由daedilus修，Renderer保留缺authority拒絕。guide→Tagging另由Research capture先存點擊、後續無關toolbar click消費舊Sequence造成；實測只見工具鈕click、無activation-v2事件。owner修同一次event的capture/consume，不改Tagging持久資料。
+
+同候選已驗：vertical六列同步、horizontal僅原列、cross增加六vertical＋一horizontal、Esc退出、平移離開再回原位恢復14個rendered guide、clear清空；UTC↔UTC+8時間標籤正確且canonical時間不變。Tagging互斥仍RED，未視為guide整體通過。Clear第一次被已知Tagging視窗遮住，實際關閉自建未存草稿後重試成功，未force click。
+
+Evidence均在log/20261106/20261106084123.asteer_18883_037_：guide-tagging-red.{json,png}、guide-stale-capture.json、guide-lifecycle.json、guide-cross-esc.png、guide-clear-blocked.png、narrow-move.{json,png}、time-zone.json。fixed-query-rejection.json記一次錯用ta-interval切尺度：compiled binding合法拒絕、0frames，已還原30；這不是正確research-scale-*操作，也不是尺度驗收。沒有更改public腳本。
+
+Chrome lease依owner交agent.daedilas（msg-fsi-e7ba30874af54456aff0b3e33b372b5d），自有監看移除、pageerror0；18883服務與18884均未操作。後續frontend trade-focus由新owner任務另記，不混本片。此worktree既知沒有check.fsx，沿owner要求作focused source checkpoint，不宣稱整體gate通過。

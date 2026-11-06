@@ -1,0 +1,33 @@
+{
+  "at": "2026-11-06T06:05:16.850Z",
+  "before": "TARGET 202607100830-30K-kbar / PointId 5566433 / BAR / ExtraInfo 0",
+  "after": "TARGET 202607101230-30K-kbar / PointId 5566441 / BAR / ExtraInfo 0",
+  "capture": {
+    "Sequence": 2,
+    "RowId": "price-30k",
+    "TraceId": "",
+    "Kind": "CANDLE",
+    "XRatio": 0.6493161094224924,
+    "YRatio": 0.62,
+    "LocalStart": 4452,
+    "LocalCount": 48
+  },
+  "mode": "cross",
+  "events": [
+    {
+      "type": "click",
+      "target": "ta-guide-cross-price-30k",
+      "text": "十字線",
+      "capture": {
+        "Sequence": 2,
+        "RowId": "price-30k",
+        "TraceId": "",
+        "Kind": "CANDLE",
+        "XRatio": 0.6493161094224924,
+        "YRatio": 0.62,
+        "LocalStart": 4452,
+        "LocalCount": 48
+      }
+    }
+  ]
+}
