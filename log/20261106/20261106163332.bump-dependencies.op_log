@@ -1,0 +1,79 @@
+{
+  "SchemaVersion": 2,
+  "StartedUtc": "2026-11-06T08:33:32.7876618\u002B00:00",
+  "CompletedUtc": "2026-11-06T08:33:37.0601503\u002B00:00",
+  "Mode": "dependency-mutation",
+  "Repository": "E:\\deletable\\asteer-load05",
+  "ProjectScope": [
+    "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj",
+    "tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj"
+  ],
+  "PackageProject": "",
+  "PackageId": "dependency-sync",
+  "OldVersion": "multiple",
+  "TargetVersion": "PulseTrade.Comm.Spa.Dynamic.Renderer@0.3.38",
+  "PackageProjectVersionChanged": false,
+  "ReleaseProjects": [],
+  "VersionFiles": [],
+  "Dependencies": [
+    {
+      "PackageId": "PulseTrade.Comm.Spa.Dynamic.Renderer",
+      "Project": "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj",
+      "DeclaredVersions": [
+        "0.3.37"
+      ],
+      "Action": "update"
+    },
+    {
+      "PackageId": "PulseTrade.Comm.Spa.Dynamic.Renderer",
+      "Project": "tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj",
+      "DeclaredVersions": [
+        "0.3.37"
+      ],
+      "Action": "update"
+    }
+  ],
+  "ChangedProjects": [
+    "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj",
+    "tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj"
+  ],
+  "Tests": [],
+  "Commands": [
+    {
+      "Kind": "dependency-update",
+      "Target": "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj",
+      "ExitCode": 0,
+      "DurationMs": 0,
+      "OutputTail": "PulseTrade.Comm.Spa.Dynamic.Renderer: 0.3.37 -\u003E 0.3.38"
+    },
+    {
+      "Kind": "dependency-update",
+      "Target": "tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj",
+      "ExitCode": 0,
+      "DurationMs": 0,
+      "OutputTail": "PulseTrade.Comm.Spa.Dynamic.Renderer: 0.3.37 -\u003E 0.3.38"
+    },
+    {
+      "Kind": "dependency-restore",
+      "Target": "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj",
+      "ExitCode": 0,
+      "DurationMs": 2348,
+      "OutputTail": "  Determining projects to restore...\n  Restored E:\\deletable\\asteer-load05\\src\\PulseTrade.Comm.Spa.Dynamic.Interactive.Client\\PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj (in 910 ms)."
+    },
+    {
+      "Kind": "dependency-restore",
+      "Target": "tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj",
+      "ExitCode": 0,
+      "DurationMs": 1785,
+      "OutputTail": "  Determining projects to restore...\n  Restored E:\\deletable\\asteer-load05\\tests\\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj (in 372 ms)."
+    }
+  ],
+  "RollbackAttempted": false,
+  "RollbackSucceeded": false,
+  "RollbackFailure": "",
+  "HandoffReport": "",
+  "ExpectedCommit": "",
+  "ObservedCommit": "",
+  "Success": true,
+  "Failure": ""
+}

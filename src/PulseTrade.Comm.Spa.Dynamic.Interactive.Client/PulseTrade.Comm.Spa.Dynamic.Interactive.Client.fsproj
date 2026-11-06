@@ -4,7 +4,7 @@
     <GenerateProgramFile>false</GenerateProgramFile>
     <IsPackable>true</IsPackable>
     <PackageId>PulseTrade.Comm.Spa.Dynamic.Interactive.Client</PackageId>
-    <Version>0.3.37</Version>
+    <Version>0.3.38</Version>
     <Authors>PulseTrade Team</Authors>
     <Description>Transport-neutral WebSharper client shell for embedding the Dynamic SDUI runtime in interactive hosts.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -35,23 +35,16 @@
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="[10.1.402]" />
     <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Contracts" Version="[0.1.44]" />
-    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="0.3.37" />
+    <PackageReference Include="PulseTrade.Comm.Spa.Dynamic.Renderer" Version="[0.3.38]" />
     <PackageReference Include="WebSharper.FSharp" Version="10.1.7.680" />
     <PackageReference Include="WebSharper.UI" Version="10.1.6.680" />
   </ItemGroup>
 
   <Target Name="GenerateInteractiveBundleManifest" BeforeTargets="_GetPackageFiles">
-    <WriteLinesToFile
-      File="$(GeneratedInteractiveBundleManifest)"
-      Lines="{&quot;schema&quot;:&quot;ptcs-dynamic-interactive-bundle.v1&quot;,&quot;packageId&quot;:&quot;$(PackageId)&quot;,&quot;packageVersion&quot;:&quot;$(Version)&quot;,&quot;protocol&quot;:&quot;ptcs-dynamic-action.v1&quot;,&quot;entry&quot;:&quot;client.js&quot;,&quot;minifiedEntry&quot;:&quot;client.min.js&quot;,&quot;runtime&quot;:&quot;WebSharper.Core.JavaScript/Runtime.js&quot;,&quot;module&quot;:true}"
-      Overwrite="true"
-      Encoding="UTF-8" />
+    <WriteLinesToFile File="$(GeneratedInteractiveBundleManifest)" Lines="{&quot;schema&quot;:&quot;ptcs-dynamic-interactive-bundle.v1&quot;,&quot;packageId&quot;:&quot;$(PackageId)&quot;,&quot;packageVersion&quot;:&quot;$(Version)&quot;,&quot;protocol&quot;:&quot;ptcs-dynamic-action.v1&quot;,&quot;entry&quot;:&quot;client.js&quot;,&quot;minifiedEntry&quot;:&quot;client.min.js&quot;,&quot;runtime&quot;:&quot;WebSharper.Core.JavaScript/Runtime.js&quot;,&quot;module&quot;:true}" Overwrite="true" Encoding="UTF-8" />
   </Target>
 	
-	<Target Name="PushInteractiveClientReleasePackageToNuGet"
-		AfterTargets="Pack"
-		Condition="'$(Configuration)' == 'Release' and '$(OS)' == 'Windows_NT' and '$(PulseTradeCommSpaDynamicInteractiveClientPushNuGet)' == 'true' and '$(PublishNuGetAfterPack)' != 'false'">
-		<Exec WorkingDirectory="$(MSBuildProjectDirectory)"
-			  Command="$(PowerShellExe) -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\PostBuildEvent.ps1&quot; -PackageId &quot;$(PackageId)&quot; -PackageVersion &quot;$(PackageVersion)&quot; -Configuration &quot;$(Configuration)&quot; -ProjectDirectory &quot;$(MSBuildProjectDirectory)&quot; -PackageFilePath &quot;$(PackageOutputPath)\$(PackageId).$(PackageVersion).nupkg&quot; -PushRelease" />
+	<Target Name="PushInteractiveClientReleasePackageToNuGet" AfterTargets="Pack" Condition="'$(Configuration)' == 'Release' and '$(OS)' == 'Windows_NT' and '$(PulseTradeCommSpaDynamicInteractiveClientPushNuGet)' == 'true' and '$(PublishNuGetAfterPack)' != 'false'">
+		<Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="$(PowerShellExe) -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\PostBuildEvent.ps1&quot; -PackageId &quot;$(PackageId)&quot; -PackageVersion &quot;$(PackageVersion)&quot; -Configuration &quot;$(Configuration)&quot; -ProjectDirectory &quot;$(MSBuildProjectDirectory)&quot; -PackageFilePath &quot;$(PackageOutputPath)\$(PackageId).$(PackageVersion).nupkg&quot; -PushRelease" />
 	</Target>
 </Project>

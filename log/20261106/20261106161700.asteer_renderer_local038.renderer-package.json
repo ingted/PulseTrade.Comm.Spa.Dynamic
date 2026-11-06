@@ -1,0 +1,29 @@
+{
+  "Package": "PulseTrade.Comm.Spa.Dynamic.Renderer",
+  "Version": "0.3.38",
+  "Path": "E:\\deletable\\asteer-load05\\src\\PulseTrade.Comm.Spa.Dynamic.Renderer\\bin\\Release\\PulseTrade.Comm.Spa.Dynamic.Renderer.0.3.38.nupkg",
+  "PackageSHA256": "68F012F02EB7C2F9E99EDFF542D9CF4B086EE6C59F48A6BAD1E0E75CAE8111A5",
+  "DllSHA256": "66C4BCE57D46FD4F1263ED0B651F60160ADBC03A87DF6548B2FD19A4BD2AD150",
+  "SourceCommit": "2192ecbf6a2c317c03192b516d35a5935ca3d54d",
+  "ProductVersion": "0.3.38+2192ecbf6a2c317c03192b516d35a5935ca3d54d",
+  "Dependencies": [
+    {
+      "Id": "FSharp.Core",
+      "Version": "[10.1.402]"
+    },
+    {
+      "Id": "PulseTrade.Comm.Spa.Dynamic.Contracts",
+      "Version": "[0.1.44]"
+    },
+    {
+      "Id": "WebSharper.FSharp",
+      "Version": "10.1.7.680"
+    },
+    {
+      "Id": "WebSharper.UI",
+      "Version": "10.1.6.680"
+    }
+  ],
+  "LocalFeedPath": "C:\\Program Files\\dotnet\\sdk\\10.0.402\\FSharp\\library-packs\\PulseTrade.Comm.Spa.Dynamic.Renderer.0.3.38.nupkg",
+  "NuGetPublished": false
+}

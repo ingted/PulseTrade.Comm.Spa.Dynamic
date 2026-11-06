@@ -1,0 +1,43 @@
+{
+  "SchemaVersion": 2,
+  "StartedUtc": "2026-11-06T08:33:43.7187052\u002B00:00",
+  "CompletedUtc": "2026-11-06T08:33:43.9333703\u002B00:00",
+  "Mode": "mutation",
+  "Repository": "E:\\deletable\\asteer-load05",
+  "ProjectScope": [
+    "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj"
+  ],
+  "PackageProject": "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj",
+  "PackageId": "PulseTrade.Comm.Spa.Dynamic.Interactive.Client",
+  "OldVersion": "0.3.37",
+  "TargetVersion": "0.3.38",
+  "PackageProjectVersionChanged": true,
+  "ReleaseProjects": [
+    "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj"
+  ],
+  "VersionFiles": [],
+  "Dependencies": [],
+  "ChangedProjects": [
+    "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj"
+  ],
+  "Tests": [
+    {
+      "ChangedProject": "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj",
+      "Name": "Interactive client regression",
+      "Runner": "dotnet-run",
+      "Target": "tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests.fsproj",
+      "Configuration": "Release",
+      "TimeoutSeconds": 300,
+      "Arguments": []
+    }
+  ],
+  "Commands": [],
+  "RollbackAttempted": false,
+  "RollbackSucceeded": false,
+  "RollbackFailure": "",
+  "HandoffReport": "",
+  "ExpectedCommit": "",
+  "ObservedCommit": "",
+  "Success": true,
+  "Failure": ""
+}

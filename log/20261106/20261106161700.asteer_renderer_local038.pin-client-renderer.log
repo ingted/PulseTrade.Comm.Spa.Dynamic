@@ -1,0 +1,5 @@
+info : X.509 certificate chain validation will use the default trust store selected by .NET for code signing.
+info : X.509 certificate chain validation will use the default trust store selected by .NET for timestamping.
+info : Adding PackageReference for package 'PulseTrade.Comm.Spa.Dynamic.Renderer' into project 'src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj'.
+warn : --no-restore|-n flag was used. No compatibility check will be done and the added package reference will be unconditional.
+info : PackageReference for package 'PulseTrade.Comm.Spa.Dynamic.Renderer' version '[0.3.38]' updated in file 'E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Interactive.Client\PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj'.
