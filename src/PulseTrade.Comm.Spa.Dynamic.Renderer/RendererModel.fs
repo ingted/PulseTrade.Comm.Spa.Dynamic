@@ -540,6 +540,11 @@ module RendererModel =
     [<Literal>]
     let MainPlotDragThresholdCssPixels = 4.0
 
+    let yAxisValueText (value: float) =
+        if not (Double.IsNaN value || Double.IsInfinity value) && value = Math.Truncate value then
+            sprintf "%.2f" value
+        else string value
+
     let yAxisTickValues tickCount low high =
         if
             tickCount < 2
@@ -593,7 +598,7 @@ module RendererModel =
     let stickyOverviewTop viewportTop slotBottom scopeBottom overviewHeight =
         let finite value = not (Double.IsNaN value || Double.IsInfinity value)
         if not ([ viewportTop; slotBottom; scopeBottom; overviewHeight ] |> List.forall finite)
-           || overviewHeight <= 0.0 || slotBottom >= viewportTop || scopeBottom <= viewportTop then
+           || overviewHeight <= 0.0 || slotBottom - overviewHeight >= viewportTop || scopeBottom <= viewportTop then
             None
         else
             Some(min viewportTop (scopeBottom - overviewHeight))

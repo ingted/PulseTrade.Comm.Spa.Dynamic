@@ -1,0 +1,10 @@
+# 00007-00010 前端修復計畫
+Owner agent.asteer；root agent.daedilus 派工 msg-fsi-e7e322328afe41a886cb56353dc349d3。
+Authority: G:/coldfar_py/coldfar-symbolics/doc_new2/20261106.人工驗證.任務劃分.md 與 misc/20261105 人工驗證00007-00010文字/5圖。
+目標：Tracing不浮動遮圖、4500 resident縮圖sticky且正確範圍/選區拖曳、左右Y整數.00、交易日/時區刻度和全高分界、TA手繪線全高。
+範圍：既有E worktree的Dynamic Renderer/Interactive.Client及直接tests；Research/Client.fs、wwwroot/index.html。精確檔名先回報root。root獨占WorkspaceRuntime、window/overview/focus後端、版本/整合；FA獨占Core。DB/啟動器/live產物不動。
+Baseline：Dynamic0.3.38已交付source；Research current .67，index基線為E:/deletable/daedilus-research67-20261106T215543/wwwroot。不能拿canonical恢復後.61 assets當baseline。
+步驟：查看5圖→metadata/dirty/baseline及直接source定位→最小原因/預期不變量→focused失敗案例→隔離實作與直接build/test→source/test證據交owner。
+限制：部署、UI runner凍結。build前核隱含publish/copy/target，輸出只用專案自身bin/obj；不得覆蓋現行runtime。UI最終驗收保留待DA取得owner GO。
+驗收：各項映射至原始使用案例、保持resident/GLOBAL區別、非整數精度與0.25間距、不用pixel補償錯誤domain。source/unit通過不等於UI PASS。
+停止條件：需跨owner或改資料契約時回root exact evidence；能獨立做的前端項繼續，不擴大範圍。每五分鐘核目前工作對驗收缺口的貢獻。

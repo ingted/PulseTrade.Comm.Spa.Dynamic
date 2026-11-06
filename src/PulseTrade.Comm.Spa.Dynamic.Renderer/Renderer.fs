@@ -2176,7 +2176,7 @@ module TaWorkspaceRenderer =
                     let valueText = fixedText value
                     let topPercent = fixedText (pointerYValue * 100.0 / height) + "%"
                     for cursor in yAxisCursorElements () do
-                        cursor.TextContent <- valueText
+                        cursor.TextContent <- RendererModel.yAxisValueText value
                         cursor.SetAttribute("data-ta-y-axis-cursor-value", valueText)
                         cursor.SetAttribute("data-ta-y-axis-cursor-y", pointerY)
                         cursor.SetAttribute("data-ta-y-axis-cursor-visible", "true")
@@ -2416,7 +2416,7 @@ module TaWorkspaceRenderer =
                                 ] []
                             if vertical then
                                 match referenceSlots.TryGetValue guide.Timestamp with
-                                | true, index -> yield line "vertical" (xAt index) top (xAt index) (top + plotHeight)
+                                | true, index -> yield line "vertical" (xAt index) 0.0 (xAt index) height
                                 | _ -> ()
                             if horizontal then
                                 match RendererModel.tryChartGuideY top plotHeight low high guide.Value with
@@ -2488,7 +2488,7 @@ module TaWorkspaceRenderer =
                                     + translate
                                     + "; "
                                     + padding)
-                            ] [ text (fixedText value) ])
+                            ] [ text (RendererModel.yAxisValueText value) ])
                         |> Doc.Concat)
                     |> Doc.EmbedView
             ]

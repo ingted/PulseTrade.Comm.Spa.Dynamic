@@ -1,0 +1,44 @@
+[37m[[37m23:33:36 [37mINF[37m] [37mEXPECTO? Running tests...[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[37m[[37m23:33:36 [31mERR[37m] [36mTA renderer model.DYN-T-777 resident overview sticky geometry partly clipped overview pins before disappearing[37m failed in [32m00:00:00.0400000[37m. [36m
+pin when the overview top would be clipped, bounded by its own chart.
+[32mexpected[36m: [32mSome 60.0[36m
+[31m  actual[36m: [31m<null>[36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@185-13.Invoke(Unit _arg14) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 186
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:33:36 [31mERR[37m] [36mTA renderer model.DYN-T-777 resident overview sticky geometry one pixel past zero top pins immediately[37m failed in [32m00:00:00.0010000[37m. [36m
+pin when the overview top would be clipped, bounded by its own chart.
+[32mexpected[36m: [32mSome 0.0[36m
+[31m  actual[36m: [31m<null>[36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@185-13.Invoke(Unit _arg14) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 186
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:33:36 [31mERR[37m] [36mTA renderer model.DYN-T-798 Y axis integer decimals and fractional precision 7500.00[37m failed in [32m00:00:00.0120000[37m. [36m
+axis text adds .00 only for integers. String actual was shorter than expected, at pos 4 for expected item '.'.
+[32mexpected[36m: 7500[32m.00[36m
+[31m  actual[36m: 7500
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@192-14.Invoke(Unit _arg15) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 193
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:33:36 [31mERR[37m] [36mTA renderer model.DYN-T-798 Y axis integer decimals and fractional precision 0.00[37m failed in [32m00:00:00[37m. [36m
+axis text adds .00 only for integers. String actual was shorter than expected, at pos 1 for expected item '.'.
+[32mexpected[36m: 0[32m.00[36m
+[31m  actual[36m: 0
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@192-14.Invoke(Unit _arg15) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 193
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:33:36 [31mERR[37m] [36mTA renderer model.DYN-T-798 Y axis integer decimals and fractional precision -10.00[37m failed in [32m00:00:00[37m. [36m
+axis text adds .00 only for integers. String actual was shorter than expected, at pos 3 for expected item '.'.
+[32mexpected[36m: -10[32m.00[36m
+[31m  actual[36m: -10
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@192-14.Invoke(Unit _arg15) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 193
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:33:37 [37mINF[37m] [37mEXPECTO! [36m236[37m tests run in [32m00:00:00.9628433[37m for [36mTA renderer model[37m – [36m231[37m passed, [36m0[37m ignored, [36m5[37m failed, [36m0[37m errored. [36m[37m [37m<[37mExpecto[37m>[37m
+[0m
+EXPECTO_RED_EXIT=1

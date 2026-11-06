@@ -171,8 +171,10 @@ let tests =
                     "all ten 14px labels have separate increasing positions instead of the live top100% overlap"
 
         for label, inset, naturalBottom, scopeBottom, height, expected in
-            [ "visible overview stays in flow", 0.0, 20.0, 900.0, 119.0, None
-              "touching threshold stays in flow", 60.0, 60.0, 900.0, 119.0, None
+            [ "fully visible overview stays in flow", 0.0, 140.0, 900.0, 119.0, None
+              "natural top touching viewport stays in flow", 60.0, 179.0, 900.0, 119.0, None
+              "partly clipped overview pins before disappearing", 60.0, 178.0, 900.0, 119.0, Some 60.0
+              "one pixel past zero top pins immediately", 0.0, 118.0, 900.0, 119.0, Some 0.0
               "passed overview pins below host toolbar", 60.0, 59.0, 900.0, 119.0, Some 60.0
               "default host inset is zero", 0.0, -1.0, 900.0, 119.0, Some 0.0
               "chart end pushes overview out", 60.0, -10.0, 120.0, 119.0, Some 1.0
@@ -182,7 +184,13 @@ let tests =
               "infinite geometry does not pin", 0.0, -1.0, Double.PositiveInfinity, 119.0, None ] do
             testCase ("DYN-T-777 resident overview sticky geometry " + label) <| fun _ ->
                 Expect.equal (RendererModel.stickyOverviewTop inset naturalBottom scopeBottom height) expected
-                    "only an overview that fully passed the visible top may pin, bounded by its own chart"
+                    "pin when the overview top would be clipped, bounded by its own chart"
+
+        for value, expected in
+            [ 7500.0,"7500.00"; 0.0,"0.00"; -10.0,"-10.00"
+              7500.25,"7500.25"; -0.125,"-0.125"; 0.123456789,"0.123456789" ] do
+            testCase ("DYN-T-798 Y axis integer decimals and fractional precision " + expected) <| fun _ ->
+                Expect.equal (RendererModel.yAxisValueText value) expected "axis text adds .00 only for integers"
 
         testCase "DYN-T-778 guide tool selection toggles off without replacing another tool implicitly" <| fun _ ->
             Expect.equal (RendererModel.toggleChartGuideTool TaChartGuideTool.Vertical None) (Some TaChartGuideTool.Vertical) "enter vertical drawing"

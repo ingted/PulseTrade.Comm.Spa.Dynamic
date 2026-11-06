@@ -2623,3 +2623,10 @@ Chrome lease依owner交agent.daedilas（msg-fsi-e7ba30874af54456aff0b3e33b372b5d
 - Release build：Renderer41warnings/0errors/34.13s；Interactive1warning/0errors/14.36s。兩個直接test project均實跑restore/build/tests：Renderer228/228、Interactive20/20，0ignored/failed/errored；package verifier PASS/entries4。測試載入DLL與新包一致，沒有使用UseRendererSource旁路。
 - exact paths、SHA、dependencies、source provenance與runtime DLL證據在log/20261106/20261106161700.asteer_renderer_local038.delivery.json；各原始build/test輸出同prefix。E工作區版本delta只涉及兩producer與兩test project；owner canonical baseline不回套，Ptcs與三個舊demo不在本次Research closure。
 - 尚待root整合候選與QA真人流程；不以unit/package通過代稱UI完成。此checkout無check.fsx，未宣稱完整repo checker PASS。
+
+### 2026-11-06 agent.asteer：00007／00008／00010 前端首批修正
+
+- 依 `20261106.人工驗證.任務劃分.md` 與五張原圖，resident sticky 改為自然上緣開始被裁切即固定，仍由所屬chart底部推離；Y軸可見整數文字補`.00`，非整數精度、numeric attributes、0.25刻度與水平線映射不變；垂直guide使用完整SVG高度。
+- Renderer source test先重現236項中的5個失敗（2個sticky、3個整數文字），修後Release build0errors／45warnings／53.17s，Expecto236/236、0ignored/failed/errored／0.9488758s。沿既有UseRendererSource，未pack、publish或修改版本。這是source/unit證據，未驗真UI。
+- Research index以owner指定的 `.67` snapshot為基線，Tracing回正常文件流，desktop60px/mobile86px高度與resident top0分離。Client.fs目前未修改。任何canonical/live runtime均未寫入，18883 UI權由daedilas持有。
+- 00009 resident/backtest domain由daedilus修後端；前端交易日分支及calendar線相對位置仍在處理，不宣稱整體完成。兩個E worktree的工作紀錄：`log/20261106/20261106231813.asteer_ui00007_00010.*`；Dynamic保留RED/GREEN原始Expecto結果與hypothesis。
