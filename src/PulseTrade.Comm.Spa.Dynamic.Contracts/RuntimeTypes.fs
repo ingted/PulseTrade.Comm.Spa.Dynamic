@@ -434,6 +434,7 @@ type TaCoverageRangeAuthority =
 type TaCoverageWindowPurpose =
     | MainPlotPan
     | NavigatorWindow
+    | NavigatorMove
 
 type TaCoverageWindowIntent =
     { ExpectedCoverageRevision: int64 option

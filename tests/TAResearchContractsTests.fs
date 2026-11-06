@@ -434,6 +434,49 @@ let tests =
                  |> List.exists (fun error -> error.Code = "overview-stripe-outside-overview"))
                 "A stripe outside the authoritative overview timeline must fail with an explicit code."
 
+        for purpose in [ TaCoverageWindowPurpose.MainPlotPan; TaCoverageWindowPurpose.NavigatorWindow; TaCoverageWindowPurpose.NavigatorMove ] do
+            testCase ("DYN-T-782 old and new navigator purposes round-trip " + string purpose) <| fun _ ->
+                let intent =
+                    { ExpectedCoverageRevision=Some 7L; QueryGeneration=8L; StartObservationOrdinal=None
+                      ObservationCount=600; Direction=None; RangeAuthority=TaCoverageRangeAuthority.ExplicitBounds; Purpose=purpose }
+                let request =
+                    { RequestId="typed-navigator"; ExpectedDocumentRevision=Some 2L
+                      Action=SduiAction.VisibleRangeChanged(identity.CanvasInstanceId,
+                          { BaseRowId="price"; StartEventTimeUtc="2026-11-02T00:00:00Z"; EndEventTimeExclusiveUtc="2026-11-03T00:00:00Z"
+                            MaximumBasePoints=1500; CoverageIntent=Some intent }) }
+                Expect.isEmpty (DynamicActionValidation.requestErrors request) "legacy pan, legacy/resize span, and explicit move remain valid distinct requests"
+                Expect.equal (request |> BrowserRuntimeCodec.encodeActionRequest |> BrowserRuntimeCodec.decodeActionRequest) (Ok request) "typed codec preserves purpose and desired active count"
+
+        for label, change in
+            [ "ordinal",(fun (intent: TaCoverageWindowIntent) -> { intent with StartObservationOrdinal=Some 0L })
+              "direction",(fun (intent: TaCoverageWindowIntent) -> { intent with Direction=Some TaCoverageDirection.Earlier })
+              "open-ended",(fun (intent: TaCoverageWindowIntent) -> { intent with RangeAuthority=TaCoverageRangeAuthority.ProviderOpenEarlier }) ] do
+            testCase ("DYN-T-783 NavigatorMove rejects ambiguous " + label + " bounds") <| fun _ ->
+                let intent =
+                    change { ExpectedCoverageRevision=Some 7L; QueryGeneration=8L; StartObservationOrdinal=None
+                             ObservationCount=600; Direction=None; RangeAuthority=TaCoverageRangeAuthority.ExplicitBounds; Purpose=TaCoverageWindowPurpose.NavigatorMove }
+                let request =
+                    { RequestId="invalid-navigator-move"; ExpectedDocumentRevision=Some 2L
+                      Action=SduiAction.VisibleRangeChanged(identity.CanvasInstanceId,
+                          { BaseRowId="price"; StartEventTimeUtc="2026-11-02T00:00:00Z"; EndEventTimeExclusiveUtc="2026-11-03T00:00:00Z"
+                            MaximumBasePoints=1500; CoverageIntent=Some intent }) }
+                Expect.isTrue (DynamicActionValidation.requestErrors request |> List.exists (fun issue -> issue.Code="invalid-navigator-move")) "a move must never silently inherit ordinal relocation or adjacent-refill semantics"
+
+        testCase "DYN-T-784 NavigatorMove honors the requested detail count bound and cannot relocate resident storage" <| fun _ ->
+            for count in [0;1;1500;1501] do
+                let intent =
+                    { ExpectedCoverageRevision=Some 7L; QueryGeneration=8L; StartObservationOrdinal=None
+                      ObservationCount=count; Direction=None; RangeAuthority=TaCoverageRangeAuthority.ExplicitBounds; Purpose=TaCoverageWindowPurpose.NavigatorMove }
+                let request =
+                    { RequestId="navigator-move-count"; ExpectedDocumentRevision=Some 2L
+                      Action=SduiAction.VisibleRangeChanged(identity.CanvasInstanceId,
+                          { BaseRowId="price"; StartEventTimeUtc="2026-11-02T00:00:00Z"; EndEventTimeExclusiveUtc="2026-11-03T00:00:00Z"
+                            MaximumBasePoints=1500; CoverageIntent=Some intent }) }
+                let invalidCount = DynamicActionValidation.requestErrors request |> List.exists (fun issue -> issue.Code="invalid-observation-count")
+                Expect.equal invalidCount (count=0 || count=1501) "Move still obeys the 1..1500 active detail limit"
+                let resident = { request with Action=SduiAction.ResidentCoverageChanged(identity.CanvasInstanceId,"price",{intent with StartObservationOrdinal=Some 10L}) }
+                Expect.isTrue (DynamicActionValidation.requestErrors resident |> List.exists (fun issue -> issue.Code="invalid-resident-relocation")) "Move is explicit-time detail movement, not an alias for resident storage relocation"
+
         testCase "DYN-T-647 coverage window intent is versioned and rejects stale-shaped bounds" <| fun _ ->
             Expect.equal TaLoadedCoverageCodec.WindowIntentSchema "ta-coverage-window.v2" "The required purpose discriminator advances the window-intent schema."
             let intent = TaLoadedCoverageCodec.tryWindowIntent (Some TaCoverageDirection.Earlier) (Some 7L) 4L (Some 999_500L) 250

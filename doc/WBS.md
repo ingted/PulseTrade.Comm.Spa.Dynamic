@@ -235,3 +235,8 @@ Core59-closure：InProgress85%，開始202610070748，已耗10分，剩餘Dev0/T
 | RF18-04-CORE60 | InProgress | 15% | exact6project metadata同步；包/32consumer/Form/Hosts待驗，Renderer WIP不變 | 202610071759 | 2分 | 5–10／10–20分 | 202610071830（consumer；Hosts另Main） |
 
 RF20-Form61：Done100%，開始202610071912，已耗56分；source33、最終WS/package33及下游32PASS。正式Core61 public頁面Form90067→Plain→Form90067及真echo/reload通過；269xx native拖曳/invalid拒絕與草稿保留PASS，Main evidence/Core61/{Composer.Browser,Formal.Rollout}.json。Dev/Test剩0，完成202610072008。Core60兩RED保留。
+
+## 2026-11-06 asteer 03/04/05 checkpoint
+
+- NavigatorMove：contract source59/59；Renderer dispatch、Research mapper、時間端點與真跨尺度拖曳待完成。RFC-0036 amendment／SA／SD／Verification同鏈，package版本由daedilus管理。
+- 18883 Renderer/Interactive0.3.34＋Research0.1.62真ES：反向恢復1500、sticky pin/unpin、930→60保留右端點通過本輪操作。Y刻度數值正確但座標塌到底部；一行tickY修正source209/209，仍待下版真browser確認。輔助線仍未部署驗收。整體未完成。

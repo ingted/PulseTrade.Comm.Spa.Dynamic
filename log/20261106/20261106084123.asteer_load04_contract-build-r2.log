@@ -1,0 +1,11 @@
+  PulseTrade.Comm.Spa.Dynamic.Contracts -> E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Contracts\bin\Release\net10.0\PulseTrade.Comm.Spa.Dynamic.Contracts.dll
+E:\deletable\asteer-load05\tests\TAResearchContractsTests.fs(451,40): warning FS0667: The field labels and expected type of this record expression or pattern do not uniquely determine a corresponding record type [E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Contracts.Tests.fsproj]
+  PulseTrade.Comm.Spa.Dynamic.Contracts.Tests -> E:\deletable\asteer-load05\tests\bin\Release\net10.0\PulseTrade.Comm.Spa.Dynamic.Contracts.Tests.dll
+
+Build succeeded.
+
+E:\deletable\asteer-load05\tests\TAResearchContractsTests.fs(451,40): warning FS0667: The field labels and expected type of this record expression or pattern do not uniquely determine a corresponding record type [E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Contracts.Tests.fsproj]
+    1 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:33.36

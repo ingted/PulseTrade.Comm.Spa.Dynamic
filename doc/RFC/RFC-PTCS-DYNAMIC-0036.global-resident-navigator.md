@@ -259,3 +259,11 @@ Active-local boundary不得用query-relative ordinal表示未載入的相鄰頁�
 11. At and across the advertised maximum visible width, right resize mirrors the existing left resize, including inward shrink, minimum width, empty/short domains and both resident boundaries. Unit geometry and real 4500/1500 consumer gestures are separate gates.
 12. GLOBAL latency acceptance records low-overhead drop-to-ready phases and probe overhead; functional frame continuity alone does not close this performance gate.
 13. Main TA chart activation is a separate bubbling browser event, carries only committed stable identity, and never uses a viewport index or changes `SharedCursorChanged` semantics.
+
+## 2026-11-06 amendment：明確區分 navigator Move 與 Resize
+
+狀態：已由整合 owner daedilus 接受（PTC msg-fsi-d797b3aeb2e44366bfdfced3db1eb14c）；source contract 完成、consumer 尚未接線。需求為同一縮圖的 Move 保留主圖可見根數，Resize 才依事件時間範圍推導根數。不得用根數相同、ordinal 或 MainPlotPan 猜測操作種類。
+
+在 TaCoverageWindowPurpose 末端追加 NavigatorMove；原 MainPlotPan／NavigatorWindow tag 與語意保持。NavigatorMove 限 ExplicitBounds、StartObservationOrdinal=None、Direction=None，ObservationCount 為欲保留的 active count，仍受 request.MaximumBasePoints 與 SDK 上限限制。Research 上限1500，通用SDK舊4000常數不變。ResidentCoverageChanged 不接受這個用途。
+
+Renderer 後續用同一 OverviewAnchors 時軸對齊縮圖、遮罩、手勢與端點；跨尺度索引不可寫入主圖 draftWindow。Move 以新用途提交，Resize 保留 NavigatorWindow；Research WorkspaceRuntime 只改明確授權 mapper，經既有 generation/ACK 機制結算。版本／exact package chain 由 daedilus 操作。契約 roundtrip／拒絕案例已驗；Renderer dispatch、server保留根數及跨尺度真UI尚待完成。回鏈 doc/SA.md、doc/SD.md、doc/WBS.md、doc/Verification.md 與本輪log。

@@ -1,0 +1,11 @@
+  Determining projects to restore...
+  Restored E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Contracts\PulseTrade.Comm.Spa.Dynamic.Contracts.fsproj (in 449 ms).
+  Restored E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Contracts.Tests.fsproj (in 446 ms).
+  PulseTrade.Comm.Spa.Dynamic.Contracts -> E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Contracts\bin\Release\net10.0\PulseTrade.Comm.Spa.Dynamic.Contracts.dll
+  PulseTrade.Comm.Spa.Dynamic.Contracts.Tests -> E:\deletable\asteer-load05\tests\bin\Release\net10.0\PulseTrade.Comm.Spa.Dynamic.Contracts.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:30.26

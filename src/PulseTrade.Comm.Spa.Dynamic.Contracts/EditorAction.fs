@@ -813,11 +813,21 @@ module DynamicActionValidation =
                               "ProviderOpenEarlier must use the loaded-head event time as both range anchors."
                       | _ -> ()
                   | TaCoverageRangeAuthority.ExplicitBounds -> ()
-                  if intent.ObservationCount <= 0 || intent.ObservationCount > DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints then
+                  if intent.Purpose = TaCoverageWindowPurpose.NavigatorMove
+                      && (intent.RangeAuthority <> TaCoverageRangeAuthority.ExplicitBounds
+                          || intent.StartObservationOrdinal.IsSome || intent.Direction.IsSome) then
+                      yield RuntimeValidation.error
+                          "invalid-navigator-move"
+                          "action.range.coverageIntent"
+                          "NavigatorMove requires explicit event-time bounds without ordinal or direction hints."
+                  let maximumObservationCount =
+                      if intent.Purpose = TaCoverageWindowPurpose.NavigatorMove then min change.MaximumBasePoints DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints
+                      else DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints
+                  if intent.ObservationCount <= 0 || intent.ObservationCount > maximumObservationCount then
                       yield RuntimeValidation.error
                           "invalid-observation-count"
                           "action.range.coverageIntent.observationCount"
-                          $"ObservationCount must be between 1 and {DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints}." ]
+                          $"ObservationCount must be between 1 and {maximumObservationCount}." ]
         | SduiAction.ResidentCoverageChanged(canvas, baseRowId, relocation) ->
             [ yield! canvasErrors "action.canvasInstanceId" canvas
               yield! RuntimeValidation.identifier "action.residentCoverage.baseRowId" baseRowId

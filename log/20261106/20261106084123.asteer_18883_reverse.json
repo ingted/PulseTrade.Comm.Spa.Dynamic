@@ -1,0 +1,362 @@
+{
+  "candidate": {
+    "url": "http://127.0.0.1:18883/",
+    "research": "0.1.62",
+    "renderer": "0.3.34",
+    "interactiveClient": "0.3.34",
+    "bundleSHA256": "f4f901b30cdeb6b81256b6ef439738470e5cd764b7d31400cf3a51c5e7da1346",
+    "script": "public existing ES 30K / 60K TA default",
+    "executionId": 161
+  },
+  "case": "real ES .34 reverse restore1500",
+  "before": {
+    "time": "2026-11-06T03:28:25.612Z",
+    "url": "http://127.0.0.1:18883/",
+    "status": {
+      "ready": "true",
+      "pending": "false",
+      "execution-id": "161",
+      "scale-minutes": "30",
+      "generation": "0",
+      "visible-start": "99189",
+      "visible-count": "1500",
+      "first-ordinal": "96189",
+      "resident-count": "4500"
+    },
+    "stack": {
+      "local-visible-start": "3375",
+      "local-visible-count": "601",
+      "active-reference-bars": "4500",
+      "chart-data-revision": "3",
+      "query-generation": "0",
+      "query-viewport-settlement-pending": "false",
+      "query-viewport-settlement-outcome": "identity-reset"
+    },
+    "canvas": {
+      "first-start-key": "202605262300",
+      "center-start-key": "202606180600",
+      "last-start-key": "202607102030",
+      "painted-bars": "1500"
+    },
+    "mode": {
+      "main-plot-interaction-mode": "resize",
+      "main-plot-drag-outcome": null,
+      "main-plot-drag-delta": null
+    },
+    "priceTicks": [
+      {
+        "v": "",
+        "y": 253
+      },
+      {
+        "v": "7624",
+        "y": 511
+      },
+      {
+        "v": "7564.5",
+        "y": 504
+      },
+      {
+        "v": "7505",
+        "y": 504
+      },
+      {
+        "v": "7445.5",
+        "y": 504
+      },
+      {
+        "v": "7386",
+        "y": 504
+      },
+      {
+        "v": "7326.5",
+        "y": 504
+      },
+      {
+        "v": "7267",
+        "y": 504
+      },
+      {
+        "v": "7207.5",
+        "y": 497
+      }
+    ],
+    "geometry": {
+      "price": {
+        "x": 134.5,
+        "y": 261,
+        "w": 1316,
+        "h": 250,
+        "b": 511
+      },
+      "overview": {
+        "x": 74.5,
+        "y": -6,
+        "w": 1436,
+        "h": 119,
+        "b": 113
+      },
+      "slot": {
+        "x": 74.5,
+        "y": -6,
+        "w": 1436,
+        "h": 119,
+        "b": 113
+      },
+      "stack": {
+        "x": 54.5,
+        "y": -145,
+        "w": 1476,
+        "h": 2470,
+        "b": 2325
+      },
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "w": 1585,
+        "h": 60,
+        "b": 60
+      }
+    },
+    "sticky": {
+      "overview-sticky": "false",
+      "overview-sticky-top": null
+    }
+  },
+  "first": {
+    "time": "2026-11-06T03:28:27.509Z",
+    "url": "http://127.0.0.1:18883/",
+    "status": {
+      "ready": "true",
+      "pending": "false",
+      "execution-id": "161",
+      "scale-minutes": "30",
+      "generation": "0",
+      "visible-start": "99189",
+      "visible-count": "1500",
+      "first-ordinal": "96189",
+      "resident-count": "4500"
+    },
+    "stack": {
+      "local-visible-start": "3375",
+      "local-visible-count": "601",
+      "active-reference-bars": "4500",
+      "chart-data-revision": "3",
+      "query-generation": "0",
+      "query-viewport-settlement-pending": "false",
+      "query-viewport-settlement-outcome": "identity-reset"
+    },
+    "canvas": {
+      "first-start-key": "202605262300",
+      "center-start-key": "202606180600",
+      "last-start-key": "202607102030",
+      "painted-bars": "1500"
+    },
+    "mode": {
+      "main-plot-interaction-mode": "resize",
+      "main-plot-drag-outcome": "committed",
+      "main-plot-drag-delta": "-240"
+    },
+    "priceTicks": [
+      {
+        "v": "",
+        "y": 253
+      },
+      {
+        "v": "7624",
+        "y": 511
+      },
+      {
+        "v": "7564.5",
+        "y": 504
+      },
+      {
+        "v": "7505",
+        "y": 504
+      },
+      {
+        "v": "7445.5",
+        "y": 504
+      },
+      {
+        "v": "7386",
+        "y": 504
+      },
+      {
+        "v": "7326.5",
+        "y": 504
+      },
+      {
+        "v": "7267",
+        "y": 504
+      },
+      {
+        "v": "7207.5",
+        "y": 497
+      }
+    ],
+    "geometry": {
+      "price": {
+        "x": 134.5,
+        "y": 261,
+        "w": 1316,
+        "h": 250,
+        "b": 511
+      },
+      "overview": {
+        "x": 74.5,
+        "y": -6,
+        "w": 1436,
+        "h": 119,
+        "b": 113
+      },
+      "slot": {
+        "x": 74.5,
+        "y": -6,
+        "w": 1436,
+        "h": 119,
+        "b": 113
+      },
+      "stack": {
+        "x": 54.5,
+        "y": -145,
+        "w": 1476,
+        "h": 2470,
+        "b": 2325
+      },
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "w": 1585,
+        "h": 60,
+        "b": 60
+      }
+    },
+    "sticky": {
+      "overview-sticky": "false",
+      "overview-sticky-top": null
+    }
+  },
+  "late": {
+    "time": "2026-11-06T03:28:40.589Z",
+    "url": "http://127.0.0.1:18883/",
+    "status": {
+      "ready": "true",
+      "pending": "false",
+      "execution-id": "161",
+      "scale-minutes": "30",
+      "generation": "0",
+      "visible-start": "99189",
+      "visible-count": "1500",
+      "first-ordinal": "96189",
+      "resident-count": "4500"
+    },
+    "stack": {
+      "local-visible-start": "2925",
+      "local-visible-count": "1500",
+      "active-reference-bars": "4500",
+      "chart-data-revision": "4",
+      "query-generation": "0",
+      "query-viewport-settlement-pending": "false",
+      "query-viewport-settlement-outcome": "identity-reset"
+    },
+    "canvas": {
+      "first-start-key": "202605262300",
+      "center-start-key": "202606180600",
+      "last-start-key": "202607102030",
+      "painted-bars": "1500"
+    },
+    "mode": {
+      "main-plot-interaction-mode": "resize",
+      "main-plot-drag-outcome": null,
+      "main-plot-drag-delta": null
+    },
+    "priceTicks": [
+      {
+        "v": "",
+        "y": 253
+      },
+      {
+        "v": "7659.5",
+        "y": 511
+      },
+      {
+        "v": "7609",
+        "y": 504
+      },
+      {
+        "v": "7558.5",
+        "y": 504
+      },
+      {
+        "v": "7508",
+        "y": 504
+      },
+      {
+        "v": "7457.5",
+        "y": 504
+      },
+      {
+        "v": "7407",
+        "y": 504
+      },
+      {
+        "v": "7356.5",
+        "y": 504
+      },
+      {
+        "v": "7306",
+        "y": 504
+      },
+      {
+        "v": "7255.5",
+        "y": 504
+      },
+      {
+        "v": "7205",
+        "y": 497
+      }
+    ],
+    "geometry": {
+      "price": {
+        "x": 134.5,
+        "y": 261,
+        "w": 1316,
+        "h": 250,
+        "b": 511
+      },
+      "overview": {
+        "x": 74.5,
+        "y": -6,
+        "w": 1436,
+        "h": 119,
+        "b": 113
+      },
+      "slot": {
+        "x": 74.5,
+        "y": -6,
+        "w": 1436,
+        "h": 119,
+        "b": 113
+      },
+      "stack": {
+        "x": 54.5,
+        "y": -145,
+        "w": 1476,
+        "h": 2470,
+        "b": 2325
+      },
+      "toolbar": {
+        "x": 0,
+        "y": 0,
+        "w": 1585,
+        "h": 60,
+        "b": 60
+      }
+    },
+    "sticky": {
+      "overview-sticky": "false",
+      "overview-sticky-top": null
+    }
+  }
+}

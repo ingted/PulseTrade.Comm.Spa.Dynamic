@@ -1063,3 +1063,7 @@ Pseudo code:
 - During render, initializing=true; construct defaults/previews; initializing=false. On user input refresh preview then setValue(current raw command) without submit. Mode rebuild therefore sees current draft. If nonempty draft cannot resolve, show error and Plain control, retain draft bytes, no fallback overwrite/dispatch.
 - Tests: quote/Unicode/newline/whitespace/empty/null, unchanged actor/template/input array; actual browser Form->Plain->Form, editedPlain->Form, invalidPlain recovery, real echo, resize/focus and narrow Send.
 Core61 supersedes unpublished-to-host60; reuse per-project outputs, new immutable versions and exact20consumer closure. Retain60 package/browser failure evidence. Source estimate20-30min, integration/browser30-45min; RF20 final ETA202610072025. Original20:10 integration ETA may shift within measured adjacent repair, not a new task clock.
+
+## Current：2026-11-06 typed NavigatorMove（RFC-0036 amendment）
+
+TaCoverageWindowPurpose 末端新增 NavigatorMove。VisibleRangeChanged validation 要求 ExplicitBounds／無 ordinal／無 direction；ObservationCount 為1..min(MaximumBasePoints, SDK limit)。BrowserRuntimeCodec 保持原wire路徑，舊兩用途與新用途皆 roundtrip；ResidentCoverageChanged 繼續僅允許 NavigatorWindow。下一切片以 OverviewAnchors + prepared axis interval end 形成 event range，Move帶目前active count，Resize帶span；cross-axis draft僅改navigator preview，不能當active index。Research mapper保留Move count並按1500 cap，仍走原generation/ACK。源碼／文件／package owner與驗收狀態見Verification及log。
