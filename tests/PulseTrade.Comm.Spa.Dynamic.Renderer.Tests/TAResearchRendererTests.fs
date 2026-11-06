@@ -45,6 +45,45 @@ let tests =
                 Expect.equal (RendererModel.stickyOverviewTop inset naturalBottom scopeBottom height) expected
                     "only an overview that fully passed the visible top may pin, bounded by its own chart"
 
+        testCase "DYN-T-778 guide tool selection toggles off without replacing another tool implicitly" <| fun _ ->
+            Expect.equal (RendererModel.toggleChartGuideTool TaChartGuideTool.Vertical None) (Some TaChartGuideTool.Vertical) "enter vertical drawing"
+            Expect.equal (RendererModel.toggleChartGuideTool TaChartGuideTool.Vertical (Some TaChartGuideTool.Vertical)) None "clicking the selected tool exits drawing"
+            Expect.equal (RendererModel.toggleChartGuideTool TaChartGuideTool.Cross (Some TaChartGuideTool.Horizontal)) (Some TaChartGuideTool.Cross) "explicitly select a different tool"
+
+        for tool, row, expected in
+            [ TaChartGuideTool.Vertical,"price",(true,false)
+              TaChartGuideTool.Vertical,"volume",(true,false)
+              TaChartGuideTool.Horizontal,"price",(false,true)
+              TaChartGuideTool.Horizontal,"volume",(false,false)
+              TaChartGuideTool.Cross,"price",(true,true)
+              TaChartGuideTool.Cross,"volume",(true,false) ] do
+            testCase ("DYN-T-779 guide axes " + string tool + " " + row) <| fun _ ->
+                let guide: TaChartGuide = { Tool=tool;RowId="price";Timestamp="2026-11-06T02:00:00Z";Value=42.0 }
+                Expect.equal (RendererModel.chartGuideAxes row guide) expected "vertical time is shared, horizontal value belongs to its source row"
+
+        for label, height, low, high, value, expected in
+            [ "upper edge",100.0,0.0,100.0,100.0,Some 10.0
+              "lower edge",100.0,0.0,100.0,0.0,Some 110.0
+              "quarter value",100.0,0.0,100.0,25.0,Some 85.0
+              "inverted bounds",100.0,150.0,50.0,100.0,Some 60.0
+              "constant range",100.0,8.0,8.0,8.0,Some 60.0
+              "below range",100.0,10.0,20.0,8.0,None
+              "above range",100.0,10.0,20.0,22.0,None
+              "invalid value",100.0,10.0,20.0,Double.NaN,None
+              "empty height",0.0,10.0,20.0,15.0,None ] do
+            testCase ("DYN-T-780 guide value follows current row geometry " + label) <| fun _ ->
+                Expect.equal (RendererModel.tryChartGuideY 10.0 height low high value) expected "preserve the chosen value after rescale and never draw outside the plot"
+
+        testCase "DYN-T-781 guide lifetime follows run and scale while retaining lines across resident window changes" <| fun _ ->
+            let identity = { DocumentId=DocumentId "guide-run"; CanvasInstanceId=CanvasInstanceId "guide-canvas" }
+            let view = Map.ofList [ "query.sourceId",SduiValue.Text "durable"; "query.instrument",SduiValue.Text "ES"; "query.intervalMinutes",SduiValue.Number 30.0 ]
+            let scope = RendererModel.chartGuideScope identity view
+            let moved = view |> Map.add "query.fromUtc" (SduiValue.Text "2025-03-01T00:00:00Z") |> Map.add "query.toUtcExclusive" (SduiValue.Text "2026-11-06T00:00:00Z")
+            Expect.equal (RendererModel.chartGuideScope identity moved) scope "refilling or moving a resident window preserves analysis lines"
+            Expect.notEqual (RendererModel.chartGuideScope identity (view |> Map.add "query.intervalMinutes" (SduiValue.Number 60.0))) scope "switching scale starts a new guide scope"
+            Expect.notEqual (RendererModel.chartGuideScope identity (view |> Map.add "query.instrument" (SduiValue.Text "NQ"))) scope "different instrument clears old prices"
+            Expect.notEqual (RendererModel.chartGuideScope { identity with DocumentId=DocumentId "new-run" } view) scope "a fresh RUN clears guides even when it reuses cached data"
+
         testCase "DYN-T-773 ES price ticks use quarter increments with eight to ten readable levels" <| fun _ ->
             for low, high in [7500.0,7520.0; 7520.0,7500.0; 7439.13,7508.87; -7.12,3.41; 0.0,2.5; 0.0,3.75] do
                 let ticks = RendererModel.priceYAxisTickValues 0.25 low high

@@ -1,0 +1,17 @@
+[
+  {
+    "path": "src/PulseTrade.Comm.Spa.Dynamic.Renderer/RendererModel.fs",
+    "sha256": "7F71F216DAE5C6F672627F99A6444C66E6823418C6307E8F5E01D6DB758AE2F8",
+    "bytes": 220316
+  },
+  {
+    "path": "src/PulseTrade.Comm.Spa.Dynamic.Renderer/Renderer.fs",
+    "sha256": "B0E9992BB65E931CB5550BFE228AF3004ABA7DAB0846A9BA625746CFD4746A18",
+    "bytes": 442887
+  },
+  {
+    "path": "tests/PulseTrade.Comm.Spa.Dynamic.Renderer.Tests/TAResearchRendererTests.fs",
+    "sha256": "BE3A9274DFAC6C05DDE78276666FA86A401D7566A5FBE3F07321983AB01D7334",
+    "bytes": 367419
+  }
+]

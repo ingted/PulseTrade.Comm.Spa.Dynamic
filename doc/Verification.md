@@ -659,3 +659,11 @@ Checkpoint recorded 2026-11-06 09:27:29 +08:00
 Same navigator DOM now pins only after its reserved normal-flow bottom passes the host inset; its own chart bottom pushes it out. Slot preserves size, listeners are rAF-coalesced, ancestor-only observer disposes on unmount/visibility changes. Research index.html supplies shared60/86px toolbar-height CSS variable; other hosts default0. No timer/body-subtree scan or second navigator.
 
 Standalone source build0errors44warnings77.76s; fullRendererExpecto192/192,0ignored/failed/errored1.6368741s. Producer/test DLL SHA256=0014BF9F6413C7DD1532793B179C4AD2FA28F3868F3BB94565CE6450853D85F6. Real18882 baseline shows overviewbottom-155 whilechartbottom2057,positionstatic; candidate browser not run, no package/host deployment claim. Source and priorprice/reverse remain readyforreview, integration owner daedilus. Evidence: log/20261106/20261106084123.asteer_load05_sticky-build-r2.log, _sticky-tests-r2.log, _sticky-baseline.json/.png.
+
+## TA 輔助線 - 2026-11-06 10:52:32 +08:00
+
+來源需求：G:/coldfar_py/coldfar-symbolics/misc/20261105 人工驗證/任務劃分/03.可視區域與圖表互動/Questions.md Q03.3。沿用本 registry 的 Renderer source test 入口；Release build 明傳 UseRendererSource=true、WebSharperStandalone=True、PublishNuGetAfterPack=false、GeneratePackageOnBuild=false。
+
+本次209案例全數執行並通過，沒有 ignored/failed/errored；DYN-T-778~781 新增工具切換、跨 row 垂直／本 row 水平、y 值邊界及RUN/scale清除與resident保留的驗證。保留舊reverse、tick、sticky與budgeted-render案例。producer/test DLL SHA256：6B5CF510149059C53985FB4AA55E50BDDD244D33EA2680ED07A9AB7F0CE5463F。
+
+真候選 browser gate 尚未執行：每row的 ta-guide-vertical/horizontal/cross/clear-<rowId>，SVG data-ta-guide-tool、ta-guide-layer-<rowId> 及 data-ta-guide-orientation/time/value；必驗畫線不啟動Tagging或拖曳、Esc回到原模式、全清不退出畫線、pan保留與RUN/scale清除。不能用模型案例代替以上UI驗收。

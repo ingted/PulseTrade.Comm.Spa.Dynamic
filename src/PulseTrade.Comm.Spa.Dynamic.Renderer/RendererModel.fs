@@ -199,6 +199,18 @@ type TaMainPlotInteractionMode =
     | Cursor
     | Resize
 
+[<RequireQualifiedAccess>]
+type TaChartGuideTool =
+    | Vertical
+    | Horizontal
+    | Cross
+
+type TaChartGuide =
+    { Tool: TaChartGuideTool
+      RowId: string
+      Timestamp: string
+      Value: float }
+
 type TaNavigatorGestureDomain =
     { DomainCount: int
       CommittedWindow: TaVisibleWindow
@@ -598,6 +610,26 @@ module RendererModel =
             let upper = max low high
             let ratio = (pointerY - top) / plotHeight |> max 0.0 |> min 1.0
             Some(upper - (upper - lower) * ratio)
+
+    let toggleChartGuideTool requested current =
+        if current = Some requested then None else Some requested
+
+    let chartGuideToolKey = function
+        | TaChartGuideTool.Vertical -> "vertical"
+        | TaChartGuideTool.Horizontal -> "horizontal"
+        | TaChartGuideTool.Cross -> "cross"
+
+    let chartGuideAxes rowId (guide: TaChartGuide) =
+        guide.Tool <> TaChartGuideTool.Horizontal,
+        guide.RowId = rowId && guide.Tool <> TaChartGuideTool.Vertical
+
+    let tryChartGuideY top plotHeight low high value =
+        let finite number = not (Double.IsNaN number || Double.IsInfinity number)
+        let lower, upper = min low high, max low high
+        if not (finite top && finite plotHeight && finite low && finite high && finite value)
+           || plotHeight <= 0.0 || value < lower || value > upper then None
+        elif lower = upper then Some(top + plotHeight / 2.0)
+        else Some(top + (upper - value) / (upper - lower) * plotHeight)
 
     let mainPlotPanDelta visibleCount trackWidth startClientX currentClientX =
         if
@@ -1366,6 +1398,10 @@ module RendererModel =
           FromUtc = textValue "query.fromUtc"
           ToUtcExclusive = textValue "query.toUtcExclusive"
           IncludePartial = includePartial }
+
+    let chartGuideScope identity values =
+        let query = queryDraft values
+        identity, query.SourceId, query.Instrument, query.IntervalMinutes
 
     let fixedNumber (value: float) =
         string value
