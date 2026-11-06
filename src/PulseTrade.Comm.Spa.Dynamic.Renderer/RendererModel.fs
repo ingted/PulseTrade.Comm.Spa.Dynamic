@@ -4389,6 +4389,18 @@ module RendererModel =
                 |> Array.tryPick id
             hourStep, (match fallback with Some tick -> Array.append ticks [| tick |] | None -> ticks), guides
 
+    let residentTimeAxisForCoveragePrepared document prepared (projection: TaLoadedCoverageProjection option) =
+        let referenceTimeline = referenceTimelineForDocumentPrepared document prepared
+        let overviewTimeline =
+            projection |> Option.bind (fun coverage ->
+                tryOverviewTimeline coverage
+                |> Option.filter (Array.isEmpty >> not)
+                |> Option.map (fun _ -> coverage.OverviewAnchors |> Array.map _.EventTimeUtc))
+            |> Option.defaultValue referenceTimeline
+        let scale = residentCalendarScale referenceTimeline
+        let dates = referenceTradingDatesForTimelinePrepared document overviewTimeline prepared
+        scale, (fun zone -> tradingSessionAxisGrid false scale zone overviewTimeline dates)
+
     let residentTradingCalendarGrid scaleMinutes zone timestamps tradingDates =
         tradingSessionAxisGrid false scaleMinutes zone timestamps tradingDates
         |> Array.map (fun tick ->

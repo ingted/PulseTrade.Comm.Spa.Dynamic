@@ -237,6 +237,56 @@ let tests =
                         Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map (fun tick -> tick.CanonicalUtc,tick.Label)) [|opening,day|]
                             "The calendar boundary belongs to the real trading date and is never moved to UTC midnight."
 
+        for scale in [ 1; 5; 30; 60 ] do
+            for opening, day, utcOpening, plus8Opening in
+                [ "2026-06-17T22:00:00Z","20260618","22","06"
+                  "2026-01-05T23:00:00Z","20260106","23","07" ] do
+                for distinctAxes in [ false; true ] do
+                    testCase (sprintf "DYN-T-801 actual resident selector %dK %s differing-axis=%b" scale day distinctAxes) <| fun _ ->
+                        let start = DateTimeOffset.Parse opening
+                        let instants = Array.init (360 / scale + 1) (fun i -> start.AddMinutes(float (i * scale)))
+                        let times = instants |> Array.map (fun t -> t.ToString("yyyy-MM-ddTHH:mm:ssZ"))
+                        let trace: TaTraceSpec =
+                            { TraceId="price"; Kind=TaTraceKind.Line; DataRef="price"; Label="price"
+                              Color=""; Width=1.0; Visible=true; CandleDataRefs=None; Options=Map.empty }
+                        let row: TaRowSpec =
+                            { RowId="base"; Kind=TaRowKind.Sma; DataRef="price"; HeightWeight=1.0
+                              Visible=true; Options=Map.empty; Traces=[|trace|] }
+                        let document: TaWorkspaceDocument =
+                            { WorkspaceId="resident-selector-unit"; Title="fixture"; RowsRef="rows"; StatusRef="status"
+                              SharedTimeAxis=true; TemporalAxisRefs=[||]; BaseRowId=Some "base"; Rows=[|row|]
+                              EditorSchemas=[||]; AllowedActions=[||]; DefaultView=Map.empty }
+                        let points = times |> Array.map (fun t -> SduiValue.Object(Map [
+                            "t",SduiValue.Text t; "v",SduiValue.Number 100.0; "tradingDate",SduiValue.Number(float (Int32.Parse day)) ]))
+                        let prepared = Map ["price",SduiValue.Array points] |> RendererModel.prepareData
+                        let projection =
+                            { independentOverviewFixture (instants |> Array.map (fun t -> t.ToString("O"))) with
+                                OverviewAxisRef = if distinctAxes then "ta-overview-axis-unit" else "base-axis-unit"
+                                ActiveDetail = { BaseAxisRef="base-axis-unit"; StartObservationOrdinal=100L; ObservationCount=times.Length } }
+                        Expect.equal (projection.OverviewAxisRef <> projection.ActiveDetail.BaseAxisRef) distinctAxes "Exercise both real axis-identity states."
+                        Expect.isSome (RendererModel.tryOverviewTimeline projection) "Valid nonempty anchors satisfy the historical Some-branch precondition."
+                        let resolvedScale, makeTicks = RendererModel.residentTimeAxisForCoveragePrepared document prepared (Some projection)
+                        Expect.equal resolvedScale (float scale) "The full base timeline owns the bar scale."
+                        let utc = makeTicks SduiDisplayTimeZone.Utc
+                        let plus8 = makeTicks SduiDisplayTimeZone.FixedUtcPlus8
+                        let dates ticks = ticks |> Array.filter (fun (tick: RendererModel.TradingSessionAxisTick) -> tick.IsMajor)
+                        Expect.equal (dates utc) (dates plus8) "Display timezone must not alter the trading date, canonical instant or slot."
+                        Expect.equal (dates utc |> Array.map (fun tick -> DateTimeOffset.Parse tick.CanonicalUtc,tick.Label)) [|start,day|]
+                            "The actual ET opening owns the supplied next trading date, never calendar midnight."
+                        for zone, ticks, openingHour, regularHours in
+                            [ SduiDisplayTimeZone.Utc,utc,utcOpening,[|"00";"04"|]
+                              SduiDisplayTimeZone.FixedUtcPlus8,plus8,plus8Opening,[|"08";"12"|] ] do
+                            let minor = ticks |> Array.filter (fun tick -> not tick.IsMajor)
+                            let expected = if scale <= 5 then regularHours |> Array.map (fun hour -> hour,false) else [|openingHour,true|]
+                            Expect.equal (minor |> Array.map (fun tick -> tick.Label,tick.IsSessionStart)) expected
+                                "Fine resident has four-hour labels only; coarse resident has only the yellow actual opening."
+                            if scale <= 5 then
+                                let _, main, _ = RendererModel.mainTradingTimeAxisGrid 1200.0 (float scale) zone times (Array.create times.Length (Some day))
+                                let mainHours = main |> Array.filter (fun tick -> not tick.IsMajor)
+                                Expect.equal mainHours.Length 7 "Fine TA has one tick per observed hour across this six-hour interval."
+                                Expect.equal (mainHours |> Array.filter _.IsSessionStart |> Array.map _.Label) [|openingHour|]
+                                    "The main TA keeps its opening even though the fine resident does not label it."
+
         testCase "DYN-T-778 guide tool selection toggles off without replacing another tool implicitly" <| fun _ ->
             Expect.equal (RendererModel.toggleChartGuideTool TaChartGuideTool.Vertical None) (Some TaChartGuideTool.Vertical) "enter vertical drawing"
             Expect.equal (RendererModel.toggleChartGuideTool TaChartGuideTool.Vertical (Some TaChartGuideTool.Vertical)) None "clicking the selected tool exits drawing"
@@ -5084,9 +5134,8 @@ let tests =
             let residentStart = source.IndexOf("let residentOverview =", StringComparison.Ordinal)
             let residentEnd = source.IndexOf("match currentCoverageProjection", residentStart, StringComparison.Ordinal)
             let residentBody = source.Substring(residentStart, residentEnd - residentStart)
-            Expect.stringContains residentBody "residentTimeAxisForTradingDatesWithPalette" "RESIDENT must use authoritative trading dates for day boundaries."
-            Expect.stringContains residentBody "referenceTradingDatesForTimelinePrepared currentDocument overviewDisplayTimeline currentPreparedData" "Session identity must follow the exact overview timeline in the same atomic frame as the navigator."
-            Expect.stringContains residentBody "RendererModel.residentCalendarScale currentReferenceTimeline" "Scale must come from the full bar timeline, not downsampled overview anchors."
+            Expect.stringContains residentBody "residentTimeAxisForCoverageWithPalette" "RESIDENT must use the same coverage-axis selector exercised by DYN-T-801."
+            // DYN-T-801 verifies scale, trading dates and display clock through the real selector.
             Expect.stringContains globalBody "settleGlobalResidentProjection renderedState" "GLOBAL preview settles against the newly mounted atomic frame."
             let globalSvgStart = source.IndexOf("let globalOverviewSvgWithPalette", StringComparison.Ordinal)
             let globalSvgBody = source.Substring(globalSvgStart, source.IndexOf("on.mouseMove", globalSvgStart, StringComparison.Ordinal) - globalSvgStart)

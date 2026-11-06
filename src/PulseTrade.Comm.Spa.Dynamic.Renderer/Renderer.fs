@@ -791,6 +791,11 @@ module TaWorkspaceRenderer =
         renderTradingTimeAxisWithPalette palette displayTime scaleMinutes "trading-date" false "ta-overview-time-axis" "" (View.Const 82)
             (fun _ zone -> 0, RendererModel.tradingSessionAxisGrid false scaleMinutes zone timestamps tradingDates, [||])
 
+    let residentTimeAxisForCoverageWithPalette palette displayTime document prepared projection =
+        let scale, makeTicks = RendererModel.residentTimeAxisForCoveragePrepared document prepared projection
+        renderTradingTimeAxisWithPalette palette displayTime scale "trading-date" false "ta-overview-time-axis" "" (View.Const 82)
+            (fun _ zone -> 0, makeTicks zone, [||])
+
     let mainTradingTimeAxisWithPalette palette displayTime row (dataView: View<TaPreparedRendererData>) timestamps plotHeight =
         dataView |> View.Map (fun prepared ->
             let scale = RendererModel.rowCalendarScalePrepared row prepared
@@ -6783,12 +6788,8 @@ module TaWorkspaceRenderer =
                                                             | None -> ())
                                                         finishNavigatorDragFromElement
                                                     // Keep the axis next to its SVG: the boundary labels may wrap.
-                                                    residentTimeAxisForTradingDatesWithPalette
-                                                        currentPlotPalette
-                                                        displayTime
-                                                        (RendererModel.residentCalendarScale currentReferenceTimeline)
-                                                        overviewDisplayTimeline
-                                                        (RendererModel.referenceTradingDatesForTimelinePrepared currentDocument overviewDisplayTimeline currentPreparedData)
+                                                    residentTimeAxisForCoverageWithPalette
+                                                        currentPlotPalette displayTime currentDocument currentPreparedData currentCoverageProjection
                                                     boundaryTimeLabels currentPlotPalette displayTime "ta-resident-boundary-times" ""
                                                         (View.Map2 (fun frozen current -> frozen |> Option.orElse current)
                                                             navigatorBoundaryTimesOverride.View

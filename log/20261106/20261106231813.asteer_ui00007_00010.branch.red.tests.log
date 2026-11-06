@@ -1,0 +1,180 @@
+[37m[[37m00:21:52 [37mINF[37m] [37mEXPECTO? Running tests...[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[37m[[37m00:21:53 [31mERR[37m] [36mTA renderer model.DYN-T-801 actual resident selector 1K 20260618 differing-axis=true[37m failed in [32m00:00:00.0580000[37m. [36m
+Display timezone must not alter the trading date, canonical instant or slot..
+[32mexpected[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-06-17T22:00:00Z"
+    Label = "2026061[32m8[36m"
+    IsMajor = true
+    IsSessionStart = false }[32m|][36m
+[31m  actual[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-06-17T22:00:00Z"
+    Label = "2026061[31m7[36m"
+    IsMajor = true
+    IsSessionStart = false }[31m; { Position = 0.3333333333
+                                CanonicalUtc = "2026-06-18T00:00:00Z"
+                                Label = "20260618"
+                                IsMajor = true
+                                IsSessionStart = false }|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@245-25.Invoke(Unit _arg18) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 273
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m00:21:53 [31mERR[37m] [36mTA renderer model.DYN-T-801 actual resident selector 1K 20260106 differing-axis=true[37m failed in [32m00:00:00.0080000[37m. [36m
+Display timezone must not alter the trading date, canonical instant or slot..
+[32mexpected[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-01-05T23:00:00Z"
+    Label = "2026010[32m6[36m"
+    IsMajor = true
+    IsSessionStart = false }[32m|][36m
+[31m  actual[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-01-05T23:00:00Z"
+    Label = "2026010[31m5[36m"
+    IsMajor = true
+    IsSessionStart = false }[31m; { Position = 0.1666666667
+                                CanonicalUtc = "2026-01-06T00:00:00Z"
+                                Label = "20260106"
+                                IsMajor = true
+                                IsSessionStart = false }|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@245-25.Invoke(Unit _arg18) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 273
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m00:21:53 [31mERR[37m] [36mTA renderer model.DYN-T-801 actual resident selector 5K 20260618 differing-axis=true[37m failed in [32m00:00:00.0010000[37m. [36m
+Display timezone must not alter the trading date, canonical instant or slot..
+[32mexpected[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-06-17T22:00:00Z"
+    Label = "2026061[32m8[36m"
+    IsMajor = true
+    IsSessionStart = false }[32m|][36m
+[31m  actual[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-06-17T22:00:00Z"
+    Label = "2026061[31m7[36m"
+    IsMajor = true
+    IsSessionStart = false }[31m; { Position = 0.3333333333
+                                CanonicalUtc = "2026-06-18T00:00:00Z"
+                                Label = "20260618"
+                                IsMajor = true
+                                IsSessionStart = false }|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@245-25.Invoke(Unit _arg18) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 273
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m00:21:53 [31mERR[37m] [36mTA renderer model.DYN-T-801 actual resident selector 5K 20260106 differing-axis=true[37m failed in [32m00:00:00.0010000[37m. [36m
+Display timezone must not alter the trading date, canonical instant or slot..
+[32mexpected[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-01-05T23:00:00Z"
+    Label = "2026010[32m6[36m"
+    IsMajor = true
+    IsSessionStart = false }[32m|][36m
+[31m  actual[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-01-05T23:00:00Z"
+    Label = "2026010[31m5[36m"
+    IsMajor = true
+    IsSessionStart = false }[31m; { Position = 0.1666666667
+                                CanonicalUtc = "2026-01-06T00:00:00Z"
+                                Label = "20260106"
+                                IsMajor = true
+                                IsSessionStart = false }|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@245-25.Invoke(Unit _arg18) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 273
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m00:21:53 [31mERR[37m] [36mTA renderer model.DYN-T-801 actual resident selector 30K 20260618 differing-axis=true[37m failed in [32m00:00:00[37m. [36m
+Display timezone must not alter the trading date, canonical instant or slot..
+[32mexpected[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-06-17T22:00:00Z"
+    Label = "2026061[32m8[36m"
+    IsMajor = true
+    IsSessionStart = false }[32m|][36m
+[31m  actual[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-06-17T22:00:00Z"
+    Label = "2026061[31m7[36m"
+    IsMajor = true
+    IsSessionStart = false }[31m; { Position = 0.3333333333
+                                CanonicalUtc = "2026-06-18T00:00:00Z"
+                                Label = "20260618"
+                                IsMajor = true
+                                IsSessionStart = false }|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@245-25.Invoke(Unit _arg18) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 273
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m00:21:53 [31mERR[37m] [36mTA renderer model.DYN-T-801 actual resident selector 30K 20260106 differing-axis=true[37m failed in [32m00:00:00.0010000[37m. [36m
+Display timezone must not alter the trading date, canonical instant or slot..
+[32mexpected[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-01-05T23:00:00Z"
+    Label = "2026010[32m6[36m"
+    IsMajor = true
+    IsSessionStart = false }[32m|][36m
+[31m  actual[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-01-05T23:00:00Z"
+    Label = "2026010[31m5[36m"
+    IsMajor = true
+    IsSessionStart = false }[31m; { Position = 0.1666666667
+                                CanonicalUtc = "2026-01-06T00:00:00Z"
+                                Label = "20260106"
+                                IsMajor = true
+                                IsSessionStart = false }|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@245-25.Invoke(Unit _arg18) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 273
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m00:21:53 [31mERR[37m] [36mTA renderer model.DYN-T-801 actual resident selector 60K 20260618 differing-axis=true[37m failed in [32m00:00:00[37m. [36m
+Display timezone must not alter the trading date, canonical instant or slot..
+[32mexpected[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-06-17T22:00:00Z"
+    Label = "2026061[32m8[36m"
+    IsMajor = true
+    IsSessionStart = false }[32m|][36m
+[31m  actual[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-06-17T22:00:00Z"
+    Label = "2026061[31m7[36m"
+    IsMajor = true
+    IsSessionStart = false }[31m; { Position = 0.3333333333
+                                CanonicalUtc = "2026-06-18T00:00:00Z"
+                                Label = "20260618"
+                                IsMajor = true
+                                IsSessionStart = false }|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@245-25.Invoke(Unit _arg18) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 273
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m00:21:53 [31mERR[37m] [36mTA renderer model.DYN-T-801 actual resident selector 60K 20260106 differing-axis=true[37m failed in [32m00:00:00[37m. [36m
+Display timezone must not alter the trading date, canonical instant or slot..
+[32mexpected[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-01-05T23:00:00Z"
+    Label = "2026010[32m6[36m"
+    IsMajor = true
+    IsSessionStart = false }[32m|][36m
+[31m  actual[36m:
+[|{ Position = 0.0
+    CanonicalUtc = "2026-01-05T23:00:00Z"
+    Label = "2026010[31m5[36m"
+    IsMajor = true
+    IsSessionStart = false }[31m; { Position = 0.1666666667
+                                CanonicalUtc = "2026-01-06T00:00:00Z"
+                                Label = "20260106"
+                                IsMajor = true
+                                IsSessionStart = false }|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@245-25.Invoke(Unit _arg18) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 273
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m00:21:53 [37mINF[37m] [37mEXPECTO! [36m271[37m tests run in [32m00:00:00.9940099[37m for [36mTA renderer model[37m – [36m263[37m passed, [36m0[37m ignored, [36m8[37m failed, [36m0[37m errored. [36m[37m [37m<[37mExpecto[37m>[37m
+[0m
+EXPECTO_BRANCH_RED_EXIT=1
