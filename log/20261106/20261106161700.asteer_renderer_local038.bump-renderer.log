@@ -1,0 +1,9 @@
+Package       : PulseTrade.Comm.Spa.Dynamic.Renderer
+Release line  : single-package (1 packages, 0 version files)
+Version       : 0.3.37 -> 0.3.38
+Mode          : mutation
+Project scan  : 1
+Dependencies  : total=0 stale=0
+Changed       : 1
+Mapped tests  : 1
+Report        : E:\deletable\asteer-load05\log\20261106\20261106162753.bump-version-PulseTrade-Comm-Spa-Dynamic-Renderer.op_log

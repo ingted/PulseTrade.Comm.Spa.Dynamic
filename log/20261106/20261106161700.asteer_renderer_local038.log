@@ -6,3 +6,5 @@ Plan: compare exact package source metadata and active direct consumer graph; co
 - Initial XML diagnostic exceeded20KB because XmlNode serialized deeply; raw output was not read. Replaced with explicit string metadata.
 - 2026-11-06T16:27:03.3832211+08:00: all7producer .fs plus two test sources have no semantic diff to canonical; Renderer.fs/RendererModel.fs also byte-identical. Fourfsproj and ResearchPackageTestMap copied raw from owner canonical as separate.37 baseline. Official NuGet laststable.32, .38 absent; configuredSDKfeed .38 absent. Necessaryscope=two producers+two tests; oldPtcs/three demos outside owner Research closure untouched.
 - Reuse owner's build-capacity44-closure.ps1 procedure read-only, with explicit E repo and project bin/Release artifacts; source checkpoints and immutable SDK SHA verified per package. No executing canonical helper wrapper.
+
+- 2026-11-06T16:28:51.0601499+08:00: Renderer formal bump PASS, singleproject .37→.38,1mapped test,0consumer mutations. Prepack checkpoint now; build/pack/test remain next. Owner canonicalbaseline commit a2e8ba484387ec407fdd87b00f9373dbc258a9b1 pushed.

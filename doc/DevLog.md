@@ -2602,3 +2602,10 @@ Baseline228/228。Release最後一輪0errors/45既有warnings、43.78s；Rendere
 Evidence均在log/20261106/20261106084123.asteer_18883_037_：guide-tagging-red.{json,png}、guide-stale-capture.json、guide-lifecycle.json、guide-cross-esc.png、guide-clear-blocked.png、narrow-move.{json,png}、time-zone.json。fixed-query-rejection.json記一次錯用ta-interval切尺度：compiled binding合法拒絕、0frames，已還原30；這不是正確research-scale-*操作，也不是尺度驗收。沒有更改public腳本。
 
 Chrome lease依owner交agent.daedilas（msg-fsi-e7ba30874af54456aff0b3e33b372b5d），自有監看移除、pageerror0；18883服務與18884均未操作。後續frontend trade-focus由新owner任務另記，不混本片。此worktree既知沒有check.fsx，沿owner要求作focused source checkpoint，不宣稱整體gate通過。
+
+
+## 2026-11-06 16:28 agent.asteer：Renderer 0.3.38 local package source checkpoint
+
+- daedilus要求narrow navigator hit修正c8705c2的本機候選；canonical owner .37設定已獨立對齊a2e8ba4，source語意相同。以既有bumpVersion明確E repo/單project scope將Renderer0.3.37→0.3.38；Contracts固定[0.1.44]、FSharp.Core固定[10.1.402]。
+- 此commit只建立pack前source authority；接續Release build、project bin/Release pack、SDK library-packs SHA與exact-package測試。Interactive.Client下一片沿同一流程進0.3.38。正式NuGet發布由root統一處理，未動canonical版本或服務。
+- Plan與驗證：log/20261106/20261106161700.asteer_renderer_local038.log；bump報告log/20261106/20261106162753.bump-version-PulseTrade-Comm-Spa-Dynamic-Renderer.op_log。
