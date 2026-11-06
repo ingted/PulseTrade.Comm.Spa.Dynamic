@@ -6693,14 +6693,6 @@ module TaWorkspaceRenderer =
                                                     |> Option.filter (Array.isEmpty >> not)
                                                     |> Option.map (fun _ -> projection.OverviewAnchors |> Array.map _.EventTimeUtc))
                                                 |> Option.defaultValue currentReferenceTimeline
-                                            let independentOverviewTimeline =
-                                                currentCoverageProjection
-                                                |> Option.bind (fun projection ->
-                                                    if projection.OverviewAxisRef = projection.ActiveDetail.BaseAxisRef then None
-                                                    else
-                                                        RendererModel.tryOverviewTimeline projection
-                                                        |> Option.filter (Array.isEmpty >> not)
-                                                        |> Option.map (fun _ -> projection.OverviewAnchors |> Array.map _.EventTimeUtc))
                                             let overviewPoints =
                                                 let projected =
                                                     currentCoverageProjection
@@ -6790,19 +6782,17 @@ module TaWorkspaceRenderer =
                                                                     rawEvent
                                                             | None -> ())
                                                         finishNavigatorDragFromElement
+                                                    // Keep the axis next to its SVG: the boundary labels may wrap.
+                                                    residentTimeAxisForTradingDatesWithPalette
+                                                        currentPlotPalette
+                                                        displayTime
+                                                        (RendererModel.residentCalendarScale currentReferenceTimeline)
+                                                        overviewDisplayTimeline
+                                                        (RendererModel.referenceTradingDatesForTimelinePrepared currentDocument overviewDisplayTimeline currentPreparedData)
                                                     boundaryTimeLabels currentPlotPalette displayTime "ta-resident-boundary-times" ""
                                                         (View.Map2 (fun frozen current -> frozen |> Option.orElse current)
                                                             navigatorBoundaryTimesOverride.View
                                                             (selectionWindow |> View.Map (RendererModel.selectionBoundaryTimes overviewDisplayTimeline)))
-                                                    match independentOverviewTimeline with
-                                                    | Some timeline -> residentTimeAxisWithPalette currentPlotPalette displayTime timeline
-                                                    | None ->
-                                                        residentTimeAxisForTradingDatesWithPalette
-                                                            currentPlotPalette
-                                                            displayTime
-                                                            (RendererModel.residentCalendarScale currentReferenceTimeline)
-                                                            currentReferenceTimeline
-                                                            (RendererModel.referenceTradingDatesForDocumentPrepared currentDocument currentPreparedData)
                                                 ]
                                             let residentOverview =
                                                 div [

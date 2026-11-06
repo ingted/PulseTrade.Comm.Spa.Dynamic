@@ -1,0 +1,108 @@
+[37m[[37m23:54:45 [37mINF[37m] [37mEXPECTO? Running tests...[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[37m[[37m23:54:45 [31mERR[37m] [36mTA renderer model.DYN-T-799 overview trading dates follow exact timeline subset reordered with equivalent UTC text[37m failed in [32m00:00:00.0720000[37m. [36m
+One output per exact overview observation, from its known trading date only..
+[32mexpected[36m: [|Some "20260[32m601[36m"; Some "20260529"[32m|][36m
+[31m  actual[36m: [|Some "20260[31m529[36m"; Some "20260529"[31m; Some "20260601"|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@202-15.Invoke(Unit _arg16) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 221
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:45 [31mERR[37m] [36mTA renderer model.DYN-T-799 overview trading dates follow exact timeline unknown instants never borrow a date[37m failed in [32m00:00:00[37m. [36m
+One output per exact overview observation, from its known trading date only..
+[32mexpected[36m: [|[32mN[36mo[32mn[36me[32m; None|][36m
+[31m  actual[36m: [|[31mS[36mo[31mm[36me[31m "20260529"; Some "20260529"; Some "20260601"|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@202-15.Invoke(Unit _arg16) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 221
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:45 [31mERR[37m] [36mTA renderer model.DYN-T-799 overview trading dates follow exact timeline empty overview[37m failed in [32m00:00:00[37m. [36m
+One output per exact overview observation, from its known trading date only..
+[32mexpected[36m: [|[32m|][36m
+[31m  actual[36m: [|[31mSome "20260529"; Some "20260529"; Some "20260601"|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@202-15.Invoke(Unit _arg16) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 221
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:45 [31mERR[37m] [36mTA renderer model.DYN-T-800 resident opening remains distinct from midnight 1K 20260618 UTC[37m failed in [32m00:00:00.0150000[37m. [36m
+30K/60K only label the actual opening; 1K/5K retain ordinary four-hour marks separately..
+[32mexpected[36m: [|("[32m22[36m", [32mtrue); ("00", false)|][36m
+[31m  actual[36m: [|("[31m00[36m", [31mfalse)|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@230-19.Invoke(Unit _arg17) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 235
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:45 [31mERR[37m] [36mTA renderer model.DYN-T-800 resident opening remains distinct from midnight 1K 20260618 UTC+08:00[37m failed in [32m00:00:00[37m. [36m
+30K/60K only label the actual opening; 1K/5K retain ordinary four-hour marks separately..
+[32mexpected[36m: [|("0[32m6[36m", [32mtrue); ("08", false)|][36m
+[31m  actual[36m: [|("0[31m8[36m", [31mfalse)|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@230-19.Invoke(Unit _arg17) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 235
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:45 [31mERR[37m] [36mTA renderer model.DYN-T-800 resident opening remains distinct from midnight 1K 20260106 UTC[37m failed in [32m00:00:00[37m. [36m
+30K/60K only label the actual opening; 1K/5K retain ordinary four-hour marks separately..
+[32mexpected[36m: [|("[32m23[36m", [32mtrue); ("00", false)|][36m
+[31m  actual[36m: [|("[31m00[36m", [31mfalse)|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@230-19.Invoke(Unit _arg17) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 235
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:45 [31mERR[37m] [36mTA renderer model.DYN-T-800 resident opening remains distinct from midnight 1K 20260106 UTC+08:00[37m failed in [32m00:00:00[37m. [36m
+30K/60K only label the actual opening; 1K/5K retain ordinary four-hour marks separately..
+[32mexpected[36m: [|("0[32m7[36m", [32mtrue); ("08", false)|][36m
+[31m  actual[36m: [|("0[31m8[36m", [31mfalse)|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@230-19.Invoke(Unit _arg17) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 235
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:45 [31mERR[37m] [36mTA renderer model.DYN-T-800 resident opening remains distinct from midnight 5K 20260618 UTC[37m failed in [32m00:00:00[37m. [36m
+30K/60K only label the actual opening; 1K/5K retain ordinary four-hour marks separately..
+[32mexpected[36m: [|("[32m22[36m", [32mtrue); ("00", false)|][36m
+[31m  actual[36m: [|("[31m00[36m", [31mfalse)|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@230-19.Invoke(Unit _arg17) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 235
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:45 [31mERR[37m] [36mTA renderer model.DYN-T-800 resident opening remains distinct from midnight 5K 20260618 UTC+08:00[37m failed in [32m00:00:00[37m. [36m
+30K/60K only label the actual opening; 1K/5K retain ordinary four-hour marks separately..
+[32mexpected[36m: [|("0[32m6[36m", [32mtrue); ("08", false)|][36m
+[31m  actual[36m: [|("0[31m8[36m", [31mfalse)|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@230-19.Invoke(Unit _arg17) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 235
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:45 [31mERR[37m] [36mTA renderer model.DYN-T-800 resident opening remains distinct from midnight 5K 20260106 UTC[37m failed in [32m00:00:00[37m. [36m
+30K/60K only label the actual opening; 1K/5K retain ordinary four-hour marks separately..
+[32mexpected[36m: [|("[32m23[36m", [32mtrue); ("00", false)|][36m
+[31m  actual[36m: [|("[31m00[36m", [31mfalse)|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@230-19.Invoke(Unit _arg17) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 235
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:45 [31mERR[37m] [36mTA renderer model.DYN-T-800 resident opening remains distinct from midnight 5K 20260106 UTC+08:00[37m failed in [32m00:00:00[37m. [36m
+30K/60K only label the actual opening; 1K/5K retain ordinary four-hour marks separately..
+[32mexpected[36m: [|("0[32m7[36m", [32mtrue); ("08", false)|][36m
+[31m  actual[36m: [|("0[31m8[36m", [31mfalse)|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@230-19.Invoke(Unit _arg17) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 235
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:46 [31mERR[37m] [36mTA renderer model.DYN-T-754 resident intraday ticks use clock multiples and tolerate empty input[37m failed in [32m00:00:00.0040000[37m. [36m
+Fine-scale overviews retain four-hour multiples plus the opening; 30K/60K only mark the opening..
+[32mexpected[36m: [|"00"; "04"; "08"; "12"; "16"; "20"[32m; "22"|][36m
+[31m  actual[36m: [|"00"; "04"; "08"; "12"; "16"; "20"[31m|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@434-49.Invoke(Unit _arg35) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 452
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:46 [31mERR[37m] [36mTA renderer model.DYN-T-762 main 1K and 5K have hourly ticks but selected text only[37m failed in [32m00:00:00.0020000[37m. [36m
+The overview keeps its opening distinct from ordinary four-hour labels..
+[32mexpected[36m: [|"0[32m6[36m"; "[32m08[36m"; "1[32m2[36m"; "[32m16[36m"; "[32m2[36m0"; "0[32m0[36m"[32m; "04"|][36m
+[31m  actual[36m: [|"0[31m8[36m"; "[31m12[36m"; "1[31m6[36m"; "[31m20[36m"; "[31m0[36m0"; "0[31m4[36m"[31m|][36m
+   at PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.tests@478-55.Invoke(Unit _arg38) in E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs:line 488
+   at Expecto.Impl.execTestAsync@578-1.Invoke(Unit unitVar)
+   at Microsoft.FSharp.Control.AsyncPrimitives.CallThenInvoke[T,TResult](AsyncActivation`1 ctxt, TResult result1, FSharpFunc`2 part2) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 509
+   at Microsoft.FSharp.Control.Trampoline.Execute(FSharpFunc`2 firstAction) in D:\a\_work\1\s\src\fsharp\src\FSharp.Core\async.fs:line 112[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[1000D[?25h[37m[[37m23:54:46 [37mINF[37m] [37mEXPECTO! [36m255[37m tests run in [32m00:00:01.0735417[37m for [36mTA renderer model[37m – [36m242[37m passed, [36m0[37m ignored, [36m13[37m failed, [36m0[37m errored. [36m[37m [37m<[37mExpecto[37m>[37m
+[0m
+EXPECTO_EXPECTED_RED_EXIT=1

@@ -2172,6 +2172,18 @@ module RendererModel =
                 let normalizedFraction = ((fraction |> Option.defaultValue "") + "0000000").Substring(0, 7)
                 Some(candidate.Substring(0, 10) + "T" + candidate.Substring(11, 8) + "." + normalizedFraction)
 
+    let referenceTradingDatesForTimelinePrepared document (timeline: string array) prepared =
+        let datesByTime =
+            Array.zip
+                (referenceTimelineForDocumentPrepared document prepared)
+                (referenceTradingDatesForDocumentPrepared document prepared)
+            |> Array.choose (fun (timestamp, date) ->
+                match tryUtcTimestamp timestamp, date with
+                | Some key, Some tradingDate -> Some(key, tradingDate)
+                | _ -> None)
+            |> Map.ofArray
+        timeline |> Array.map (tryUtcTimestamp >> Option.bind (fun key -> Map.tryFind key datesByTime))
+
     let queryViewportSelection latestGeneration intentGeneration (query: TaQueryChange) (document: TaWorkspaceDocument) data =
         if intentGeneration <> latestGeneration then
             TaQueryViewportSelection.Stale
@@ -4322,7 +4334,7 @@ module RendererModel =
                     let clock = local.ClockText.Substring(0, 8)
                     match Int32.TryParse(clock.Substring(0, 2)), Int32.TryParse(clock.Substring(3, 2)) with
                     | (true, hour), (true, 0) when clock.Substring(6, 2) = "00" ->
-                        let openingLabel = sessionStart && (isMainPlot || not fineScale)
+                        let openingLabel = sessionStart
                         let regularLabel = hour % (max 1 hourStep) = 0 && (isMainPlot || fineScale)
                         let shortTick = openingLabel || regularLabel || (isMainPlot && fineScale)
                         if shortTick then

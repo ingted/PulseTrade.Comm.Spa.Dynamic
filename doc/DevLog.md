@@ -2630,3 +2630,13 @@ Chrome lease依owner交agent.daedilas（msg-fsi-e7ba30874af54456aff0b3e33b372b5d
 - Renderer source test先重現236項中的5個失敗（2個sticky、3個整數文字），修後Release build0errors／45warnings／53.17s，Expecto236/236、0ignored/failed/errored／0.9488758s。沿既有UseRendererSource，未pack、publish或修改版本。這是source/unit證據，未驗真UI。
 - Research index以owner指定的 `.67` snapshot為基線，Tracing回正常文件流，desktop60px/mobile86px高度與resident top0分離。Client.fs目前未修改。任何canonical/live runtime均未寫入，18883 UI權由daedilas持有。
 - 00009 resident/backtest domain由daedilus修後端；前端交易日分支及calendar線相對位置仍在處理，不宣稱整體完成。兩個E worktree的工作紀錄：`log/20261106/20261106231813.asteer_ui00007_00010.*`；Dynamic保留RED/GREEN原始Expecto結果與hypothesis。
+
+### 2026-11-06 agent.asteer：00009-C resident 交易日刻度與線段位置
+
+- 基線 Dynamic `00fd3b7d317db23a2e783d4f6f2a077ec3a4ad41`，worktree `E:/deletable/asteer-load05`／branch `20261106_003.asteer_load05`。source 僅 Renderer.fs／RendererModel.fs 及直接 Expecto；Interactive.Client、Contracts、Research 後端與版本均未改。
+- owner 提供 `G:/PulseTrade.fs/misc/2026-11-06 18884 版本 4500k 縮圖.png` 與 `18883` 對照，均親自查看。.67 independent overview 誤用 calendar axis，把 session flag 全設 false，造成黃22/23消失、白00/08/16及錯日；兩圖選區均約1/3，不能用這份對照證明 Backtest domain 污染。
+- resident 統一以 overviewDisplayTimeline 對應 base row 的實際 tradingDate；重用既有 tryUtcTimestamp 精確 UTC 正規化，等價 Z/+00:00 可對應，未知／不同 fraction 不借鄰近日期。scale 仍取完整 reference timeline，不以抽樣間隔當K棒尺度。沒有日期 authority 不從 UTC 日曆補值。
+- SVG 後立即放 time axis，再放可換行的首末文字，讓82px交易日線自SVG底部往上覆蓋全高，不硬補文字列高度。30K/60K resident 保持只標開盤；1K/5K保留四小時普通刻度，另標實際ET18開盤，UTC22/23與UTC00分開，Display time zone只改時鐘文字。
+- RED：source Release build0errors/45warnings70.63s；Expecto255executed/242passed/13failed/0ignored/0errored1.0735417s。GREEN：build0errors/45warnings47.89s；Expecto255/255、0ignored/failed/errored0.9000636s。案例涵蓋subset/reorder/空timeline/未知fraction、1/5/30/60K、夏冬令、UTC/+8。既有兩項「fine-scale不標開盤」預期依00009-C修訂，在product修正前確實RED；未以改expected隱藏既有問題。
+- 對照首批 Dynamic `00fd3b7`／Research `057f4d08`：00007自然上緣sticky+Tracing正常流；00008兩側Y軸整數.00；00010垂直guide完整SVG。Research index以owner指定.67 snapshot作基線；Client.fs未動。
+- 交付為source/unit checkpoint，未pack/publish/deploy或控瀏覽器。00009-A/B仍須root後端修正整合及QA真拖曳／延展／Backtest證據；所有UI幾何、sticky連續性與日期metadata覆蓋仍由daedilas18883驗。Dynamic沒有check.fsx，本次不宣稱full-repo gate PASS；root review後才可整合。紀錄與RED/GREEN：`log/20261106/20261106231813.asteer_ui00007_00010.*`。
