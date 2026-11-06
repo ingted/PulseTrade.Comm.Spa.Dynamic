@@ -653,3 +653,9 @@ Checkpoint recorded 2026-11-06 09:27:29 +08:00
 - 編譯曾因共用wsfscservice持有generatedlog而crash；持有者faedilus確認無activebuild後僅停止舊daemon。官方standalone compiler重跑已無crash；新碼兩個不支援的String overload已改用proxy列明的ToUpper。未改ACL或package依賴。
 - Evidence：log/20261106/20261106084123.asteer_load05.log；同prefix_source-build-r4.log、_source-tests-r4.log；log/20261106/20261106084123.asteer_load03_reverse-baseline.json/.png；log/20261106/20261106091700_issue_navigation.hypothesis.md（內含檔名時間Correction）。
 - 後續：03外展／晚到回跳／scale右錨／trade定位／輔助線；04overview anchors/axis/mask/gesture共同event-time domain（保留1500/4500）；05sticky。共同Renderer由asteer單一owner；backend/core02/Research mapper/BacktestWorkspace Client DTO仍原owner。
+
+### 2026-11-06 10:03:34 +08:00 Load05 sticky source checkpoint — consumer pending
+
+Same navigator DOM now pins only after its reserved normal-flow bottom passes the host inset; its own chart bottom pushes it out. Slot preserves size, listeners are rAF-coalesced, ancestor-only observer disposes on unmount/visibility changes. Research index.html supplies shared60/86px toolbar-height CSS variable; other hosts default0. No timer/body-subtree scan or second navigator.
+
+Standalone source build0errors44warnings77.76s; fullRendererExpecto192/192,0ignored/failed/errored1.6368741s. Producer/test DLL SHA256=0014BF9F6413C7DD1532793B179C4AD2FA28F3868F3BB94565CE6450853D85F6. Real18882 baseline shows overviewbottom-155 whilechartbottom2057,positionstatic; candidate browser not run, no package/host deployment claim. Source and priorprice/reverse remain readyforreview, integration owner daedilus. Evidence: log/20261106/20261106084123.asteer_load05_sticky-build-r2.log, _sticky-tests-r2.log, _sticky-baseline.json/.png.

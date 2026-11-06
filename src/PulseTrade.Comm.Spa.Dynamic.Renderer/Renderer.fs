@@ -855,6 +855,87 @@ module TaWorkspaceRenderer =
         + " h " + fixedText (-width)
         + " Z"
 
+    let attachResidentOverviewSticky background (getScope: unit -> Element) (slot: Element) =
+        let content = slot.QuerySelector("[data-testid='ta-overview-with-axis']")
+        if not (isNull content) then
+            let originalStyle = content.GetAttribute("style")
+            let contentStyle = (content |> As<HTMLElement>).Style
+            let slotStyle = (slot |> As<HTMLElement>).Style
+            let mutable stopped = false
+            let mutable framePending = false
+            let mutable lastLayout: (float * float * float * float) option = None
+            let mutable observer: MutationObserver option = None
+
+            let refresh () =
+                if not stopped && slot.IsConnected then
+                    let scope = getScope ()
+                    let bounds = slot.GetBoundingClientRect()
+                    let computed = JS.Window.GetComputedStyle(slot)
+                    let insetText = computed.GetPropertyValue("--ptcs-resident-overview-top").Trim().Replace("px", "")
+                    let inset =
+                        match Double.TryParse insetText with
+                        | true, value -> max 0.0 value
+                        | _ -> 0.0
+                    let height = content.GetBoundingClientRect().Height
+                    let layout =
+                        if isNull scope || not scope.IsConnected || bounds.Width <= 0.0
+                           || computed.GetPropertyValue("visibility") = "hidden"
+                           || computed.GetPropertyValue("display") = "none" then None
+                        else
+                            RendererModel.stickyOverviewTop inset bounds.Bottom (scope.GetBoundingClientRect().Bottom) height
+                            |> Option.map (fun top -> top, bounds.Left, bounds.Width, height)
+                    if layout <> lastLayout then
+                        match layout with
+                        | Some(top, left, width, height) ->
+                            slotStyle.SetProperty("height", fixedText height + "px")
+                            contentStyle.SetProperty("position", "fixed")
+                            contentStyle.SetProperty("top", fixedText top + "px")
+                            contentStyle.SetProperty("left", fixedText left + "px")
+                            contentStyle.SetProperty("width", fixedText width + "px")
+                            contentStyle.SetProperty("z-index", "30")
+                            contentStyle.SetProperty("background", background)
+                            slot.SetAttribute("data-overview-sticky", "true")
+                            slot.SetAttribute("data-overview-sticky-top", fixedText top)
+                        | None ->
+                            slotStyle.SetProperty("height", "")
+                            content.SetAttribute("style", if isNull originalStyle then "" else originalStyle)
+                            slot.SetAttribute("data-overview-sticky", "false")
+                            slot.RemoveAttribute("data-overview-sticky-top")
+                        lastLayout <- layout
+
+            let schedule () =
+                if not stopped && not framePending then
+                    framePending <- true
+                    JS.RequestAnimationFrame(fun _ ->
+                        framePending <- false
+                        refresh ()) |> ignore
+            let scrollHandler = Action<Event>(fun _ -> schedule ())
+            let resizeHandler = Action<Event>(fun _ -> schedule ())
+            let dispose () =
+                if not stopped then
+                    stopped <- true
+                    JS.Window.RemoveEventListener("scroll", scrollHandler, true)
+                    JS.Window.RemoveEventListener("resize", resizeHandler)
+                    observer |> Option.iter (fun value -> value.Disconnect())
+                    observer <- None
+            let lifetime =
+                MutationObserver(Action<MutationRecord array, MutationObserver>(fun _ _ ->
+                    if slot.IsConnected then schedule () else dispose ()))
+            observer <- Some lifetime
+            let observed = MutationObserverInit()
+            observed.ChildList <- true
+            observed.Attributes <- true
+            observed.AttributeFilter <- [| "style"; "class"; "hidden" |]
+            // Observe only the ancestor chain: removal/visibility changes wake us,
+            // while streaming row/text mutations do not create a body-subtree observer.
+            let mutable ancestor = slot.ParentNode
+            while not (isNull ancestor) do
+                lifetime.Observe(ancestor, observed)
+                ancestor <- ancestor.ParentNode
+            JS.Window.AddEventListener("scroll", scrollHandler, true)
+            JS.Window.AddEventListener("resize", resizeHandler)
+            schedule ()
+
     let overviewSvgWithPalette palette (points: TaOverviewCandlePoint array) (stripeVisuals: TaOverviewStripeVisual array) referenceLength selectionWindow onReady onPointerDown onDragEnd =
         let width = 1000.0
         let height = 82.0
@@ -6494,6 +6575,14 @@ module TaWorkspaceRenderer =
                                                         currentReferenceTimeline
                                                         (RendererModel.referenceTradingDatesForDocumentPrepared currentDocument currentPreparedData)
                                                 ]
+                                            let residentOverview =
+                                                div [
+                                                    Attr.Create "data-testid" "ta-resident-overview-slot"
+                                                    Attr.Create "data-overview-sticky" "false"
+                                                    attr.style "min-width:0;"
+                                                    on.afterRender (fun node ->
+                                                        attachResidentOverviewSticky currentPlotPalette.Surface (fun () -> chartStackElement) node)
+                                                ] [ residentOverview ]
                                             match currentCoverageProjection |> Option.bind _.GlobalOverview with
                                             | None ->
                                                 initialGlobalPhase.View
