@@ -4042,6 +4042,12 @@ module RendererModel =
         if low = high then top + height / 2.0
         else top + height - ((value - low) / (high - low)) * height
 
+    let yAxisTickGeometry low high top plotHeight chartHeight ticks =
+        ticks
+        |> Array.map (fun value ->
+            let pixelY = normalize low high top plotHeight value
+            value, pixelY, pixelY * 100.0 / chartHeight)
+
     let timeLabels (timestamps: string array) =
         if timestamps.Length = 0 then [||]
         elif timestamps.Length = 1 then [| 0, timestamps[0] |]

@@ -674,3 +674,7 @@ Contracts：tests/PulseTrade.Comm.Spa.Dynamic.Contracts.Tests.fsproj Release sou
 真瀏覽器僅用18883既有公開default ES 30K/60K腳本，execution161；Research0.1.62、Renderer/Interactive0.3.34由owner確認。bundle SHA256 f4f901b30cdeb6b81256b6ef439738470e5cd764b7d31400cf3a51c5e7da1346。reverse3375/601→2925/1500且13秒後保持；sticky原slot離頂後overview top60=toolbar bottom60，返回原位置解除；930末根202607101330→60末根202607102000、13秒後相同，未重現舊20250314錯跳。此資料位於頁面末段，chart底部推出視窗路徑沒有足夠下捲空間，不能宣稱此次真UI驗過該邊界。
 
 ES Y labels皆0.25倍數，卻全部top100%且grid y250，畫面FAIL。root cause為tickY把(bottom,top)傳入normalize(top,height)，source一行改回與candles相同的top/plotHeight；尚未部署／browser複驗。guide工具不在.34，仍待下一版。四份JSON程式檢核reverse/count、scale endpoint、sticky幾何、quarter tick；截圖人工檢視刻度重疊。Evidence prefix：log/20261106/20261106084123.asteer_18883_{reverse,sticky,sticky-scroll,scale}.json與reverse/sticky/scale.png。瀏覽器已交還owner msg-fsi-99f4a00974904dd9bc1974798bad4e1d；沒有重建／重啟18883、未動18882/18884。
+
+## 2026-11-06 11:40:15 +08:00 Y 軸座標回歸補強
+
+Renderer 的 grid 與左右 labels 共用 yAxisTickGeometry 輸出的 value/pixelY/percentY，消除兩種座標各自計算的分歧。DYN-T-785 四組獨立預期值驗無padding、padding、負值indicator與flat價格；DYN-T-786使用18883實際十個ES刻度，驗首尾0/250px、0/100%及相鄰>14px避免重疊。Release build0errors44existingwarnings41.06s；Renderer214/214、0ignored/failed/errored0.8334382s，producer/test SHA256同0EA9E215BFAE503D60C4A4EC3BE3EF750F22283AC2336AC4EDC592A96228A3E4。真browser仍待新immutable candidate，未把unit當UI通過。Evidence：log/20261106/20261106084123.asteer_load05_tick-regression-build.log及tick-regression-tests.log（同prefix）。
