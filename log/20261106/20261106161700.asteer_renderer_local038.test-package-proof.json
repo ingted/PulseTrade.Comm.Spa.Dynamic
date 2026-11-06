@@ -1,0 +1,20 @@
+[
+  {
+    "Test": "renderer",
+    "Package": "PulseTrade.Comm.Spa.Dynamic.Renderer",
+    "Version": "0.3.38+2192ecbf6a2c317c03192b516d35a5935ca3d54d",
+    "LoadedDllSHA256": "66C4BCE57D46FD4F1263ED0B651F60160ADBC03A87DF6548B2FD19A4BD2AD150"
+  },
+  {
+    "Test": "interactive",
+    "Package": "PulseTrade.Comm.Spa.Dynamic.Interactive.Client",
+    "Version": "0.3.38+728e45d36d92cf2d55b9986ed10eb4369d0d1ee8",
+    "LoadedDllSHA256": "C0B2F55111A60EDA36EF264ACD414A5B810EEA86A6B9987497A0C8CDB2326A45"
+  },
+  {
+    "Test": "interactive",
+    "Package": "PulseTrade.Comm.Spa.Dynamic.Renderer",
+    "Version": "0.3.38+2192ecbf6a2c317c03192b516d35a5935ca3d54d",
+    "LoadedDllSHA256": "66C4BCE57D46FD4F1263ED0B651F60160ADBC03A87DF6548B2FD19A4BD2AD150"
+  }
+]

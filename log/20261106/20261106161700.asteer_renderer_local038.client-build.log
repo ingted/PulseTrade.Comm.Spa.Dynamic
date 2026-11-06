@@ -1,0 +1,12 @@
+  Determining projects to restore...
+  Restored E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Interactive.Client\PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj (in 335 ms).
+E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Interactive.Client\Client.fs(146,25,146,52): warning FS0044: This construct is deprecated [E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Interactive.Client\PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj]
+  PulseTrade.Comm.Spa.Dynamic.Interactive.Client -> E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Interactive.Client\bin\Release\net10.0\PulseTrade.Comm.Spa.Dynamic.Interactive.Client.dll
+
+Build succeeded.
+
+E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Interactive.Client\Client.fs(146,25,146,52): warning FS0044: This construct is deprecated [E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Interactive.Client\PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj]
+    1 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:14.36

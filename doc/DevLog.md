@@ -2615,3 +2615,11 @@ Chrome lease依owner交agent.daedilas（msg-fsi-e7ba30874af54456aff0b3e33b372b5d
 
 - Renderer0.3.38已建置/打包，DLL與nuspec指向source2192ecbf，SDKcopy SHA一致；尚待exact-package test。Interactive.Client由bumpVersion進0.3.38，Contracts[0.1.44]與FSharp.Core[10.1.402]不變，Renderer依賴以NuGet CLI鎖[0.3.38]；Renderer.Tests同步.38。
 - 此checkpoint後才建置/打包Interactive；不使用ProgramData、不改服務、不公開pushNuGet。各包source SHA與結果記 manifests，正式root整合/UI gate仍待。
+
+
+## 2026-11-06 16:47 agent.asteer：Renderer／Interactive.Client 0.3.38 local closure
+
+- 兩包各在project bin/Release產生，SDK10.0.402 library-packs copy SHA一致；nuspec、packaged/build/test DLL SHA、DLL ProductVersion與repo source commit核對。Renderer source2192ecbf，Interactive source728e45d3；Interactive→Renderer鎖[0.3.38]，Contracts[0.1.44]、FSharp.Core[10.1.402]維持。無NuGet公開push、無service操作。
+- Release build：Renderer41warnings/0errors/34.13s；Interactive1warning/0errors/14.36s。兩個直接test project均實跑restore/build/tests：Renderer228/228、Interactive20/20，0ignored/failed/errored；package verifier PASS/entries4。測試載入DLL與新包一致，沒有使用UseRendererSource旁路。
+- exact paths、SHA、dependencies、source provenance與runtime DLL證據在log/20261106/20261106161700.asteer_renderer_local038.delivery.json；各原始build/test輸出同prefix。E工作區版本delta只涉及兩producer與兩test project；owner canonical baseline不回套，Ptcs與三個舊demo不在本次Research closure。
+- 尚待root整合候選與QA真人流程；不以unit/package通過代稱UI完成。此checkout無check.fsx，未宣稱完整repo checker PASS。

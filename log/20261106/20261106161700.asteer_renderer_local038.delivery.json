@@ -1,0 +1,116 @@
+{
+  "Repo": "E:\\deletable\\asteer-load05",
+  "Branch": "20261106_003.asteer_load05",
+  "VersionDeltaBase": "a2e8ba484387ec407fdd87b00f9373dbc258a9b1",
+  "Packages": [
+    {
+      "Package": "PulseTrade.Comm.Spa.Dynamic.Renderer",
+      "Version": "0.3.38",
+      "Path": "E:\\deletable\\asteer-load05\\src\\PulseTrade.Comm.Spa.Dynamic.Renderer\\bin\\Release\\PulseTrade.Comm.Spa.Dynamic.Renderer.0.3.38.nupkg",
+      "PackageSHA256": "68F012F02EB7C2F9E99EDFF542D9CF4B086EE6C59F48A6BAD1E0E75CAE8111A5",
+      "DllSHA256": "66C4BCE57D46FD4F1263ED0B651F60160ADBC03A87DF6548B2FD19A4BD2AD150",
+      "SourceCommit": "2192ecbf6a2c317c03192b516d35a5935ca3d54d",
+      "ProductVersion": "0.3.38+2192ecbf6a2c317c03192b516d35a5935ca3d54d",
+      "Dependencies": [
+        {
+          "Id": "FSharp.Core",
+          "Version": "[10.1.402]"
+        },
+        {
+          "Id": "PulseTrade.Comm.Spa.Dynamic.Contracts",
+          "Version": "[0.1.44]"
+        },
+        {
+          "Id": "WebSharper.FSharp",
+          "Version": "10.1.7.680"
+        },
+        {
+          "Id": "WebSharper.UI",
+          "Version": "10.1.6.680"
+        }
+      ],
+      "LocalFeedPath": "C:\\Program Files\\dotnet\\sdk\\10.0.402\\FSharp\\library-packs\\PulseTrade.Comm.Spa.Dynamic.Renderer.0.3.38.nupkg",
+      "NuGetPublished": false
+    },
+    {
+      "Package": "PulseTrade.Comm.Spa.Dynamic.Interactive.Client",
+      "Version": "0.3.38",
+      "Path": "E:\\deletable\\asteer-load05\\src\\PulseTrade.Comm.Spa.Dynamic.Interactive.Client\\bin\\Release\\PulseTrade.Comm.Spa.Dynamic.Interactive.Client.0.3.38.nupkg",
+      "PackageSHA256": "DE2823B09536E0CB42E1CC80530F4DFE70AC79BDF3DBFB1ECD50548F98961C28",
+      "DllSHA256": "C0B2F55111A60EDA36EF264ACD414A5B810EEA86A6B9987497A0C8CDB2326A45",
+      "SourceCommit": "728e45d36d92cf2d55b9986ed10eb4369d0d1ee8",
+      "ProductVersion": "0.3.38+728e45d36d92cf2d55b9986ed10eb4369d0d1ee8",
+      "Dependencies": [
+        {
+          "Id": "FSharp.Core",
+          "Version": "[10.1.402]"
+        },
+        {
+          "Id": "PulseTrade.Comm.Spa.Dynamic.Contracts",
+          "Version": "[0.1.44]"
+        },
+        {
+          "Id": "PulseTrade.Comm.Spa.Dynamic.Renderer",
+          "Version": "[0.3.38]"
+        },
+        {
+          "Id": "WebSharper.FSharp",
+          "Version": "10.1.7.680"
+        },
+        {
+          "Id": "WebSharper.UI",
+          "Version": "10.1.6.680"
+        }
+      ],
+      "LocalFeedPath": "C:\\Program Files\\dotnet\\sdk\\10.0.402\\FSharp\\library-packs\\PulseTrade.Comm.Spa.Dynamic.Interactive.Client.0.3.38.nupkg",
+      "NuGetPublished": false
+    }
+  ],
+  "Tests": [
+    {
+      "Name": "Renderer exact package",
+      "Discovered": 228,
+      "Executed": 228,
+      "Passed": 228,
+      "Ignored": 0,
+      "Failed": 0,
+      "Errored": 0,
+      "Seconds": 1.0221785
+    },
+    {
+      "Name": "Interactive exact package",
+      "Discovered": 20,
+      "Executed": 20,
+      "Passed": 20,
+      "Ignored": 0,
+      "Failed": 0,
+      "Errored": 0,
+      "Seconds": 0.458374
+    }
+  ],
+  "LoadedDllEvidence": [
+    {
+      "Test": "renderer",
+      "Package": "PulseTrade.Comm.Spa.Dynamic.Renderer",
+      "Version": "0.3.38+2192ecbf6a2c317c03192b516d35a5935ca3d54d",
+      "LoadedDllSHA256": "66C4BCE57D46FD4F1263ED0B651F60160ADBC03A87DF6548B2FD19A4BD2AD150"
+    },
+    {
+      "Test": "interactive",
+      "Package": "PulseTrade.Comm.Spa.Dynamic.Interactive.Client",
+      "Version": "0.3.38+728e45d36d92cf2d55b9986ed10eb4369d0d1ee8",
+      "LoadedDllSHA256": "C0B2F55111A60EDA36EF264ACD414A5B810EEA86A6B9987497A0C8CDB2326A45"
+    },
+    {
+      "Test": "interactive",
+      "Package": "PulseTrade.Comm.Spa.Dynamic.Renderer",
+      "Version": "0.3.38+2192ecbf6a2c317c03192b516d35a5935ca3d54d",
+      "LoadedDllSHA256": "66C4BCE57D46FD4F1263ED0B651F60160ADBC03A87DF6548B2FD19A4BD2AD150"
+    }
+  ],
+  "InteractivePackageVerifier": "PASS entries=4",
+  "PublicNuGetPublished": false,
+  "ServiceChanged": false,
+  "RealUiVerified": false,
+  "FullRepoCheck": "Unavailable: no check.fsx in this checkout"
+}

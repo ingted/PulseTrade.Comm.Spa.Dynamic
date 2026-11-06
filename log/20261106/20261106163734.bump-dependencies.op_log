@@ -1,0 +1,55 @@
+{
+  "SchemaVersion": 2,
+  "StartedUtc": "2026-11-06T08:37:34.0043814\u002B00:00",
+  "CompletedUtc": "2026-11-06T08:37:36.5051222\u002B00:00",
+  "Mode": "dependency-mutation",
+  "Repository": "E:\\deletable\\asteer-load05",
+  "ProjectScope": [
+    "tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests.fsproj"
+  ],
+  "PackageProject": "",
+  "PackageId": "dependency-sync",
+  "OldVersion": "multiple",
+  "TargetVersion": "PulseTrade.Comm.Spa.Dynamic.Interactive.Client@0.3.38",
+  "PackageProjectVersionChanged": false,
+  "ReleaseProjects": [],
+  "VersionFiles": [],
+  "Dependencies": [
+    {
+      "PackageId": "PulseTrade.Comm.Spa.Dynamic.Interactive.Client",
+      "Project": "tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests.fsproj",
+      "DeclaredVersions": [
+        "0.3.37"
+      ],
+      "Action": "update"
+    }
+  ],
+  "ChangedProjects": [
+    "tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests.fsproj"
+  ],
+  "Tests": [],
+  "Commands": [
+    {
+      "Kind": "dependency-update",
+      "Target": "tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests.fsproj",
+      "ExitCode": 0,
+      "DurationMs": 0,
+      "OutputTail": "PulseTrade.Comm.Spa.Dynamic.Interactive.Client: 0.3.37 -\u003E 0.3.38"
+    },
+    {
+      "Kind": "dependency-restore",
+      "Target": "tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests.fsproj",
+      "ExitCode": 0,
+      "DurationMs": 2375,
+      "OutputTail": "  Determining projects to restore...\n  Restored E:\\deletable\\asteer-load05\\tests\\PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests\\PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests.fsproj (in 967 ms)."
+    }
+  ],
+  "RollbackAttempted": false,
+  "RollbackSucceeded": false,
+  "RollbackFailure": "",
+  "HandoffReport": "",
+  "ExpectedCommit": "",
+  "ObservedCommit": "",
+  "Success": true,
+  "Failure": ""
+}

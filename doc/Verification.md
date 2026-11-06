@@ -733,3 +733,11 @@ Baseline228/228。Release最後一輪0errors/45既有warnings、43.78s；Rendere
 Evidence均在log/20261106/20261106084123.asteer_18883_037_：guide-tagging-red.{json,png}、guide-stale-capture.json、guide-lifecycle.json、guide-cross-esc.png、guide-clear-blocked.png、narrow-move.{json,png}、time-zone.json。fixed-query-rejection.json記一次錯用ta-interval切尺度：compiled binding合法拒絕、0frames，已還原30；這不是正確research-scale-*操作，也不是尺度驗收。沒有更改public腳本。
 
 Chrome lease依owner交agent.daedilas（msg-fsi-e7ba30874af54456aff0b3e33b372b5d），自有監看移除、pageerror0；18883服務與18884均未操作。後續frontend trade-focus由新owner任務另記，不混本片。此worktree既知沒有check.fsx，沿owner要求作focused source checkpoint，不宣稱整體gate通過。
+
+
+## 2026-11-06 16:47 agent.asteer：Renderer／Interactive.Client 0.3.38 local closure
+
+- 兩包各在project bin/Release產生，SDK10.0.402 library-packs copy SHA一致；nuspec、packaged/build/test DLL SHA、DLL ProductVersion與repo source commit核對。Renderer source2192ecbf，Interactive source728e45d3；Interactive→Renderer鎖[0.3.38]，Contracts[0.1.44]、FSharp.Core[10.1.402]維持。無NuGet公開push、無service操作。
+- Release build：Renderer41warnings/0errors/34.13s；Interactive1warning/0errors/14.36s。兩個直接test project均實跑restore/build/tests：Renderer228/228、Interactive20/20，0ignored/failed/errored；package verifier PASS/entries4。測試載入DLL與新包一致，沒有使用UseRendererSource旁路。
+- exact paths、SHA、dependencies、source provenance與runtime DLL證據在log/20261106/20261106161700.asteer_renderer_local038.delivery.json；各原始build/test輸出同prefix。E工作區版本delta只涉及兩producer與兩test project；owner canonical baseline不回套，Ptcs與三個舊demo不在本次Research closure。
+- 尚待root整合候選與QA真人流程；不以unit/package通過代稱UI完成。此checkout無check.fsx，未宣稱完整repo checker PASS。
