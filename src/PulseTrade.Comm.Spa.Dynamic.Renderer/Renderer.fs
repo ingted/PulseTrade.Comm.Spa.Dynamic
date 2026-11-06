@@ -1716,8 +1716,7 @@ module TaWorkspaceRenderer =
                     match priceTickSize with
                     | Some tickSize -> RendererModel.priceYAxisTickValues tickSize low high
                     | None -> RendererModel.yAxisTickValues 5 low high
-                ticks, low, high)
-        let tickY low high value = RendererModel.normalize low high top plotHeight value
+                RendererModel.yAxisTickGeometry low high top plotHeight height ticks)
         let readerStates =
             Array.map3
                 (fun cursorReader legendReader latestLegend -> ref (cursorReader, legendReader, latestLegend))
@@ -2247,10 +2246,10 @@ module TaWorkspaceRenderer =
         ] [
             yield
                 yAxisTicks
-                |> View.Map (fun (ticks, low, high) ->
+                |> View.Map (fun ticks ->
                     ticks
-                    |> Array.map (fun value ->
-                        let y = fixedText (tickY low high value)
+                    |> Array.map (fun (_, pixelY, _) ->
+                        let y = fixedText pixelY
                         svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" y; svgAttr "y2" y; svgAttr "stroke" palette.Grid; svgAttr "stroke-width" "1" ] [])
                     |> Doc.Concat)
                 |> Doc.EmbedView
@@ -2408,7 +2407,7 @@ module TaWorkspaceRenderer =
                 Attr.Create "data-testid" ("ta-y-axis-" + rowId + "-" + side)
                 Attr.Create "data-ta-y-axis-side" side
                 Attr.Create "data-ta-y-axis-row-id" rowId
-                Attr.Dynamic "data-ta-y-axis-tick-count" (yAxisTicks |> View.Map (fun (ticks, _, _) -> string ticks.Length))
+                Attr.Dynamic "data-ta-y-axis-tick-count" (yAxisTicks |> View.Map (fun ticks -> string ticks.Length))
                 Attr.Create "data-ta-y-axis-price-tick-size" (priceTickSize |> Option.map fixedText |> Option.defaultValue "")
                 Attr.Dynamic "style" (
                     chartPixelHeight.View
@@ -2444,10 +2443,9 @@ module TaWorkspaceRenderer =
                     ] [ text "" ]
                 yield
                     yAxisTicks
-                    |> View.Map (fun (ticks, low, high) ->
+                    |> View.Map (fun ticks ->
                         ticks
-                        |> Array.mapi (fun index value ->
-                            let y = tickY low high value * 100.0 / height
+                        |> Array.mapi (fun index (value, _, y) ->
                             let translate =
                                 if index = 0 then "translateY(0)"
                                 elif index = ticks.Length - 1 then "translateY(-100%)"

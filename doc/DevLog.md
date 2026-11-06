@@ -2543,3 +2543,7 @@ Standalone source build0errors44warnings77.76s; fullRendererExpecto192/192,0igno
 - 18883真default ES execution161：reverse1500、sticky pin/unpin、930→60右端點均通過本輪操作；Y刻度重疊FAIL，不以正確數值冒充畫面通過。修正tickY傳錯normalize參數的一行呼叫，Renderer209/209 PASS、build0errors44既有warnings；下一candidate須真browser複驗。guides/04仍未實測完成。
 - RFC-0036 amendment、SA/SD/WBS/Test/Verification同鏈更新。Source checkpoint不是整體完成；既有whole-repo check問題不因focused green被洗掉，本次未擴大重跑。
 - Evidence：log/20261106/20261106084123.asteer_load04_contract-{baseline-build,baseline-tests,build,build-r2,tests,build-r3,tests-r3}.log、asteer_load05_tick-geometry-{build,tests}.log、asteer_18883 JSON/PNG（同prefix），以及20261106091700_issue_navigation.hypothesis.md。所有正式結果／hash與未驗界線見Verification。
+
+## 2026-11-06 11:40:15 +08:00 Y 軸座標回歸補強
+
+Renderer 的 grid 與左右 labels 共用 yAxisTickGeometry 輸出的 value/pixelY/percentY，消除兩種座標各自計算的分歧。DYN-T-785 四組獨立預期值驗無padding、padding、負值indicator與flat價格；DYN-T-786使用18883實際十個ES刻度，驗首尾0/250px、0/100%及相鄰>14px避免重疊。Release build0errors44existingwarnings41.06s；Renderer214/214、0ignored/failed/errored0.8334382s，producer/test SHA256同0EA9E215BFAE503D60C4A4EC3BE3EF750F22283AC2336AC4EDC592A96228A3E4。真browser仍待新immutable candidate，未把unit當UI通過。Evidence：log/20261106/20261106084123.asteer_load05_tick-regression-build.log及tick-regression-tests.log（同prefix）。

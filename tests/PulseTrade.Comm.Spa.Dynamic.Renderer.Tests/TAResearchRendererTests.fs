@@ -31,6 +31,24 @@ let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc avai
 
 let tests =
     testList "TA renderer model" [
+        for label, low, high, top, plotHeight, chartHeight, ticks, expected in
+            [ "full price plot",90.0,100.0,0.0,250.0,250.0,[|100.0;95.0;90.0|],[|(100.0,0.0,0.0);(95.0,125.0,50.0);(90.0,250.0,100.0)|]
+              "padded plot",90.0,100.0,10.0,200.0,250.0,[|100.0;95.0;90.0|],[|(100.0,10.0,4.0);(95.0,110.0,44.0);(90.0,210.0,84.0)|]
+              "negative indicator",-100.0,100.0,0.0,134.0,134.0,[|100.0;0.0;-100.0|],[|(100.0,0.0,0.0);(0.0,67.0,50.0);(-100.0,134.0,100.0)|]
+              "flat price",7.0,7.0,8.0,234.0,250.0,[|7.0|],[|(7.0,125.0,50.0)|] ] do
+            testCase ("DYN-T-785 Y axis pixel and CSS coordinates " + label) <| fun _ ->
+                Expect.sequenceEqual (RendererModel.yAxisTickGeometry low high top plotHeight chartHeight ticks) expected
+                    "SVG grid and both HTML labels use the same price-to-Y coordinates; bounds are not destination endpoints"
+
+        testCase "DYN-T-786 actual ES quarter labels occupy distinct vertical levels" <| fun _ ->
+            let ticks = [|7659.5;7609.0;7558.5;7508.0;7457.5;7407.0;7356.5;7306.0;7255.5;7205.0|]
+            let geometry = RendererModel.yAxisTickGeometry 7205.0 7659.5 0.0 250.0 250.0 ticks
+            Expect.equal geometry[0] (7659.5,0.0,0.0) "highest label and grid start at top, not bottom"
+            Expect.equal geometry[9] (7205.0,250.0,100.0) "lowest label and grid end at bottom"
+            for (_,leftPixel,leftPercent),(_,rightPixel,rightPercent) in Array.pairwise geometry do
+                Expect.isTrue (rightPixel-leftPixel > 14.0 && rightPercent > leftPercent)
+                    "all ten 14px labels have separate increasing positions instead of the live top100% overlap"
+
         for label, inset, naturalBottom, scopeBottom, height, expected in
             [ "visible overview stays in flow", 0.0, 20.0, 900.0, 119.0, None
               "touching threshold stays in flow", 60.0, 60.0, 900.0, 119.0, None
