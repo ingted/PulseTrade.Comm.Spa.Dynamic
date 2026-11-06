@@ -499,3 +499,6 @@ Core61 supersedes unpublished-to-host60; reuse per-project outputs, new immutabl
 
 
 2026-11-06 時間顯示補充（RFC0036）：GLOBAL稀疏anchors不能承諾任意ordinal的精確時間，owner接受明標「約」的display-only值；導航authority仍由實際資料決定。獨立overview的active draft為None不代表gesture結束，清理須同時尊重pending事件與queued下一手勢。
+
+
+2026-11-06 public11容量：同一DynamicRuntimeDefaults同時供snapshot與client reducer，局部host override會造成雙重標準。依RFC0036 capacity amendment，只擴16rows/128traces；保留其餘資源限制，所有active consumer須同一package closure。

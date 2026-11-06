@@ -1070,3 +1070,6 @@ TaCoverageWindowPurpose 末端新增 NavigatorMove。VisibleRangeChanged validat
 
 
 2026-11-06 補充：globalResidentBoundaryTimes以真anchor ordinal二分查找顯示界線；ready後使用actual resident timeline。navigatorBoundaryTimesOverride隨frozen ratios在同一rAF更新；navigatorPreviewCanClear確認drag/coverage/eventRange/queue皆空，reject/settle/cancel沿既有generation流程清理或恢復。不得把近似label送回VisibleRangeChanged。
+
+
+2026-11-06 public11容量實作：RuntimeTypes.DynamicRuntimeDefaults.limits只改MaxRowsPerCanvas16與MaxTotalTraces128。RuntimeValidation仍計TaRowSpec.effectiveTraces且逐條拒絕，typed Contracts測試使用獨立明確11/67、16/128及17/129輸入，不從實作limit推導oracle。其他欄位與既有patch/bar拒絕案例不變。

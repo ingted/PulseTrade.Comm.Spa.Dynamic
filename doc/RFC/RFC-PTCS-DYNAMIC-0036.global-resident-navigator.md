@@ -270,3 +270,6 @@ Renderer 後續用同一 OverviewAnchors 時軸對齊縮圖、遮罩、手勢與
 
 
 2026-11-06 amendment：owner msg-fsi-63369a207c294d4eb45c0addfcdb0b55 接受GLOBAL預覽以附近真anchor時間明標「約」，僅顯示用途；settlement ready後顯示真resident首末K。不得寫入request/ordinal/行情時間。TA/resident維持真時間；mask與時間共用capture，pending gesture不得因active draft=None被提早清掉。source228/228，實際UI仍pending。
+
+
+2026-11-06 public11 capacity amendment（owner msg-fsi-8fe71dffd6294e019d4cee21e5180357 accepted）：正式11列/67traces超過既有8/64預設。validator雖接受limits參數，reducer與snapshot transport共用hard-coded defaults，無跨端一致profile入口；依既有共用authority只將rows/total提高至16/128。每row32、bars/patch/frame bytes上限不變，驗11/67與16/128允許、17列/129traces/33per-row各自明確拒絕。套件closure仍由daedilus處理，正式public11不縮減。

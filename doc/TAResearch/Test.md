@@ -228,3 +228,6 @@ DYN-T-782：MainPlotPan／NavigatorWindow／NavigatorMove三用途typed codec ro
 
 
 2026-11-06 DYN-T-795/796/797：真anchor近似標示的lookup、invalid/overflow、pending gesture預覽保留與settled清理。Renderer228/228通過；此為model/source驗證，GLOBAL/TA/resident實際layout及late-frame操作須新版browser gate，見doc/Verification.md。
+
+
+DYN-T-798..800（public11容量）：11/67、16/128、per-row32有效；17列、129traces、33per-row精確拒絕，其他limits固定。Baseline59/59→RED62/66→GREEN66/66；正式public11 browser仍待新closure，詳Verification容量checkpoint。

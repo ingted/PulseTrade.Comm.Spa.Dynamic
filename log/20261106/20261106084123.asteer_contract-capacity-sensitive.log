@@ -1,0 +1,2 @@
+Sensitive text scan: files=17 high=0 medium=0 info=336 failOn=High
+[Info] truncated 336 informational keyword-context findings; use --max-info to adjust.

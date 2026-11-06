@@ -2572,3 +2572,11 @@ DYN793/794驗實際首末bar、gap、UTCsuffix、單根、空值與非法selecti
 DYN-T-795/796 驗 GLOBAL 真實 anchor 查找與非法／overflow 拒絕；DYN-T-797 驗 held/drop-pending/coverage/queued/settled 的清理條件。最終 Release build0errors/45warnings（44既有＋1個非必要upcast）、42.98s；Renderer Expecto228/228、0ignored/failed/errored、0.8823107s。producer/test DLL SHA256：5B7D8CD2C9AD04A8B5611AA70423953364985ABC797A6A10EC91EF62C07C25E1。Evidence：log/20261106/20261106084123.asteer_load03_global-time-{build-r2,tests-r2}.log；第一輪227/227記錄保留。
 
 這是 source checkpoint；版本與包由 daedilus 負責，現有 .35 不覆寫，本片連同 faf65a6 留下一包。新版真 browser 的標籤佈局、拖曳、late frame、guide/tagging互斥與最小視窗邊界仍待驗收，不以unit代替UI。Research窄mapper已在 E:/deletable/asteer-fsx01 commit5feff22cbb9af0866ce00039a4ab28644f49d0a0 交付並真SQL8/8通過。18883控制仍由owner持有，18884未動。
+
+## 2026-11-06 public11 bounded capacity source checkpoint
+
+RuntimeTypes.DynamicRuntimeDefaults.limits 只把 MaxRowsPerCanvas 8→16、MaxTotalTraces 64→128；每row32、initial5000、retained4500、patch64ops/500items、frame16MiB、poll5s維持。低階validator可傳record，但reducer/snapshot transport讀共用defaults，無現成跨端profile可避免不一致，依owner msg-fsi-8fe71dffd6294e019d4cee21e5180357擴共用有界容量。
+
+Baseline Contracts59/59。加入獨立11rows/67effective traces（含candles）、16/128、per-row32允許；17rows、129total、33per-row各拒絕正確reason；DYN798-800保持其餘bounds不變。舊T011改成新row上限+1，並修正BaseRowId以免錯誤原因遮掩row上限。RED66例中4失敗、62通過，失敗均為舊8/64造成；兩常數修正後同一suite66/66、0ignored/failed/errored、3.9187291s。Release0warnings/0errors、25.86s；producer/test DLL同SHA256 74BEB8DE9DBCAA8206B7FAD28BA41EE6CCC82CCA88AC93494C122CF423E6340B。
+
+Evidence：log/20261106/20261106084123.asteer_contract-capacity-{baseline,red,green}-{build,tests}.log；因果／pre-work見20261106091700_issue_navigation.hypothesis.md及20261106084123.asteer_load05.log（同log目錄）。這些是typed contract tests，沒有執行public11的正式browser；owner後續建立.44/.37 closure再跑整合。沒有關validator、縮public11、變更project版本、pack或重啟服務。所有既有整體驗收缺口仍保留。
