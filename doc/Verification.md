@@ -711,3 +711,12 @@ RuntimeTypes.DynamicRuntimeDefaults.limits 只把 MaxRowsPerCanvas 8→16、MaxT
 Baseline Contracts59/59。加入獨立11rows/67effective traces（含candles）、16/128、per-row32允許；17rows、129total、33per-row各拒絕正確reason；DYN798-800保持其餘bounds不變。舊T011改成新row上限+1，並修正BaseRowId以免錯誤原因遮掩row上限。RED66例中4失敗、62通過，失敗均為舊8/64造成；兩常數修正後同一suite66/66、0ignored/failed/errored、3.9187291s。Release0warnings/0errors、25.86s；producer/test DLL同SHA256 74BEB8DE9DBCAA8206B7FAD28BA41EE6CCC82CCA88AC93494C122CF423E6340B。
 
 Evidence：log/20261106/20261106084123.asteer_contract-capacity-{baseline,red,green}-{build,tests}.log；因果／pre-work見20261106091700_issue_navigation.hypothesis.md及20261106084123.asteer_load05.log（同log目錄）。這些是typed contract tests，沒有執行public11的正式browser；owner後續建立.44/.37 closure再跑整合。沒有關validator、縮public11、變更project版本、pack或重啟服務。所有既有整體驗收缺口仍保留。
+## 2026-11-06 18883 .37 Y-axis 實際驗收
+
+人類已啟動18883，實查listener PID69320與/health HTTP200；owner確認Research0.1.64、Renderer0.3.37、Contracts0.1.44。使用既有公開預設ES30K/60K腳本，沒有改腳本；canvas fsstl-spaa-canvas-8f5ae61042ca40df9c1e10c5a8338aa6 / revision3。HTML query仍v0.1.61，不能當版本證據；禁cache reload後實際served bundle796826bytes SHA256 fad6d3babd667c61b59583f54d20d04be9d5c1ddaff6cad21ae106886aef8bf2。owner另處理cache bust，未重啟本服務。
+
+真操作：1500bars、按48 preset、browser900px寬，各取左右刻度與SVG格線幾何並人工檢視截圖。三者都10個ticks、quarter alignment錯誤0、左右value/y mismatch0；label最小淨間距6.78125/6.609375/6.609375px，格線對位誤差<0.001px。舊.34十個刻度擠在底部14px範圍，本候選分布約234–236px且沒有重疊。還原1600px並等待13秒後，48bars、Viewing4453–4500與幾何維持。Pageerror0，當前navigation console工具回0errors/0warnings。
+
+Evidence：log/20261106/20261106084123.asteer_18883_037_y-{wide,narrow,responsive}.{json,png}及y-late.json；四份JSON已由程式核對tick/count/spacing/grid/quarter/左右一致，三張圖逐張目視。這只關閉Y軸塌陷的此候選gate；guides/tagging、動態時間、scale右端、反向及連續雙向外展、trade UI仍未完成。Chrome lease仍由asteer持有，18884未動。
+
+Driver紀錄：第一次禁cache reload後，工具VM不支援Node dynamic import，於Run前失敗；後續以瀏覽器Web Crypto取得served hash、送回cacheDisabled=false並執行唯一Run。console工具不允許直接存到E worktree，未寫檔且未繞過，改用不寫檔的console read取得0訊息。這些driver限制不是產品JS錯誤。
