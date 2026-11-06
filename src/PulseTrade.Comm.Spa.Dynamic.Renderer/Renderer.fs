@@ -1404,13 +1404,15 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvgReactivePreparedLiveWithYAxisTicks priceTickSize yBounds palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh (mainPlotInteractionMode: View<TaMainPlotInteractionMode>) currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
+    let compositeSvgReactivePreparedLiveWithGuides (guideTool: Var<TaChartGuideTool option>) (guides: Var<TaChartGuide list>) priceTickSize yBounds palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh (mainPlotInteractionMode: View<TaMainPlotInteractionMode>) currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
         let top = if hasCandles then 0.0 else 10.0
         let plotHeight = if hasCandles then height else 92.0
         let color = RendererModel.traceColor
+        let pointerMode =
+            View.Map2 (fun tool mode -> if Option.isSome tool then TaMainPlotInteractionMode.Cursor else mode) guideTool.View mainPlotInteractionMode
 
         let xAt index =
             RendererModel.slotCenter width referenceTimestamps.Length index
@@ -2163,12 +2165,14 @@ module TaWorkspaceRenderer =
             svgAttr "viewBox" ("0 0 1000 " + fixedText height)
             svgAttr "preserveAspectRatio" "none"
             svgAttr "role" "img"
+            svgAttr "tabindex" "0"
             svgAttr "aria-label" ("Composite TA row " + rowId)
             Attr.Create "data-testid" svgTestId
             Attr.Create TaPointActivation.SurfaceAttribute "true"
             Attr.Create "data-ptcs-ta-point-row-id" rowId
             Attr.Create "data-plot-surface-theme" palette.ThemeName
             Attr.Create "data-point-count" (string referenceTimestamps.Length)
+            Attr.Dynamic "data-ta-guide-tool" (guideTool.View |> View.Map (Option.map RendererModel.chartGuideToolKey >> Option.defaultValue "none"))
             Attr.Dynamic
                 "data-main-plot-interaction-mode"
                 (mainPlotInteractionMode
@@ -2185,16 +2189,20 @@ module TaWorkspaceRenderer =
                             | TaMainPlotInteractionMode.Resize -> "ew-resize"
                         "display:block; width:100%; height:" + string value + "px; background:" + palette.Surface + "; touch-action:none; user-select:none; cursor:" + cursor + ";")
                     chartPixelHeight.View
-                    mainPlotInteractionMode)
+                    pointerMode)
             Attr.Handler "contextmenu" (fun element event ->
                 event.PreventDefault()
                 event.StopPropagation()
                 hideHorizontalCursor ()
                 setCursorIndex None
-                onMainPlotContextMenu (element |> As<Element>) event)
-            Attr.Handler "pointerdown" (fun element event -> onMainPlotPointerDown (element |> As<Element>) event)
+                if guideTool.Value.IsNone then onMainPlotContextMenu (element |> As<Element>) event)
+            Attr.Handler "pointerdown" (fun element event ->
+                if guideTool.Value.IsSome then
+                    event.StopPropagation()
+                    (element |> As<HTMLElement>).Focus()
+                else onMainPlotPointerDown (element |> As<Element>) event)
             on.mouseMove (fun element event ->
-                match currentMainPlotInteractionMode () with
+                match if guideTool.Value.IsSome then TaMainPlotInteractionMode.Cursor else currentMainPlotInteractionMode () with
                 | TaMainPlotInteractionMode.Cursor ->
                     let bounds = element.GetBoundingClientRect()
                     updateHorizontalCursor (element |> As<Element>) event
@@ -2206,8 +2214,22 @@ module TaWorkspaceRenderer =
                     setCursorIndex None)
             on.mouseLeave (fun _ _ -> hideHorizontalCursor ())
             on.click (fun element event ->
-                if currentMainPlotInteractionMode () = TaMainPlotInteractionMode.Cursor
-                   && not (consumeMainPlotClickSuppression ()) then
+                match guideTool.Value with
+                | Some tool ->
+                    event.PreventDefault()
+                    event.StopPropagation()
+                    consumeMainPlotClickSuppression () |> ignore
+                    let bounds = element.GetBoundingClientRect()
+                    let _, _, low, high = markerVisualState.Value
+                    if bounds.Height > 0.0 then
+                        let pointerY = (float event.ClientY - float bounds.Top) * height / float bounds.Height
+                        match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX,
+                              RendererModel.tryYAxisCursorValue top plotHeight low high pointerY with
+                        | Some index, Some value ->
+                            guides.Value <- { Tool=tool; RowId=rowId; Timestamp=referenceTimestamps[index]; Value=value } :: guides.Value
+                        | _ -> ()
+                | None when currentMainPlotInteractionMode () = TaMainPlotInteractionMode.Cursor
+                   && not (consumeMainPlotClickSuppression ()) ->
                     let bounds = element.GetBoundingClientRect()
                     match RendererModel.cursorIndexFromClientX referenceTimestamps.Length bounds.Left bounds.Width event.ClientX with
                     | Some index -> commitCursorIndex index
@@ -2220,7 +2242,8 @@ module TaWorkspaceRenderer =
                             (event.Target |> As<Element>).GetAttribute(TaPointActivation.TraceAttribute)
                         candidates
                         |> RendererModel.tryNearestPointHitForTrace preferredTraceId pointX pointY
-                        |> Option.iter (fun hit -> onPointActivated element hit candidates))
+                        |> Option.iter (fun hit -> onPointActivated element hit candidates)
+                | None -> ())
         ] [
             yield
                 yAxisTicks
@@ -2350,6 +2373,32 @@ module TaWorkspaceRenderer =
                     on.afterRender (fun node -> horizontalCursorElement <- node |> As<Element>)
                 ] []
 
+            yield
+                View.Map2 (fun lines (_, _, low, high) ->
+                    svgElement "g" [ Attr.Create "data-testid" ("ta-guide-layer-" + rowId); svgAttr "pointer-events" "none" ] [
+                        for guide in lines do
+                            let vertical, horizontal = RendererModel.chartGuideAxes rowId guide
+                            let line orientation x1 y1 x2 y2 =
+                                svgElement "line" [
+                                    Attr.Create "data-ta-guide-orientation" orientation
+                                    Attr.Create "data-ta-guide-origin-row" guide.RowId
+                                    Attr.Create "data-ta-guide-time" guide.Timestamp
+                                    Attr.Create "data-ta-guide-value" (fixedText guide.Value)
+                                    svgAttr "x1" (fixedText x1); svgAttr "y1" (fixedText y1)
+                                    svgAttr "x2" (fixedText x2); svgAttr "y2" (fixedText y2)
+                                    svgAttr "stroke" palette.Cursor; svgAttr "stroke-width" "1"
+                                    svgAttr "vector-effect" "non-scaling-stroke"
+                                ] []
+                            if vertical then
+                                match referenceSlots.TryGetValue guide.Timestamp with
+                                | true, index -> yield line "vertical" (xAt index) top (xAt index) (top + plotHeight)
+                                | _ -> ()
+                            if horizontal then
+                                match RendererModel.tryChartGuideY top plotHeight low high guide.Value with
+                                | Some y -> yield line "horizontal" 0.0 y width y
+                                | None -> ()
+                    ]) guides.View markerVisualState.View
+                |> Doc.EmbedView
             ])
 
         let yAxis side =
@@ -2462,6 +2511,9 @@ module TaWorkspaceRenderer =
                 placements
                 stripes)
 
+    let compositeSvgReactivePreparedLiveWithYAxisTicks priceTickSize yBounds palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
+        compositeSvgReactivePreparedLiveWithGuides (Var.Create None) (Var.Create []) priceTickSize yBounds palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
+
     let compositeSvgReactivePreparedLiveWithYAxis yBounds palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
         compositeSvgReactivePreparedLiveWithYAxisTicks None yBounds palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
 
@@ -2497,7 +2549,7 @@ module TaWorkspaceRenderer =
         let cursor = Var.Create cursorIndex
         compositeSvgReactive rowId traces data referenceTimestamps cursor.View setCursorIndex commitCursorIndex
 
-    let renderRowReactivePreparedLiveWithHeightPaletteAndActivation palette (displayTime: TaRendererDisplayTime) (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated (row: TaRowSpec) =
+    let renderRowReactivePreparedLiveWithGuides (guideTool: Var<TaChartGuideTool option>) (guides: Var<TaChartGuide list>) palette (displayTime: TaRendererDisplayTime) (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated (row: TaRowSpec) =
         let traces =
             RendererModel.effectiveTraces row
             |> Array.filter (fun trace ->
@@ -2509,7 +2561,7 @@ module TaWorkspaceRenderer =
         let yBounds = RendererModel.rowYAxisBounds row
         let instrument = state.Document |> Option.map (fun document -> (RendererModel.queryDraft document.DefaultView).Instrument) |> Option.defaultValue ""
         let priceTickSize = RendererModel.priceYAxisTickSize instrument yBounds traces
-        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithYAxisTicks priceTickSize yBounds palette displayTime row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
+        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithGuides guideTool guides priceTickSize yBounds palette displayTime row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
         let title = rowTitle row traces
         let heightBounds = RendererModel.rowHeightBounds row traces
         let cursorTag =
@@ -2656,10 +2708,43 @@ module TaWorkspaceRenderer =
             elif RendererModel.rowCalendarScalePrepared row preparedData > 60.0 then 16
             else 35
         let frameHeight = rowHeight.View |> View.Map (fun value -> value + 114 + axisExtraHeight)
-        div [ Attr.Create "data-testid" ("ta-row-shell-" + row.RowId); attr.style "display:flex; flex-direction:column; min-width:0;" ] [
+        div [
+            Attr.Create "data-testid" ("ta-row-shell-" + row.RowId)
+            attr.style "display:flex; flex-direction:column; min-width:0;"
+            Attr.Handler "keydown" (fun _ event ->
+                let key = event |> As<KeyboardEvent>
+                if key.Key = "Escape" && guideTool.Value.IsSome then
+                    key.PreventDefault()
+                    key.StopPropagation()
+                    guideTool.Value <- None)
+        ] [
             chartFrame title [ metadata ] legend ("ta-row-" + row.RowId) frameHeight children
+            div [
+                Attr.Create "data-testid" ("ta-guide-tools-" + row.RowId)
+                attr.style ("display:flex; justify-content:flex-end; flex-wrap:wrap; gap:4px; padding:3px 8px; background:" + palette.AxisSurface + ";")
+            ] [
+                for tool, label in [ TaChartGuideTool.Vertical,"垂直線"; TaChartGuideTool.Horizontal,"水平線"; TaChartGuideTool.Cross,"十字線" ] do
+                    yield button [
+                        attr.``type`` "button"
+                        Attr.Create "data-testid" ("ta-guide-" + RendererModel.chartGuideToolKey tool + "-" + row.RowId)
+                        Attr.Dynamic "aria-pressed" (guideTool.View |> View.Map (fun current -> if current = Some tool then "true" else "false"))
+                        Attr.Dynamic "style" (guideTool.View |> View.Map (fun current ->
+                            "padding:2px 7px; border:1px solid " + palette.Border + "; border-radius:3px; cursor:pointer; color:" + palette.LegendText + "; background:"
+                            + (if current = Some tool then palette.OverviewSelection else palette.Surface) + ";"))
+                        on.click (fun _ _ -> guideTool.Value <- RendererModel.toggleChartGuideTool tool guideTool.Value)
+                    ] [ text label ]
+                yield button [
+                    attr.``type`` "button"
+                    Attr.Create "data-testid" ("ta-guide-clear-" + row.RowId)
+                    attr.title "清除所有同步圖表的輔助線"
+                    on.click (fun _ _ -> guides.Value <- [])
+                ] [ text "清除線" ]
+            ]
             rowResizeHandle row.RowId heightBounds rowHeight
         ], cursorReaders, legendReaders, latestLegendReaders, markerCursorReader
+
+    let renderRowReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated row =
+        renderRowReactivePreparedLiveWithGuides (Var.Create None) (Var.Create []) palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated row
 
     let renderRowReactivePreparedLiveWithHeightPalette palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement row =
         let interactionMode = Var.Create TaMainPlotInteractionMode.Cursor
@@ -2875,6 +2960,8 @@ module TaWorkspaceRenderer =
         let mutable chartRenderReason = "initial"
         let cursorIndex = Var.Create<int option> None
         let mainPlotInteractionMode = Var.Create TaMainPlotInteractionMode.Cursor
+        let guideTool = Var.Create<TaChartGuideTool option> None
+        let guides = Var.Create<TaChartGuide list> []
         let mutable chartStackElement: Element = null
         let mutable lastViewportDispatchKind = ""
         let mutable lastViewportDispatchTarget: int64 option = None
@@ -3053,6 +3140,12 @@ module TaWorkspaceRenderer =
         let viewportScopeKey (state: RuntimeState) (document: TaWorkspaceDocument) =
             let canvasKey = canvasIdText state.Identity.CanvasInstanceId
             canvasKey + "|" + (coverageIdentity state document |> Option.defaultValue "legacy")
+
+        let guideScope (state: RuntimeState) =
+            state.Document
+            |> Option.map _.DefaultView
+            |> Option.defaultValue Map.empty
+            |> RendererModel.chartGuideScope state.Identity
 
         let coverageProjection (state: RuntimeState) =
             state.Document
@@ -3805,6 +3898,9 @@ module TaWorkspaceRenderer =
         runtimeState.View
         |> View.Sink (fun next ->
             let dataChanged = runtimeDataChanged observedDataState next
+            if guideScope next <> guideScope observedDataState then
+                guides.Value <- []
+                guideTool.Value <- None
             let viewportScopeChanged =
                 next.Document
                 |> Option.map (fun document -> defaultViewportAppliedToCanvas <> Some(viewportScopeKey next document))
@@ -6319,7 +6415,9 @@ module TaWorkspaceRenderer =
                                     for index in 0 .. visibleRows.Length - 1 do
                                         let prepared = rowDataStates[index].Value
                                         let rowDoc, cursorReaders, legendReaders, latestLegendReadersForRow, markerCursorReader =
-                                            renderRowReactivePreparedLiveWithHeightPaletteAndActivation
+                                            renderRowReactivePreparedLiveWithGuides
+                                                guideTool
+                                                guides
                                                 currentPlotPalette
                                                 displayTime
                                                 state

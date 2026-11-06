@@ -1,0 +1,217 @@
+[37m[[37m10:49:53 [37mINF[37m] [37mEXPECTO? Running tests...[37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[37m[[37m10:49:54 [37mINF[37m] [37mEXPECTO! [36m209[37m tests run in [32m00:00:00.7459706[37m for [36mTA renderer model[37m – [36m209[37m passed, [36m0[37m ignored, [36m0[37m failed, [36m0[37m errored. [36mSuccess![37m [37m<[37mExpecto[37m>[37m
+[0m[1000D[?25h[37m[[37m10:49:54 [37mINF[37m] [37mEXPECTO?! Summary...
+Passed: [36m 209
+	TA renderer model.DYN-T-777 resident overview sticky geometry visible overview stays in flow
+	TA renderer model.DYN-T-777 resident overview sticky geometry touching threshold stays in flow
+	TA renderer model.DYN-T-777 resident overview sticky geometry passed overview pins below host toolbar
+	TA renderer model.DYN-T-777 resident overview sticky geometry default host inset is zero
+	TA renderer model.DYN-T-777 resident overview sticky geometry chart end pushes overview out
+	TA renderer model.DYN-T-777 resident overview sticky geometry other chart owns viewport after scope ends
+	TA renderer model.DYN-T-777 resident overview sticky geometry empty overview is not fixed
+	TA renderer model.DYN-T-777 resident overview sticky geometry unknown geometry does not pin
+	TA renderer model.DYN-T-777 resident overview sticky geometry infinite geometry does not pin
+	TA renderer model.DYN-T-778 guide tool selection toggles off without replacing another tool implicitly
+	TA renderer model.DYN-T-779 guide axes Vertical price
+	TA renderer model.DYN-T-779 guide axes Vertical volume
+	TA renderer model.DYN-T-779 guide axes Horizontal price
+	TA renderer model.DYN-T-779 guide axes Horizontal volume
+	TA renderer model.DYN-T-779 guide axes Cross price
+	TA renderer model.DYN-T-779 guide axes Cross volume
+	TA renderer model.DYN-T-780 guide value follows current row geometry upper edge
+	TA renderer model.DYN-T-780 guide value follows current row geometry lower edge
+	TA renderer model.DYN-T-780 guide value follows current row geometry quarter value
+	TA renderer model.DYN-T-780 guide value follows current row geometry inverted bounds
+	TA renderer model.DYN-T-780 guide value follows current row geometry constant range
+	TA renderer model.DYN-T-780 guide value follows current row geometry below range
+	TA renderer model.DYN-T-780 guide value follows current row geometry above range
+	TA renderer model.DYN-T-780 guide value follows current row geometry invalid value
+	TA renderer model.DYN-T-780 guide value follows current row geometry empty height
+	TA renderer model.DYN-T-781 guide lifetime follows run and scale while retaining lines across resident window changes
+	TA renderer model.DYN-T-773 ES price ticks use quarter increments with eight to ten readable levels
+	TA renderer model.DYN-T-774 narrow and invalid price ranges do not manufacture levels
+	TA renderer model.DYN-T-775 price tick policy preserves fixed bounds DMI and other instruments
+	TA renderer model.DYN-T-765 main zoom reveals four-hour labels instead of keeping only eight-hour candidates
+	TA renderer model.DYN-T-766 main axis density follows observation width and viewport pixels
+	TA renderer model.DYN-T-767 adaptive main labels preserve opening identity and use the display clock for guides
+	TA renderer model.DYN-T-768 adaptive main axis keeps fine-scale hourly marks and overviews unchanged
+	TA renderer model.DYN-T-769 adaptive main axis handles empty invalid and sub-hour windows
+	TA renderer model.DYN-T-770 adaptive main guides and labels survive closures without dilution or duplicates
+	TA renderer model.DYN-T-771 non-candle legend colors match explicit and fallback trace paint
+	TA renderer model.DYN-T-772 histogram legend follows the active value polarity
+	TA renderer model.DYN-T-752 resident day grid interpolates midnight instead of labelling the sampled hour
+	TA renderer model.DYN-T-753 resident monthly grid uses Monday weeks including a partial first week
+	TA renderer model.DYN-T-754 resident intraday ticks use clock multiples and tolerate empty input
+	TA renderer model.DYN-T-760 overview opening hours follow ET daylight saving and display zone
+	TA renderer model.DYN-T-761 main 30K and 60K only mark opening and eight-hour clock multiples
+	TA renderer model.DYN-T-762 main 1K and 5K have hourly ticks but selected text only
+	TA renderer model.DYN-T-763 clipped windows and unavailable metadata never invent session openings
+	TA renderer model.DYN-T-764 tick identity and positions survive display-zone changes
+	TA renderer model.DYN-T-751 authored Y bounds override DMI defaults without changing unconfigured rows
+	TA renderer model.DYN-T-750 superseded range completion cannot undo the latest resize
+	TA renderer model.DYN-T-751 preparation feedback cannot gray the committed charts
+	TA renderer model.DYN-T-746 main plot full range forward 25 to 65
+	TA renderer model.DYN-T-746 main plot full range reverse restores full window at resident end
+	TA renderer model.DYN-T-746 main plot full range reverse near resident end
+	TA renderer model.DYN-T-746 main plot full range clipped full window
+	TA renderer model.DYN-T-746 main plot full range minimum stays inside captured window
+	TA renderer model.DYN-T-746 main plot full range stationary is not a range
+	TA renderer model.DYN-T-746 main plot full range outside same edge is empty
+	TA renderer model.DYN-T-746 main plot full range zero width is invalid
+	TA renderer model.DYN-T-746 main plot full range nonfinite pointer is invalid
+	TA renderer model.DYN-T-746 main plot full range nonfinite track is invalid
+	TA renderer model.DYN-T-776 reverse range reset midpoint of narrow capture
+	TA renderer model.DYN-T-776 reverse range reset different release keeps pressed center
+	TA renderer model.DYN-T-776 reverse range reset off-center press
+	TA renderer model.DYN-T-776 reverse range reset near resident start
+	TA renderer model.DYN-T-776 reverse range reset short resident
+	TA renderer model.DYN-T-746 range after a prior selection and empty capture
+	TA renderer model.DYN-T-746 main plot commit shares range endpoints and clears queued draft
+	TA renderer model.DYN-T-745 non-GLOBAL loaded segments share label selection gesture and queued authority
+	TA renderer model.DYN-T-602 projection commit gate rejects stale superseded and duplicate candidates
+	TA renderer model.DYN-T-734 projection commit survives a heartbeat-only transport advance
+	TA renderer model.DYN-T-687 point hit selection uses rendered x/y geometry and stable trace identity
+	TA renderer model.DYN-T-711 clicked trace identity wins over an overlapping candle fallback
+	TA renderer model.DYN-T-712 queued viewport action drains in the settlement callback before RAF fallback
+	TA renderer model.DYN-T-688 point activation emits only for the committed projection key
+	TA renderer model.DYN-T-689 main plot drag maps CSS movement to viewport bars with a click threshold
+	TA renderer model.DYN-T-707 main plot right-click mode owns pan versus full range selection
+	TA renderer model.DYN-T-714 non-cursor main plot drag normalizes a bounded range preview
+	TA renderer model.DYN-T-718 accepted event-range settlement owns a changed coverage scope
+	TA renderer model.DYN-T-719 matching event-range settlement survives the full-preparation boundary
+	TA renderer model.DYN-T-720 action completion settles only a coherent committed prepared frame
+	TA renderer model.DYN-T-716 accepted main relocation reanchors the requested event time exactly once
+	TA renderer model.DYN-T-715 cross-axis navigator drop uses the exact resident overview event-time timeline
+	TA renderer model.DYN-T-717/DYN-T-724 navigator requests exact event-time materialization without an ordinal
+	TA renderer model.DYN-T-721 cross-axis exact active fallback still requests event-time materialization
+	TA renderer model.DYN-T-713 navigator edge handles anchor resize at the logical selection boundary
+	TA renderer model.DYN-T-708 only-coarse-row navigator never reinterprets active indexes as GLOBAL ordinals
+	TA renderer model.row Y coordinates mirror the five horizontal grid levels on both sides
+	TA renderer model.visible K-bar domain ignores remote extrema and keeps fixed CSS padding after resize
+	TA renderer model.workspace bootstrap distinguishes lifecycle progress from terminal failure
+	TA renderer model.typed candle series rejects malformed items
+	TA renderer model.same-position preview updates preserve chart topology while appended bars rebuild it
+	TA renderer model.cache rehydrate data reference triggers repaint without revision inflation
+	TA renderer model.legend lookup is qualified by row and row-local trace index
+	TA renderer model.visible window clamps count and start
+	TA renderer model.query draft is initialized from server document metadata without demo literals
+	TA renderer model.query viewport uses temporal intervals preserves gaps and ignores stale replies
+	TA renderer model.DYN-T-733/DYN-T-735 accepted query waits for authoritative or positive materialization evidence
+	TA renderer model.DYN-T-733B production settles the accepted query only from committed prepared frames
+	TA renderer model.DYN-T-734 accepted query settlement exposes bounded DOM diagnostics
+	TA renderer model.visible window handles short series
+	TA renderer model.follow latest resolves to tail while historical viewport remains stable
+	TA renderer model.bootstrap coverage expansion adopts the durable active detail only before user interaction
+	TA renderer model.navigator draft clamps without changing committed window until release
+	TA renderer model.navigator release commits the final pointer intent before its scheduled paint
+	TA renderer model.navigator pointerup and its published ratios use the same final pointer
+	TA renderer model.chained navigator gesture starts from the last visible optimistic draft
+	TA renderer model.queued navigator gesture rebases its displacement to the latest resident domain
+	TA renderer model.dual-bound navigator previews move and both resize handles
+	TA renderer model.navigator gesture ownership remains stable across a 4500-observation resident domain
+	TA renderer model.capped navigator right resize preserves the existing left handle behavior
+	TA renderer model.capped navigator resize is reflection symmetric across resident boundaries
+	TA renderer model.budgeted work coalesces cheap recursive tasks with FIFO and count bounds
+	TA renderer model.budgeted work yields after the time budget without splitting an atomic step
+	TA renderer model.initial preparation uses a larger bounded turn while incremental work stays responsive
+	TA renderer model.budgeted work clears a failed batch and can accept a new batch
+	TA renderer model.budgeted work rejects invalid budgets before scheduling
+	TA renderer model.RFC-0031 cross-axis overview uses event time and all gestures emit boundary intent
+	TA renderer model.coverage projection and action settlement preserve the newest optimistic viewport
+	TA renderer model.RFC-0031 overview anchors preserve authored OHLC without inventing OC wicks
+	TA renderer model.overview compaction aggregates contiguous OHLC buckets and preserves source coverage
+	TA renderer model.overview geometry excludes non-finite prices instead of poisoning every SVG coordinate
+	TA renderer model.navigator visual geometry preserves the exact resolved-window ratio
+	TA renderer model.global resident strip expands visual and hit geometry around the exact semantic center
+	TA renderer model.navigator hit resolver keeps resize and move deterministic for tiny selections
+	TA renderer model.document viewport cap and loaded coverage projection remain independent
+	TA renderer model.DYN-T-722 cross-axis main-plot boundary pan uses active-detail authority
+	TA renderer model.DYN-T-736 returned active-local overscroll keeps event-time authority and queues one directional navigator request
+	TA renderer model.DYN-T-739 returned navigator separates directional fetch capacity from viewport width
+	TA renderer model.DYN-T-737 cross-axis global-backed left edge uses adjacent event-time authority
+	TA renderer model.non-GLOBAL selection uses loaded coordinates while active-only window math stays bounded
+	TA renderer model.DYN-T-684 global resident draft moves one fixed-width window across the whole series
+	TA renderer model.DYN-T-703 main-plot grab pan relocates the resident while preserving the inner viewport
+	TA renderer model.DYN-T-704 cross-axis main-plot drop preserves the exact formal-base pointer time
+	TA renderer model.global navigator authority survives an unknown loaded total
+	TA renderer model.accepted global coverage maps active detail into the resident-local navigator domain
+	TA renderer model.resident body reaches an edge before requesting an outside page
+	TA renderer model.navigator drag delta uses the SVG client box rather than its bordered bounding box
+	TA renderer model.DYN-T-731 global-backed resident track requires physical overscroll
+	TA renderer model.DYN-T-740 touching the loaded edge does not request continuation
+	TA renderer model.DYN-T-732 move snaps the rendered selection right edge to maximum start
+	TA renderer model.navigator hit resolver uses boundary targets and interior move for ordinary selections
+	TA renderer model.navigator hit resolver preserves visible edge resize zones for a tiny clipped selection
+	TA renderer model.overview sampling is deterministic and bounded
+	TA renderer model.projected line compaction preserves ordered bucket extrema without group allocations
+	TA renderer model.pointer ratio maps deterministically to a visible bar
+	TA renderer model.cursor, line and candle use the same slot centers
+	TA renderer model.select window is deterministic
+	TA renderer model.normalization keeps higher value visually above lower
+	TA renderer model.shared cursor snapshot aligns every visible row by window index
+	TA renderer model.shared cursor aligns short warm-up traces by timestamp rather than local index
+	TA renderer model.explicit base row controls event-time axis and visible range
+	TA renderer model.coarse cursor values require finalized event-time evidence
+	TA renderer model.status presentation preserves all freshness quality and last-good error states
+	TA renderer model.time labels expose first middle and last visible bar
+	TA renderer model.browser timestamp labels remain compact
+	TA renderer model.DYN-T-630 display formatter handles summer winter and UTC+8 rollover
+	TA renderer model.DYN-T-630 display formatter changes offset at US DST boundaries
+	TA renderer model.authored row label is the shared card and toolbar display name
+	TA renderer model.DYN-T-671 bound row display keeps custom label and reports authoritative editor values
+	TA renderer model.DYN-T-672 editor mutation accepts matching replacement identity and rejects stale documents
+	TA renderer model.document shell cache key includes runtime document and canvas identity
+	TA renderer model.latest row legend falls back to the last available presentation slot
+	TA renderer model.incremental temporal null retains an explicit projected source slot
+	TA renderer model.multi-scale temporal projection aligns candle spans repeated lines and causal step values
+	TA renderer model.overlay and separate rows independently render reused data refs
+	TA renderer model.shared temporal axis joins five scalar candle components without filling gaps
+	TA renderer model.DYN-TA-T-099 canonical event time drives presentation without changing topology identity
+	TA renderer model.DYN-T-548 triangle direction is independent from anchor
+	TA renderer model.DYN-T-573 marker budget is four direct glyphs plus one deterministic overflow cluster
+	TA renderer model.DYN-T-572 overview stripes collapse same trace and assign cross-trace lanes
+	TA renderer model.DYN-T-620 cursor events merge marker and stripe sources without duplicate event ids
+	TA renderer model.DYN-T-623 encoded overview stripes resolve onto the visible temporal axis
+	TA renderer model.DYN-T-576 row height policy is marker-independent and bounded
+	TA renderer model.DYN-T-564 timestamp presentation is locale-independent
+	TA renderer model.DYN-T-541 DYN-T-551 marker placement uses candle position and aggregate lanes
+	TA renderer model.generic editor list operations retain stable paths and validation
+	TA renderer model.scheduled preparation preserves synchronous prepared data semantics
+	TA renderer model.DYN-T-741 earlier prepend anchors the released viewport when the original page tail is evicted
+	TA renderer model.DYN-T-743 event-range ACK cannot release queued actions before its prepared frame
+	TA renderer model.DYN-T-742 adjacent settlement waits for its prepared generation and rejects a missing join
+	TA renderer model.DYN-T-744 queued event ranges preserve intent while refreshing same-scope dispatch authority
+	TA renderer model.adaptive axes and coverage reanchor preserve event-time intent
+	TA renderer model.DYN-T-690 global calendar ticks use only real anchors without time labels or overlap
+	TA renderer model.DYN-T-696 bootstrap accepts only a bounded actual global overview
+	TA renderer model.authoritative GLOBAL bootstrap replacement waits for resolved overview authority
+	TA renderer model.resident axis uses daily and hourly real observation boundaries in two lanes
+	TA renderer model.DYN-T-691 GLOBAL and RESIDENT use their separate calendar axes
+	TA renderer model.DYN-T-697 bootstrap renders actual GLOBAL read-only before authoritative state
+	TA renderer model.adjacent coverage uses explicit document authority boundaries
+	TA renderer model.prepared row gate requires the current generation row count
+	TA renderer model.renderer package remains host neutral
+	TA renderer model.renderer source contains no JavaScript escape hatch
+	TA renderer model.DYN-T-689 renderer publishes the separate browser-local point activation contract
+	TA renderer model.navigator semantic hit targets survive reactive SVG replacement
+	TA renderer model.DYN-T-684 renderer wires a separate move-only global resident strip
+	TA renderer model.resident drop retains its preview while the requested payload is pending
+	TA renderer model.P0 preparation and resident drag preserve the committed local frame
+	TA renderer model.DYN-T-726 navigator pointerdown freezes the exact rendered shell frame
+	TA renderer model.DYN-T-727 navigator pointerdown uses the document and projection that rendered the shell
+	TA renderer model.DYN-T-728 persistent navigator listener reads the latest rendered gesture authority
+	TA renderer model.DYN-T-729 retained navigator mapper publishes the atomic frame document
+	TA renderer model.DYN-T-730 navigator gesture telemetry identifies the runtime publication consumed by pointerdown
+	TA renderer model.DYN-T-730B navigator coverage telemetry distinguishes state and prepared authorities
+	TA renderer model.DYN-T-755 day lines follow TradingDate, not midnight or a closed weekend
+	TA renderer model.DYN-T-756 display zone changes hours but not TradingDate boundaries
+	TA renderer model.DYN-T-757 monthly and Monday-week ticks follow traded dates
+	TA renderer model.DYN-T-758 missing trading-day metadata never falls back to UTC date
+	TA renderer model.DYN-T-759 trading dates survive component candles and line-only base rows
+	TA renderer model.DYN-T-760 authored initial right edge uses active-axis coverage rather than resident tail
+	TA renderer model.DYN-T-761 resolved bootstrap viewport cannot be undone by follow-latest on the next render
+	TA renderer model.DYN-T-729B atomic frame document supersedes the cached shell document[37m
+Ignored: [36m  0[37m
+Failed: [36m   0[37m
+Errored: [36m  0[37m [37m<[37mExpecto[37m>[37m
+[0m

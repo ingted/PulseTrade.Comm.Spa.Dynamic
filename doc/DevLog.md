@@ -2528,3 +2528,12 @@ Checkpoint recorded 2026-11-06 09:27:29 +08:00
 Same navigator DOM now pins only after its reserved normal-flow bottom passes the host inset; its own chart bottom pushes it out. Slot preserves size, listeners are rAF-coalesced, ancestor-only observer disposes on unmount/visibility changes. Research index.html supplies shared60/86px toolbar-height CSS variable; other hosts default0. No timer/body-subtree scan or second navigator.
 
 Standalone source build0errors44warnings77.76s; fullRendererExpecto192/192,0ignored/failed/errored1.6368741s. Producer/test DLL SHA256=0014BF9F6413C7DD1532793B179C4AD2FA28F3868F3BB94565CE6450853D85F6. Real18882 baseline shows overviewbottom-155 whilechartbottom2057,positionstatic; candidate browser not run, no package/host deployment claim. Source and priorprice/reverse remain readyforreview, integration owner daedilus. Evidence: log/20261106/20261106084123.asteer_load05_sticky-build-r2.log, _sticky-tests-r2.log, _sticky-baseline.json/.png.
+
+## 2026-11-06 10:52:32 +08:00 - TA 輔助線工具 source checkpoint
+
+- 依 canonical Questions.md Q03.3，新增每個 TA row 右下方的垂直線、水平線、十字線及全清工具。垂直線用同一 event timestamp 同步各 row；水平線保留點擊 row 的實際 y 值，隨該 row 的 y 軸重新計算位置。
+- 畫線期間攔截左鍵拖曳與 point activation；再次選同一工具或 Esc 退出，保留原 Cursor/Resize 模式。全清只清線；工具仍保持選取。圖表重建及 resident 移動不清線，RUN identity／source／instrument／interval 改變才清除；F5 自然重建頁面狀態。
+- 沿用既有 SVG、Var 與 row layout，保留舊 public 函式簽名；沒有新 contract、polling、儲存服務或 package 版本變更。Scope 不使用含 query range 的 CoverageIdentity，避免正常換頁誤清除。
+- Release source build：0 errors、44 warnings。Renderer.Tests：209/209 passed，0 ignored/failed/errored，0.7459706s。producer 與 test DLL SHA256 相同：6B5CF510149059C53985FB4AA55E50BDDD244D33EA2680ED07A9AB7F0CE5463F。FSharp.Core 保持10.1.402。
+- 這是 source/model test 交付。新 candidate 的畫線、Tagging 互斥、Esc、全清、pan 保留、scale/RUN 清除及 geometry 尚待真瀏覽器驗證；不宣稱 UI 已通過。拖曳時間標示與04 overview domain 仍未完成。
+- Evidence：log/20261106/20261106084123.asteer_load03_guides-build-r3.log、asteer_load03_guides-tests-r3.log（同 prefix）；pre-work 於20261106084123.asteer_load05.log。原 FS0072 失敗與R2結果均保留。
