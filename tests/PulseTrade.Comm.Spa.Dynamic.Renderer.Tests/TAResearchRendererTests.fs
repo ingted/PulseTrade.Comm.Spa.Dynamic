@@ -39,6 +39,24 @@ let independentOverviewFixture (times: string array) : TaLoadedCoverageProjectio
 
 let tests =
     testList "TA renderer model" [
+        testCase "DYN-T-793 visible and selected boundaries preserve actual UTC bar times across gaps" <| fun _ ->
+            let times=[|"2026-11-06T10:00:00+00:00";"2026-11-06T11:00:00+00:00";"2026-11-09T09:00:00Z";"2026-11-09T10:00:00Z"|]
+            Expect.equal (RendererModel.visibleBoundaryTimes times {StartIndex=1;Count=2}) (Some(times[1],times[2]))
+                "the displayed endpoints are real selected bars, not a fabricated time in the market closure"
+            Expect.equal (RendererModel.selectionBoundaryTimes times (0.25,0.75)) (Some(times[1],times[2]))
+                "overview labels follow the exact painted selection slots"
+            Expect.equal (RendererModel.selectionBoundaryTimes times (0.0,1.0)) (Some(times[0],times[3]))
+                "full width includes the actual first and last bar without dropping UTC offsets"
+            Expect.equal (RendererModel.selectionBoundaryTimes times (0.75,1.0)) (Some(times[3],times[3]))
+                "a one-bar selection displays that same actual bar at both endpoints"
+
+        testCase "DYN-T-794 unavailable or invalid boundary selections do not invent timestamps" <| fun _ ->
+            let times=[|"2026-11-06T10:00:00Z"|]
+            for ratios in [0.0,0.0;0.5,0.25;Double.NaN,1.0;0.0,Double.PositiveInfinity;1.1,1.2] do
+                Expect.isNone (RendererModel.selectionBoundaryTimes times ratios) "empty or invalid selection has no display range"
+            Expect.isNone (RendererModel.selectionBoundaryTimes [||] (0.0,1.0)) "no loaded bar means no endpoint"
+            Expect.isNone (RendererModel.visibleBoundaryTimes times {StartIndex=0;Count=0}) "empty viewport has no endpoint"
+
         for drag, expectedPurpose, expectedCount in
             [TaWindowDrag.Move,TaCoverageWindowPurpose.NavigatorMove,600
              TaWindowDrag.ResizeLeft,TaCoverageWindowPurpose.NavigatorWindow,1500

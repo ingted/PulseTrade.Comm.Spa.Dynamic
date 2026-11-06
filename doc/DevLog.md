@@ -2555,3 +2555,9 @@ Renderer 在 OverviewAxisRef 與 active axis 不同時，以OverviewAnchors決�
 Scoped bumpVersion同步Renderer→Contracts[0.1.43]，nupkgSHA19AB70AB10B919CE8A85389D531DD7FB69C4610A8D647AB715A99D883CFFD13F；未升Renderer版本、FSharp.Core維持10.1.402。Renderer測試專案無direct Contracts pin，已以UseRendererSource=true實際restore/build/tests。Release0errors44existingwarnings64.13s，223/223、0ignored/failed/errored0.9619424s；producer/test同7CDBC1F1C712810BD6431A4D30DE854F7429E0C5AAC7F41027604589B3F13845。DYN787-792涵蓋獨立軸／gap／2000overview對1500active／metadata缺失／typed dispatch／count/generation拒絕／active boundary。首輪217/218抓到UTC比較key無suffix誤用wire，已保留原始explicitUTC；原failurelog保留。
 
 此checkpoint由owner fd1a721c要求先包Renderer/Interactive.35供Research mapper編譯。後端mapper、drag即時時間標示、此新路徑真browser與實際Frame仍未完成；不等於UI或整體完成。Evidence：log/20261106/20261106084123.asteer_load04_overview-domain-{build,tests}.log與asteer_load04_wiring-{build,tests}.log（同prefix）；scope/因果見RFC0036、SA/SD與hypothesis。
+
+## 2026-11-06 12:23:07 +08:00 TA／resident 起訖時間 source checkpoint
+
+沿用Display time zone，在既有TA guide footer顯示可視時間軸的首末K時間；主圖拖曳時顯示captured timeline的選取起迄，cleanup恢復既有時間。resident navigator從實際繪製anchors與selection ratios顯示首末K，跨休市不插值假時間。沒有新RPC、timer或viewport authority。GLOBAL稀疏anchors的exact/approximation契約已詢問owner aea41a7e，尚未新增GLOBAL時間顯示。
+
+DYN793/794驗實際首末bar、gap、UTCsuffix、單根、空值與非法selection；Renderer225/225、0ignored/failed/errored0.9329147s。Release build0errors45warnings46.10s（44既有及1個新增非必要upcast警告）；producer/testSHA相同37BCD70D9EEC8CAFCE40F778618A55FB3A8C72F3D77FF3BDD5C6F5FE1516165B。Evidence：log/20261106/20261106084123.asteer_load03_boundary-time-build.log與boundary-time-tests.log（同prefix）。尚未pack／部署／browser測量layout或拖曳時間，本checkpoint不可當UI完成。

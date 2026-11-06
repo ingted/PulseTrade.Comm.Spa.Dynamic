@@ -3578,6 +3578,19 @@ module RendererModel =
             float bounded.StartIndex / float total,
             float (bounded.StartIndex + bounded.Count) / float total
 
+    let visibleBoundaryTimes (timeline: string array) window =
+        if timeline.Length = 0 || window.Count <= 0 then None
+        else
+            let bounded = clampWindow 1 Int32.MaxValue timeline.Length window
+            Some(timeline[bounded.StartIndex], timeline[bounded.StartIndex + bounded.Count - 1])
+
+    let selectionBoundaryTimes (timeline: string array) (left, right) =
+        if timeline.Length = 0 || not (finiteNumber left && finiteNumber right) || right <= left then None
+        else
+            let first = int(Math.Floor(max 0.0 (min 1.0 left) * float timeline.Length))
+            let lastExclusive = int(Math.Ceiling(max 0.0 (min 1.0 right) * float timeline.Length))
+            visibleBoundaryTimes timeline {StartIndex=first;Count=lastExclusive-first}
+
     let navigatorSelectionRatiosForRenderWithAuthority
         activeGestureOverride
         (projection: TaLoadedCoverageProjection option)

@@ -806,6 +806,26 @@ module TaWorkspaceRenderer =
     let residentTimeAxisWithPalette palette displayTime timestamps =
         residentTimeAxisForScaleWithPalette palette displayTime (RendererModel.residentCalendarScale timestamps) timestamps
 
+    let boundaryTimeLabels palette (displayTime: TaRendererDisplayTime) testId rowId boundsView =
+        View.Map2 (fun bounds zone ->
+            let first, last = bounds |> Option.defaultValue ("", "")
+            let label prefix value = prefix + (if value = "" then "—" else TaDisplayTimeFormatter.fullOrOriginal zone value)
+            let firstText, lastText = label "首根 " first, label "末根 " last
+            div [
+                Attr.Create "data-testid" testId
+                Attr.Create "data-ta-main-boundary-row" rowId
+                Attr.Create "data-canonical-start" first
+                Attr.Create "data-canonical-end" last
+                Attr.Create "data-preview" "false"
+                Attr.Create "data-default-start-text" firstText
+                Attr.Create "data-default-end-text" lastText
+                attr.style ("display:flex; flex:1 1 460px; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:2px 12px; min-width:0; min-height:18px; padding:0 4px; font-family:Consolas,monospace; font-size:10px; color:" + palette.AxisText + "; background:" + palette.AxisSurface + ";")
+            ] [
+                span [Attr.Create "data-time-boundary-start" "true"; attr.style "white-space:nowrap;"] [text firstText]
+                span [Attr.Create "data-time-boundary-end" "true"; attr.style "white-space:nowrap;"] [text lastText]
+            ] :> Doc) boundsView displayTime.Zone
+        |> Doc.EmbedView
+
     let timeAxis testId rowId timestamps =
         let zone = Var.Create SduiDisplayTimeZone.Utc
         timeAxisWithPalette lightPlotPalette { Zone = zone.View; Current = fun () -> zone.Value } testId rowId timestamps
@@ -2722,6 +2742,8 @@ module TaWorkspaceRenderer =
                 Attr.Create "data-testid" ("ta-guide-tools-" + row.RowId)
                 attr.style ("display:flex; justify-content:flex-end; flex-wrap:wrap; gap:4px; padding:3px 8px; background:" + palette.AxisSurface + ";")
             ] [
+                yield boundaryTimeLabels palette displayTime ("ta-main-boundary-times-" + row.RowId) row.RowId
+                    (View.Const(RendererModel.visibleBoundaryTimes visibleTimestamps {StartIndex=0;Count=visibleTimestamps.Length}))
                 for tool, label in [ TaChartGuideTool.Vertical,"垂直線"; TaChartGuideTool.Horizontal,"水平線"; TaChartGuideTool.Cross,"十字線" ] do
                     yield button [
                         attr.``type`` "button"
@@ -4413,8 +4435,35 @@ module TaWorkspaceRenderer =
                     let mutable pendingDraft: TaVisibleWindow option = None
                     let mutable draftFrameScheduled = false
                     let rangePreview = plotRoot.QuerySelector("[data-testid='ta-main-plot-range-preview']")
+                    let pointerTimeline =
+                        pointerDocument
+                        |> Option.map (fun document -> RendererModel.referenceTimelineForDocumentPrepared document pointerPreparedData)
+                        |> Option.defaultValue [||]
+                    let publishBoundaryTimes preview =
+                        if not (isNull chartStackElement) then
+                            let rowId = plotRoot.GetAttribute("data-ptcs-ta-point-row-id")
+                            let labels = chartStackElement.QuerySelectorAll("[data-ta-main-boundary-row]")
+                            for index in 0 .. labels.Length - 1 do
+                                let label = labels[index] |> As<Element>
+                                if label.GetAttribute("data-ta-main-boundary-row") = rowId then
+                                    let first = label.QuerySelector("[data-time-boundary-start]")
+                                    let last = label.QuerySelector("[data-time-boundary-end]")
+                                    let firstText, lastText =
+                                        match preview with
+                                        | Some(startTime, endTime) ->
+                                            label.SetAttribute("data-preview", "true")
+                                            label.SetAttribute("data-preview-start", startTime)
+                                            label.SetAttribute("data-preview-end", endTime)
+                                            "選取起 " + TaDisplayTimeFormatter.fullOrOriginal (displayTime.Current()) startTime,
+                                            "選取迄 " + TaDisplayTimeFormatter.fullOrOriginal (displayTime.Current()) endTime
+                                        | None ->
+                                            label.SetAttribute("data-preview", "false")
+                                            label.GetAttribute("data-default-start-text"), label.GetAttribute("data-default-end-text")
+                                    if not (isNull first) then first.TextContent <- firstText
+                                    if not (isNull last) then last.TextContent <- lastText
 
                     let hideRangePreview () =
+                        publishBoundaryTimes None
                         if not (isNull rangePreview) then
                             rangePreview.SetAttribute("data-preview-visible", "false")
                             rangePreview.SetAttribute("data-preview-width", "0")
@@ -4502,6 +4551,7 @@ module TaWorkspaceRenderer =
                                         (maximumVisibleBarsNow ())
                                         total committed drag latestDelta)
                             latestRangeWindow <- draft
+                            draft |> Option.bind (RendererModel.visibleBoundaryTimes pointerTimeline) |> publishBoundaryTimes
                             draft |> Option.iter scheduleDraft
                             plotRoot.SetAttribute("data-main-plot-drag-outcome", "moving")
                             plotRoot.SetAttribute("data-main-plot-drag-delta", string latestDelta)
@@ -6628,6 +6678,13 @@ module TaWorkspaceRenderer =
                                                 |> Option.bind RendererModel.tryOverviewTimeline
                                                 |> Option.filter (Array.isEmpty >> not)
                                                 |> Option.defaultValue currentReferenceTimeline
+                                            let overviewDisplayTimeline =
+                                                currentCoverageProjection
+                                                |> Option.bind (fun projection ->
+                                                    RendererModel.tryOverviewTimeline projection
+                                                    |> Option.filter (Array.isEmpty >> not)
+                                                    |> Option.map (fun _ -> projection.OverviewAnchors |> Array.map _.EventTimeUtc))
+                                                |> Option.defaultValue currentReferenceTimeline
                                             let independentOverviewTimeline =
                                                 currentCoverageProjection
                                                 |> Option.bind (fun projection ->
@@ -6725,6 +6782,8 @@ module TaWorkspaceRenderer =
                                                                     rawEvent
                                                             | None -> ())
                                                         finishNavigatorDragFromElement
+                                                    boundaryTimeLabels currentPlotPalette displayTime "ta-resident-boundary-times" ""
+                                                        (selectionWindow |> View.Map (RendererModel.selectionBoundaryTimes overviewDisplayTimeline))
                                                     match independentOverviewTimeline with
                                                     | Some timeline -> residentTimeAxisWithPalette currentPlotPalette displayTime timeline
                                                     | None ->
