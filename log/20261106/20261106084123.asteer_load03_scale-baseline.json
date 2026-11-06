@@ -1,0 +1,66 @@
+{
+  "sequence": {
+    "before": {
+      "time": "2026-11-06T01:57:16.221Z",
+      "status": "READY / AUTHORITATIVE + ACKED",
+      "window": {
+        "data-scale-minutes": "30",
+        "data-ready": "true",
+        "data-pending": "false",
+        "data-execution-id": "161",
+        "data-generation": "0"
+      },
+      "points": {
+        "data-painted-bars": "1500",
+        "data-first-start-key": "202605262300",
+        "data-center-start-key": "202606180600",
+        "data-last-start-key": "202607102030"
+      }
+    },
+    "session": {
+      "time": "2026-11-06T01:57:20.103Z",
+      "status": "READY / AUTHORITATIVE + ACKED",
+      "window": {
+        "data-scale-minutes": "930",
+        "data-ready": "true",
+        "data-pending": "false",
+        "data-execution-id": "161",
+        "data-generation": "0"
+      },
+      "points": {
+        "data-painted-bars": "1500",
+        "data-first-start-key": "202308142200",
+        "data-center-start-key": "202501281430",
+        "data-last-start-key": "202607101330"
+      }
+    },
+    "after": {
+      "time": "2026-11-06T01:57:29.675Z",
+      "status": "OPEN PENDING / existing paint retained",
+      "window": {
+        "data-scale-minutes": "60",
+        "data-ready": "true",
+        "data-pending": "false",
+        "data-execution-id": "161",
+        "data-generation": "0"
+      },
+      "points": {
+        "data-painted-bars": "1500",
+        "data-first-start-key": "202412101000",
+        "data-center-start-key": "202501281400",
+        "data-last-start-key": "202503140700"
+      }
+    }
+  },
+  "settled": {
+    "time": "2026-11-06T01:58:12.647Z",
+    "status": "READY / AUTHORITATIVE + ACKED",
+    "scale": "60",
+    "first": "202412101000",
+    "center": "202501281400",
+    "last": "202503140700",
+    "count": "1500"
+  },
+  "host": "http://127.0.0.1:18882/",
+  "screenshot": "log/20261106/20261106084123.asteer_load03_scale-baseline.png"
+}

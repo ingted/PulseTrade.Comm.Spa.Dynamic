@@ -1,0 +1,23 @@
+{
+  "time": "2026-11-06T01:46:32.913Z",
+  "overview": {
+    "top": -274,
+    "bottom": -155,
+    "height": 119,
+    "width": 1436
+  },
+  "chart": {
+    "top": -413,
+    "bottom": 2057,
+    "height": 2470,
+    "width": 1476
+  },
+  "toolbar": {
+    "top": 0,
+    "bottom": 60,
+    "height": 60,
+    "width": 1585
+  },
+  "overviewPosition": "static",
+  "scrollY": 3988
+}

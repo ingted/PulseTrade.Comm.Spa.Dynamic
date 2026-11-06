@@ -31,6 +31,20 @@ let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc avai
 
 let tests =
     testList "TA renderer model" [
+        for label, inset, naturalBottom, scopeBottom, height, expected in
+            [ "visible overview stays in flow", 0.0, 20.0, 900.0, 119.0, None
+              "touching threshold stays in flow", 60.0, 60.0, 900.0, 119.0, None
+              "passed overview pins below host toolbar", 60.0, 59.0, 900.0, 119.0, Some 60.0
+              "default host inset is zero", 0.0, -1.0, 900.0, 119.0, Some 0.0
+              "chart end pushes overview out", 60.0, -10.0, 120.0, 119.0, Some 1.0
+              "other chart owns viewport after scope ends", 60.0, -10.0, 60.0, 119.0, None
+              "empty overview is not fixed", 0.0, -1.0, 900.0, 0.0, None
+              "unknown geometry does not pin", 0.0, Double.NaN, 900.0, 119.0, None
+              "infinite geometry does not pin", 0.0, -1.0, Double.PositiveInfinity, 119.0, None ] do
+            testCase ("DYN-T-777 resident overview sticky geometry " + label) <| fun _ ->
+                Expect.equal (RendererModel.stickyOverviewTop inset naturalBottom scopeBottom height) expected
+                    "only an overview that fully passed the visible top may pin, bounded by its own chart"
+
         testCase "DYN-T-773 ES price ticks use quarter increments with eight to ten readable levels" <| fun _ ->
             for low, high in [7500.0,7520.0; 7520.0,7500.0; 7439.13,7508.87; -7.12,3.41; 0.0,2.5; 0.0,3.75] do
                 let ticks = RendererModel.priceYAxisTickValues 0.25 low high
