@@ -1,0 +1,37 @@
+{
+  "case": "Load03 reverse range baseline, real ES default page",
+  "host": "http://127.0.0.1:18882/",
+  "before": {
+    "time": "2026-11-06T01:16:36.327Z",
+    "start": "3375",
+    "count": "601",
+    "dataRevision": "3",
+    "drag": {}
+  },
+  "first": {
+    "time": "2026-11-06T01:16:37.779Z",
+    "start": "3375",
+    "count": "601",
+    "dataRevision": "3",
+    "drag": {
+      "data-main-plot-drag-outcome": "committed",
+      "data-main-plot-drag-capture": "document",
+      "data-main-plot-drag-delta": "-240"
+    }
+  },
+  "late": {
+    "time": "2026-11-06T01:16:50.785Z",
+    "start": "3435",
+    "count": "241",
+    "dataRevision": "4",
+    "drag": {}
+  },
+  "expectedRestoredCount": 1500,
+  "bounds": {
+    "x": 134.5,
+    "y": 233,
+    "width": 1316,
+    "height": 250
+  },
+  "screenshot": "log/20261106/20261106084123.asteer_load03_reverse-baseline.png"
+}

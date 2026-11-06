@@ -1,0 +1,5377 @@
+module PulseTrade.Comm.Spa.Dynamic.Renderer.Tests
+
+open System
+open Expecto
+open PulseTrade.Comm.Spa.Dynamic.Contracts
+open PulseTrade.Comm.Spa.Dynamic.Renderer
+
+let candle timestamp openValue high low close volume =
+    SduiValue.Object(
+        Map [
+            "t", SduiValue.Text timestamp
+            "o", SduiValue.Number openValue
+            "h", SduiValue.Number high
+            "l", SduiValue.Number low
+            "c", SduiValue.Number close
+            "v", SduiValue.Number volume
+        ])
+
+let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc availableAt finality projection quality value =
+    TemporalPointCodec.encode
+        { SourceIntervalId = sourceIntervalId
+          ScaleKey = scale
+          IntervalStartUtc = DateTimeOffset.Parse startUtc
+          IntervalEndUtc = DateTimeOffset.Parse endUtc
+          ObservedThroughUtc = DateTimeOffset.Parse observedThroughUtc
+          AvailableAtUtc = availableAt |> Option.map DateTimeOffset.Parse
+          Finality = finality
+          Projection = projection
+          Quality = quality
+          Value = value }
+
+let tests =
+    testList "TA renderer model" [
+        testCase "DYN-T-765 main zoom reveals four-hour labels instead of keeping only eight-hour candidates" <| fun _ ->
+            let start = DateTime(2026,10,19,0,0,0,DateTimeKind.Utc)
+            let times = Array.init 375 (fun index -> start.AddMinutes(float (index * 30)).ToString("yyyy-MM-ddTHH:mm:ssZ"))
+            let dates = Array.create times.Length (Some "20261019")
+            let step, ticks, guides = RendererModel.mainTradingTimeAxisGrid 1600.0 30.0 SduiDisplayTimeZone.Utc times dates
+            let hours = ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label
+            Expect.contains hours "04" "At 375 half-hour bars on a wide plot, four-hour labels fit and must be candidates."
+            Expect.equal step 4 "Four-hour spacing fits without forcing a count-based threshold."
+            Expect.equal (guides |> Array.map _.Label |> Array.distinct) [| "00"; "04"; "08"; "12"; "16"; "20" |] "Four-hour clock multiples get plot guides."
+
+        testCase "DYN-T-766 main axis density follows observation width and viewport pixels" <| fun _ ->
+            let start = DateTime(2026,10,19,0,0,0,DateTimeKind.Utc)
+            let layout width count =
+                let times = Array.init count (fun index -> start.AddMinutes(float (index * 30)).ToString("yyyy-MM-ddTHH:mm:ssZ"))
+                RendererModel.mainTradingTimeAxisGrid width 30.0 SduiDisplayTimeZone.Utc times (Array.create count (Some "20261019"))
+            let broadStep, _, broadGuides = layout 1600.0 1500
+            Expect.equal broadStep 8 "Full-range main plots retain sparse hour candidates."
+            Expect.isEmpty broadGuides "Four-hour guides would clutter the broad view."
+            let smallStep, smallTicks, _ = layout 1600.0 140
+            Expect.equal smallStep 2 "A narrower range reveals even hours."
+            Expect.contains (smallTicks |> Array.map _.Label) "02" "New labels actually exist, not just a density marker."
+            let smallestStep, _, _ = layout 1600.0 40
+            Expect.equal smallestStep 1 "Individual hours fit on a short range."
+            let narrowScreenStep, _, _ = layout 600.0 375
+            Expect.equal narrowScreenStep 8 "The same data on a narrow screen must not force four-hour labels."
+
+        testCase "DYN-T-767 adaptive main labels preserve opening identity and use the display clock for guides" <| fun _ ->
+            let times = [| for hour in 0..23 -> sprintf "2026-10-19T%02d:00:00Z" hour |]
+            let dates = Array.create times.Length (Some "20261020")
+            for zone, opening in [ SduiDisplayTimeZone.Utc, "22"; SduiDisplayTimeZone.AmericaNewYork, "18"; SduiDisplayTimeZone.FixedUtcPlus8, "06" ] do
+                let step, ticks, guides = RendererModel.mainTradingTimeAxisGrid 1200.0 60.0 zone times dates
+                Expect.equal step 1 "There is room for all hours."
+                let session = ticks |> Array.find (fun tick -> not tick.IsMajor && tick.IsSessionStart)
+                Expect.equal session.Label opening "Only presentation changes with the display zone."
+                Expect.equal session.CanonicalUtc "2026-10-19T22:00:00Z" "The real ET session boundary is unchanged."
+                Expect.isTrue (guides |> Array.forall (fun tick -> int tick.Label % 4 = 0)) "Guides follow local four-hour multiples."
+                Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| "20261020" |] "Dates still come from trading-day authority."
+            let winter = [| "2026-11-16T22:00:00Z"; "2026-11-16T23:00:00Z" |]
+            let _, ticks, _ = RendererModel.mainTradingTimeAxisGrid 800.0 60.0 SduiDisplayTimeZone.FixedUtcPlus8 winter [|Some "20261116";Some "20261117"|]
+            Expect.equal (ticks |> Array.find (fun tick -> not tick.IsMajor && tick.IsSessionStart)).Label "07" "Winter opening follows DST, not a hard-coded UTC hour."
+
+        testCase "DYN-T-768 adaptive main axis keeps fine-scale hourly marks and overviews unchanged" <| fun _ ->
+            let start = DateTime(2026,10,19,0,0,0,DateTimeKind.Utc)
+            for scale in [ 1; 5 ] do
+                let times = Array.init 1500 (fun index -> start.AddMinutes(float (index * scale)).ToString("yyyy-MM-ddTHH:mm:ssZ"))
+                let dates = Array.create times.Length (Some "20261019")
+                let _, main, _ = RendererModel.mainTradingTimeAxisGrid 1200.0 (float scale) SduiDisplayTimeZone.Utc times dates
+                Expect.equal (main |> Array.filter (fun tick -> not tick.IsMajor) |> Array.length) (1500 * scale / 60) "Every observed full hour still has a fine-scale tick."
+                let resident = RendererModel.tradingSessionAxisGrid false (float scale) SduiDisplayTimeZone.Utc times dates
+                Expect.isTrue (resident |> Array.filter (fun tick -> not tick.IsMajor) |> Array.forall (fun tick -> int tick.Label % 4 = 0)) "Fine-scale overview does not inherit adaptive hours."
+            let times = [| for hour in 0..23 -> sprintf "2026-10-19T%02d:00:00Z" hour |]
+            let resident = RendererModel.tradingSessionAxisGrid false 30.0 SduiDisplayTimeZone.Utc times (Array.create 24 (Some "20261020"))
+            Expect.equal (resident |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "22" |] "30K overview still labels only the opening hour."
+
+        testCase "DYN-T-769 adaptive main axis handles empty invalid and sub-hour windows" <| fun _ ->
+            for times in [ [||]; [| "not-a-time" |] ] do
+                let _, ticks, guides = RendererModel.mainTradingTimeAxisGrid Double.NaN 30.0 SduiDisplayTimeZone.Utc times [||]
+                Expect.isEmpty ticks "No invented observations or invalid coordinates."
+                Expect.isEmpty guides "Invalid input has no guides."
+            let _, ticks, guides = RendererModel.mainTradingTimeAxisGrid 1200.0 1.0 SduiDisplayTimeZone.Utc [| "2026-10-19T01:31:00Z"; "2026-10-19T01:45:00Z" |] [||]
+            Expect.equal (ticks |> Array.map _.Label) [| "01:31" |] "A narrow view without whole hours still displays an observed timestamp."
+            Expect.isFalse ticks[0].IsSessionStart "Missing trading dates do not become an opening."
+            Expect.floatClose Accuracy.high ticks[0].Position 0.25 "Fallback remains aligned with the observed slot centre."
+            Expect.isEmpty guides "Fallback is not a four-hour boundary."
+
+        testCase "DYN-T-770 adaptive main guides and labels survive closures without dilution or duplicates" <| fun _ ->
+            let times = Array.append [| for hour in 0..20 -> sprintf "2026-10-16T%02d:00:00Z" hour |] [| for hour in 22..23 -> sprintf "2026-10-18T%02d:00:00Z" hour |]
+            let step, ticks, guides = RendererModel.mainTradingTimeAxisGrid 1200.0 60.0 SduiDisplayTimeZone.Utc times (Array.create times.Length (Some "20261019"))
+            Expect.equal step 1 "Closed-market wall time must not suppress useful on-screen labels."
+            let hours = ticks |> Array.filter (fun tick -> not tick.IsMajor)
+            Expect.equal (hours |> Array.map _.CanonicalUtc |> Array.distinct |> Array.length) hours.Length "An opening and a clock tick share one label."
+            for tick in Array.append ticks guides do
+                Expect.contains times tick.CanonicalUtc "Every tick is attached to a real input slot."
+                Expect.isTrue (tick.Position > 0.0 && tick.Position < 1.0) "No boundary extends outside the plot."
+
+        testCase "DYN-T-771 non-candle legend colors match explicit and fallback trace paint" <| fun _ ->
+            let trace: TaTraceSpec =
+                { TraceId = "sma"; Kind = TaTraceKind.Line; DataRef = "sma-data"; Label = "SMA(7,CLOSE)"
+                  Color = "#ffd700"; Width = 1.0; Visible = true; CandleDataRefs = None; Options = Map.empty }
+            for value in [ "6625.31"; "-2.5"; "Unavailable" ] do
+                Expect.equal (RendererModel.traceLegendColors "#ffffff" 1 trace |> fun colors -> RendererModel.legendColorForValue colors value) "#ffd700" "Explicit FSSTL line color applies to label and value."
+            let fallback = { trace with Color = "" }
+            Expect.equal (RendererModel.traceColor 2 fallback) "#6a4ca3" "Existing paint palette remains unchanged."
+            Expect.equal (RendererModel.traceLegendColors "#ffffff" 2 fallback) ("#6a4ca3", "#6a4ca3") "Legend and SVG use the same palette index."
+            Expect.equal (RendererModel.traceLegendColors "#ffffff" 2 { trace with Kind = TaTraceKind.Candlestick }) ("#ffffff", "#ffffff") "Candlestick text keeps the existing neutral color."
+
+        testCase "DYN-T-772 histogram legend follows the active value polarity" <| fun _ ->
+            let trace: TaTraceSpec =
+                { TraceId = "macd-osc"; Kind = TaTraceKind.Histogram; DataRef = "osc-data"; Label = "OSC"
+                  Color = "#9333ea"; Width = 1.0; Visible = true; CandleDataRefs = None
+                  Options = TaHistogramTraceOptionsCodec.encode { PositiveColor = "#ef4444"; NegativeColor = "#22c55e" } }
+            let colors = RendererModel.traceLegendColors "#ffffff" 2 trace
+            Expect.equal (RendererModel.legendColorForValue colors "1.25") "#ef4444" "Positive value follows its FSSTL bar color."
+            Expect.equal (RendererModel.legendColorForValue colors "-1.25") "#22c55e" "Cursor movement to a negative value changes both legend texts."
+            Expect.equal (RendererModel.legendColorForValue colors "0") "#ef4444" "Zero follows positive histogram paint."
+            Expect.equal (RendererModel.legendColorForValue colors "Unavailable") "#ef4444" "Unavailable values have a stable non-stale color."
+
+        testCase "DYN-T-752 resident day grid interpolates midnight instead of labelling the sampled hour" <| fun _ ->
+            let timestamps = [| "2026-10-29T23:30:00Z"; "2026-10-30T00:30:00Z" |]
+            let ticks = RendererModel.residentCalendarGrid 30.0 SduiDisplayTimeZone.Utc timestamps
+            let midnight = ticks |> Array.find (fun tick -> tick.IsMajor && tick.Label = "20261030")
+            Expect.floatClose Accuracy.high midnight.Position 0.5 "The day line belongs between anchors, not at the 00:30 sample."
+            Expect.equal midnight.CanonicalUtc "2026-10-30T00:00:00Z" "The tick has an exact calendar boundary."
+            Expect.contains (ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) "00" "Midnight is also an hourly tick."
+            let shifted = RendererModel.residentCalendarGrid 5.0 SduiDisplayTimeZone.FixedUtcPlus8 [| "2026-10-29T15:30:00Z"; "2026-10-29T16:30:00Z" |]
+            let midnight8 = shifted |> Array.find (fun tick -> tick.IsMajor && tick.Label = "20261030")
+            Expect.equal midnight8.CanonicalUtc "2026-10-29T16:00:00Z" "Display-zone boundaries retain canonical UTC identity."
+            Expect.floatClose Accuracy.high midnight8.Position 0.5 "Zone conversion changes labels and grid positions together."
+
+        testCase "DYN-T-753 resident monthly grid uses Monday weeks including a partial first week" <| fun _ ->
+            let dates = [| for day in 0 .. 33 -> DateTime(2026,10,1,0,0,0,DateTimeKind.Utc).AddDays(float day).ToString("yyyy-MM-ddTHH:mm:ssZ") |]
+            let ticks = RendererModel.residentCalendarGrid 930.0 SduiDisplayTimeZone.Utc dates
+            let weeks = ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map (fun tick -> tick.CanonicalUtc.Substring(0,10), tick.Label)
+            Expect.contains weeks ("2026-10-01", "w1") "Partial opening week is w1."
+            Expect.contains weeks ("2026-10-05", "w2") "Monday begins the next week."
+            Expect.contains weeks ("2026-10-26", "w5") "Later weeks retain month-relative numbering."
+            Expect.contains weeks ("2026-11-01", "w1") "A new month resets the number."
+            Expect.contains weeks ("2026-11-02", "w2") "The next Monday advances after the partial week."
+            Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| "20261001"; "20261101" |] "Only months get full-height major lines."
+
+        testCase "DYN-T-754 resident intraday ticks use clock multiples and tolerate empty input" <| fun _ ->
+            let times = [| for hour in 0 .. 23 -> sprintf "2026-10-29T%02d:00:00Z" hour |]
+            let labels scale = RendererModel.residentCalendarGrid scale SduiDisplayTimeZone.Utc times |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label
+            Expect.equal (labels 1.0) [| "00"; "04"; "08"; "12"; "16"; "20" |] "1K uses four-hour marks."
+            Expect.equal (labels 5.0) (labels 1.0) "5K uses the same clock marks."
+            Expect.equal (labels 30.0) [| "00"; "08"; "16" |] "30K uses eight-hour marks."
+            Expect.equal (labels 60.0) (labels 30.0) "60K uses the same clock marks."
+            Expect.isEmpty (RendererModel.residentCalendarGrid 30.0 SduiDisplayTimeZone.Utc [||]) "No generated observations."
+            let days = Array.create times.Length (Some "20261029")
+            for scale, expected in
+                [ 1.0, [| "00"; "04"; "08"; "12"; "16"; "20" |]
+                  5.0, [| "00"; "04"; "08"; "12"; "16"; "20" |]
+                  30.0, [||]
+                  60.0, [||] ] do
+                for zone in [ SduiDisplayTimeZone.Utc; SduiDisplayTimeZone.FixedUtcPlus8 ] do
+                    let ticks = RendererModel.residentTradingCalendarGrid scale zone times days
+                    let hours = ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label
+                    let expected = if scale <= 5.0 then expected elif zone = SduiDisplayTimeZone.Utc then [| "22" |] else [| "06" |]
+                    Expect.equal (Array.sort hours) expected "Fine-scale overviews mark four-hour multiples; 30K/60K only mark the session opening."
+                    Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| "20261029" |] "Hourly density never changes the authoritative trading-day line."
+                Expect.isEmpty (RendererModel.residentTradingCalendarGrid scale SduiDisplayTimeZone.Utc [||] [||]) "Empty trading-date input is safe."
+
+        testCase "DYN-T-760 overview opening hours follow ET daylight saving and display zone" <| fun _ ->
+            for scale in [ 30.0; 60.0 ] do
+                for time, day, plus8 in [ "2026-06-17T22:00:00Z", "20260618", "06"; "2026-01-05T23:00:00Z", "20260106", "07" ] do
+                    let times = [| time |]
+                    let dates = [| Some day |]
+                    for zone, expected in [ SduiDisplayTimeZone.AmericaNewYork, "18"; SduiDisplayTimeZone.FixedUtcPlus8, plus8 ] do
+                        let ticks = RendererModel.tradingSessionAxisGrid false scale zone times dates
+                        let hours = ticks |> Array.filter (fun tick -> not tick.IsMajor)
+                        Expect.equal (hours |> Array.map _.Label) [| expected |] "No intermediate hourly ticks are emitted."
+                        Expect.isTrue hours[0].IsSessionStart "Opening hour is yellow."
+                        Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| day |] "Trading date is authoritative in both zones."
+                        Expect.floatClose Accuracy.high hours[0].Position 0.5 "One observation is centred."
+
+        testCase "DYN-T-761 main 30K and 60K only mark opening and eight-hour clock multiples" <| fun _ ->
+            let times = [| for hour in 0 .. 22 -> DateTime(2026,6,17,22,0,0,DateTimeKind.Utc).AddHours(float hour).ToString("yyyy-MM-ddTHH:mm:ssZ") |]
+            let dates = Array.create times.Length (Some "20260618")
+            for scale in [ 30.0; 60.0 ] do
+                let ticks = RendererModel.tradingSessionAxisGrid true scale SduiDisplayTimeZone.FixedUtcPlus8 times dates
+                let hours = ticks |> Array.filter (fun tick -> not tick.IsMajor)
+                Expect.equal (hours |> Array.map (fun tick -> tick.Label, tick.IsSessionStart)) [| "06", true; "08", false; "16", false; "00", false |] "Only the opening is yellow; 00/08/16 are white."
+                Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.CanonicalUtc) [| times[0] |] "UTC midnight is not a day boundary."
+
+        testCase "DYN-T-762 main 1K and 5K have hourly ticks but selected text only" <| fun _ ->
+            let times = [| for halfHour in 0 .. 45 -> DateTime(2026,6,17,22,0,0,DateTimeKind.Utc).AddMinutes(float halfHour * 30.0).ToString("yyyy-MM-ddTHH:mm:ssZ") |]
+            let dates = Array.create times.Length (Some "20260618")
+            for scale in [ 1.0; 5.0 ] do
+                let minor main = RendererModel.tradingSessionAxisGrid main scale SduiDisplayTimeZone.FixedUtcPlus8 times dates |> Array.filter (fun tick -> not tick.IsMajor)
+                let main = minor true
+                Expect.equal main.Length 23 "Every observed whole hour gets one short tick."
+                Expect.equal (main |> Array.filter (fun tick -> tick.Label <> "") |> Array.map (fun tick -> tick.Label, tick.IsSessionStart))
+                    [| "06", true; "08", false; "12", false; "16", false; "20", false; "00", false; "04", false |] "Unlabelled hourly marks do not add unwanted hour text."
+                let overview = minor false
+                Expect.equal (overview |> Array.map _.Label) [| "08"; "12"; "16"; "20"; "00"; "04" |] "The overview does not get every-hour ticks or an extra session-hour label."
+                Expect.isFalse (overview |> Array.exists _.IsSessionStart) "The fine-scale overview uses ordinary hour marks only."
+
+        testCase "DYN-T-763 clipped windows and unavailable metadata never invent session openings" <| fun _ ->
+            let times = [| "2026-06-18T00:00:00Z"; "2026-06-18T08:00:00Z" |]
+            for main in [ false; true ] do
+                let clipped = RendererModel.tradingSessionAxisGrid main 30.0 SduiDisplayTimeZone.Utc times (Array.create 2 (Some "20260618"))
+                Expect.isEmpty (clipped |> Array.filter (fun tick -> tick.IsMajor || tick.IsSessionStart)) "First visible bar is not the session opening."
+                let missing = RendererModel.tradingSessionAxisGrid main 30.0 SduiDisplayTimeZone.Utc [| "2026-06-17T22:00:00Z"; "invalid" |] [| None; Some "invalid" |]
+                Expect.isEmpty missing "Neither an invalid date nor a missing authoritative date can create a boundary."
+                Expect.isEmpty (RendererModel.tradingSessionAxisGrid main 1.0 SduiDisplayTimeZone.Utc [||] [||]) "Empty axes stay empty."
+
+        testCase "DYN-T-764 tick identity and positions survive display-zone changes" <| fun _ ->
+            let times = [| "2026-06-17T22:00:00Z"; "2026-06-17T22:30:00Z"; "2026-06-18T00:00:00Z"; "2026-06-18T22:00:00Z" |]
+            let dates = [| Some "20260618"; Some "20260618"; Some "20260618"; Some "20260619" |]
+            for zone in [ SduiDisplayTimeZone.Utc; SduiDisplayTimeZone.FixedUtcPlus8; SduiDisplayTimeZone.AmericaNewYork; SduiDisplayTimeZone.AmericaChicago ] do
+                for scale in [ 1.0; 5.0; 30.0; 60.0 ] do
+                    let ticks = RendererModel.tradingSessionAxisGrid true scale zone times dates
+                    let minor = ticks |> Array.filter (fun tick -> not tick.IsMajor)
+                    Expect.equal (minor |> Array.distinctBy _.CanonicalUtc |> Array.length) minor.Length "One short tick per hour, including opening hours."
+                    let major = ticks |> Array.filter _.IsMajor
+                    Expect.equal (major |> Array.map _.Label) [| "20260618"; "20260619" |] "Display-zone changes never change trading-day identity."
+                    Expect.equal (major |> Array.map _.Position) [| 0.125; 0.875 |] "Boundaries line up with candle slot centres on the shared reference axis."
+
+        testCase "DYN-T-751 authored Y bounds override DMI defaults without changing unconfigured rows" <| fun _ ->
+            let row = { RowId = "test"; Kind = TaRowKind.Dmi; DataRef = "data"; HeightWeight = 1.0; Visible = true
+                        Options = Map [ "yStart", SduiValue.Number -5.0; "yEnd", SduiValue.Number 100.0 ]; Traces = [||] }
+            // The user's explicit -5..100 demo supersedes the former unconditional DMI domain.
+            for kind in [ TaRowKind.Dmi; TaRowKind.Adx ] do
+                let configured = { row with Kind = kind }
+                Expect.equal (RendererModel.rowYAxisBounds configured) (Some -5.0, Some 100.0) "Authored bounds are exact for DMI and ADX."
+                Expect.equal (RendererModel.constrainYAxis (RendererModel.rowYAxisBounds configured) (19.0, 67.0)) (-5.0, 100.0) "Do not pad the explicitly fixed ends."
+                let lowerOnly = { configured with Options = Map [ "yStart", SduiValue.Number -5.0 ] }
+                let upperOnly = { configured with Options = Map [ "yEnd", SduiValue.Number 100.0 ] }
+                Expect.equal (RendererModel.rowYAxisBounds lowerOnly) (Some -5.0, None) "A single authored lower bound leaves the upper end automatic."
+                Expect.equal (RendererModel.rowYAxisBounds upperOnly) (None, Some 100.0) "A single authored upper bound leaves the lower end automatic."
+                let unconfigured = { configured with Options = Map.empty }
+                Expect.equal (RendererModel.rowYAxisBounds unconfigured) (Some 0.0, Some 100.0) "DMI/ADX still default to 0..100."
+            let plain = { row with Kind = TaRowKind.Sma; Options = Map [ "yStart", SduiValue.Number 20.0; "yEnd", SduiValue.Number 80.0 ] }
+            Expect.equal (RendererModel.rowYAxisBounds { plain with Options = Map.empty }) (None, None) "Other unconfigured rows remain automatic."
+            Expect.equal (RendererModel.constrainYAxis (RendererModel.rowYAxisBounds plain) (-10.0, 120.0)) (20.0, 80.0) "Both ends are exact."
+            Expect.equal (RendererModel.constrainYAxis (Some 0.0, None) (-10.0, 60.0)) (0.0, 60.0) "Only bottom is fixed."
+            Expect.equal (RendererModel.constrainYAxis (None, Some 100.0) (20.0, 120.0)) (20.0, 100.0) "Only top is fixed."
+            let low, high = RendererModel.constrainYAxis (Some 100.0, None) (0.0, 1.0)
+            Expect.equal low 100.0 "An empty/out-of-range series cannot move the fixed bottom."
+            Expect.isGreaterThan high low "The automatic end must leave a usable domain."
+            let low, high = RendererModel.constrainYAxis (None, Some -100.0) (0.0, 1.0)
+            Expect.equal high -100.0 "An empty/out-of-range series cannot move the fixed top."
+            Expect.isLessThan low high "The automatic end must leave a usable domain."
+
+        testCase "DYN-T-750 superseded range completion cannot undo the latest resize" <| fun _ ->
+            let oldReply = TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 1202; Count = 1500 }
+            let latestReply = TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 1202; Count = 356 }
+            Expect.equal (RendererModel.eventRangeSettlementEffects 1 2 oldReply)
+                (true, None, false)
+                "the old 1500 reply releases its data gate but cannot overwrite the 356-bar local commit"
+            Expect.equal (RendererModel.eventRangeSettlementEffects 2 2 latestReply)
+                (true, Some { StartIndex = 1202; Count = 356 }, false)
+                "the latest reply can settle its exact requested width"
+            Expect.equal (RendererModel.eventRangeSettlementEffects 1 1 oldReply)
+                (true, Some { StartIndex = 1202; Count = 1500 }, false)
+                "without a newer gesture normal relocation must still apply"
+            for latest in [ 1; 2 ] do
+                Expect.equal (RendererModel.eventRangeSettlementEffects 1 latest TaCoverageIntentProjectionSettlement.Await)
+                    (false, None, false) "a provisional response must not release queued dispatch"
+            Expect.equal (RendererModel.eventRangeSettlementEffects 1 2 TaCoverageIntentProjectionSettlement.Reject)
+                (true, None, false) "an old rejection must not discard the newer draft"
+            Expect.equal (RendererModel.eventRangeSettlementEffects 2 2 TaCoverageIntentProjectionSettlement.Reject)
+                (true, None, true) "a current terminal rejection must still be reported"
+
+        testCase "DYN-T-751 preparation feedback cannot gray the committed charts" <| fun _ ->
+            let source = IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let start = source.IndexOf("Attr.Create \"data-testid\" \"ta-chart-preparation-pending\"", StringComparison.Ordinal)
+            Expect.isGreaterThan start -1 "preparation still has an observable progress indicator"
+            let finish = source.IndexOf("Preparing coverage", start, StringComparison.Ordinal)
+            let overlay = source.Substring(start, finish - start)
+            Expect.isFalse (overlay.Contains("inset:0")) "progress must not cover the full chart stack"
+            Expect.isFalse (overlay.Contains("rgba(248,250,252,0.18)")) "existing candles remain at their original contrast"
+
+        for label, trackWidth, startX, currentX, expected in
+            [ "forward 25 to 65", 1000.0, 250.0, 650.0, Some { StartIndex = 3375; Count = 600 }
+              "reverse same bounds", 1000.0, 650.0, 250.0, Some { StartIndex = 3375; Count = 600 }
+              "reverse 85 to 15", 1000.0, 850.0, 150.0, Some { StartIndex = 3225; Count = 1050 }
+              "clipped full window", 1000.0, -40.0, 1040.0, Some { StartIndex = 3000; Count = 1500 }
+              "minimum stays inside captured window", 1000.0, 999.0, 1000.0, Some { StartIndex = 4488; Count = 12 }
+              "stationary is not a range", 1000.0, 500.0, 500.0, None
+              "outside same edge is empty", 1000.0, -40.0, -10.0, None
+              "zero width is invalid", 0.0, 250.0, 650.0, None
+              "nonfinite pointer is invalid", 1000.0, Double.NaN, 650.0, None
+              "nonfinite track is invalid", Double.PositiveInfinity, 250.0, 650.0, None ] do
+            testCase ("DYN-T-746 main plot full range " + label) <| fun _ ->
+                Expect.equal
+                    (RendererModel.tryMainPlotRangeWindow 12 1500 4500
+                        { StartIndex = 3000; Count = 1500 } trackWidth startX currentX)
+                    expected
+                    "the normalized pointer span owns both edges within the captured viewport"
+
+        testCase "DYN-T-746 range after a prior selection and empty capture" <| fun _ ->
+            Expect.equal
+                (RendererModel.tryMainPlotRangeWindow 12 1500 4500
+                    { StartIndex = 3375; Count = 600 } 1000.0 850.0 150.0)
+                (Some { StartIndex = 3465; Count = 420 })
+                "the reverse selection uses the new visible window, not the whole resident domain"
+            Expect.isNone
+                (RendererModel.tryMainPlotRangeWindow 12 1500 0
+                    { StartIndex = 0; Count = 0 } 1000.0 250.0 650.0)
+                "an empty captured timeline cannot submit a selection"
+            Expect.isNone
+                (RendererModel.tryMainPlotRangeWindow 12 1500 4500
+                    { StartIndex = 0; Count = 0 } 1000.0 250.0 650.0)
+                "an empty visible window is not expanded into a synthetic selection"
+
+        testCase "DYN-T-746 main plot commit shares range endpoints and clears queued draft" <| fun _ ->
+            let source = IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let first = source.IndexOf("let startMainPlotDrag", StringComparison.Ordinal)
+            let last = source.IndexOf("let zoomWindow", first, StringComparison.Ordinal)
+            let mainPlot = source.Substring(first, last - first)
+            for required in
+                [ "RendererModel.tryMainPlotRangeWindow"
+                  "| TaWindowDrag.SelectRange ->"
+                  "pointerReferenceLength"
+                  "latestRangeWindow <- draft"
+                  "pendingDraft <- None"
+                  "setWindowFromPrepared document pointerPreparedData None followLatest next" ] do
+                Expect.stringContains mainPlot required ("missing full-range commit invariant: " + required)
+            Expect.isFalse (mainPlot.Contains("| TaWindowDrag.ResizeLeft")) "main plot must not route a range to the navigator left handle"
+            Expect.isFalse (mainPlot.Contains("| TaWindowDrag.ResizeRight")) "main plot must not route a range to the navigator right handle"
+
+        testCase "DYN-T-745 non-GLOBAL loaded segments share label selection gesture and queued authority" <| fun _ ->
+            let segment id start count first last =
+                { SegmentId = id
+                  StartObservationOrdinal = start
+                  ObservationCount = count
+                  StartEventTimeUtc = first
+                  EndEventTimeExclusiveUtc = last }
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:native-30k-two-pages"
+                  CoverageRevision = 29L
+                  QueryGeneration = 26L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = None
+                  Segments =
+                    [| segment "earlier" 0L 1500L "2026-04-15T00:31:00Z" "2026-05-29T02:31:00Z"
+                       segment "returned" 1500L 1491L "2026-05-29T02:31:00Z" "2026-07-14T04:01:00Z" |]
+                  OverviewAxisRef = "overview:native-30k"
+                  OverviewAnchors = [||]
+                  ActiveDetail = { BaseAxisRef = "axis.30k"; StartObservationOrdinal = 0L; ObservationCount = 1500 }
+                  GlobalOverview = None }
+            let visible = { StartIndex = 797; Count = 694 }
+            let domain = RendererModel.resolveNavigatorGestureDomain 40 1500 1500 visible None projection
+            Expect.equal domain.DomainCount 2991 "Loaded 2991 must not silently become a 1500-slot drag domain."
+            Expect.equal domain.CommittedWindow visible "The first page retains its native loaded offset."
+            Expect.isTrue domain.UsesResidentAuthority "A bounded native loaded domain is usable without a GLOBAL overview."
+            Expect.equal
+                (RendererModel.navigatorSelectionRatiosForRender None (Some projection) (Array.create 1500 "2026-05-08T00:00:00Z") visible None)
+                (797.0 / 2991.0, 1491.0 / 2991.0)
+                "The displayed selection and label must use the same loaded coordinate domain."
+            let delta = RendererModel.navigatorGestureDeltaForDomain domain.DomainCount (600.0 / 2991.0)
+            let moved = RendererModel.previewWindowBounds 40 1500 domain.DomainCount domain.CommittedWindow TaWindowDrag.Move delta
+            Expect.equal moved { StartIndex = 1397; Count = 694 } "A +600 move crosses the active page but stays inside the loaded domain."
+            Expect.isNone (RendererModel.navigatorBoundaryDirection domain.DomainCount visible TaWindowDrag.Move delta) "An active-page boundary is not a loaded-data boundary."
+            let intent = RendererModel.tryNavigatorGestureCoverageIntent domain projection moved |> Option.defaultWith (fun () -> failtest "Native loaded move must produce an intent.")
+            Expect.equal intent.StartObservationOrdinal (Some 1397L) "Use the native loaded ordinal, never a GLOBAL 1K ordinal."
+            Expect.equal intent.ObservationCount 694 "Materialization must preserve the visible width."
+            Expect.isNone intent.Direction "An interior materialization must not request Later 1500."
+            Expect.equal intent.ExpectedCoverageRevision (Some 29L) "The intent is fenced by its loaded projection."
+            Expect.equal intent.QueryGeneration 27L "The materialization advances generation once."
+            for drag,delta,expected in
+                [ TaWindowDrag.ResizeLeft, -200, { StartIndex = 597; Count = 894 }
+                  TaWindowDrag.ResizeRight, 100, { StartIndex = 797; Count = 794 } ] do
+                Expect.equal
+                    (RendererModel.previewWindowBounds 40 1500 domain.DomainCount visible drag delta)
+                    expected
+                    "Both handles use the same loaded coordinate domain."
+            let newer =
+                { projection with
+                    CoverageRevision = 30L
+                    QueryGeneration = 27L
+                    ActiveDetail = { projection.ActiveDetail with StartObservationOrdinal = 1500L; ObservationCount = 1491 } }
+            let rebased = RendererModel.resolveNavigatorGestureDomain 40 1500 1491 { StartIndex = 100; Count = 100 } None newer
+            Expect.equal rebased.CommittedWindow { StartIndex = 1600; Count = 100 } "Queued gestures retain the active page offset in loaded coordinates."
+            Expect.isTrue (RendererModel.residentGestureScopeMatches projection newer) "A newer ACK may move active detail within unchanged loaded segments."
+            for invalid in
+                [ { newer with CoverageIdentity = "other" }
+                  { newer with CoverageRevision = 28L }
+                  { newer with QueryGeneration = 25L }
+                  { newer with OverviewAxisRef = "other-axis" }
+                  { newer with ActiveDetail = { newer.ActiveDetail with BaseAxisRef = "axis.1k" } }
+                  { newer with Segments = [| newer.Segments[0] |] } ] do
+                Expect.isFalse (RendererModel.residentGestureScopeMatches projection invalid) "A queued native gesture cannot cross a changed identity, axis, segment domain or stale generation."
+
+        testCase "DYN-T-602 projection commit gate rejects stale superseded and duplicate candidates" <| fun _ ->
+            let identity =
+                { DocumentId = DocumentId "projection-commit"
+                  CanvasInstanceId = CanvasInstanceId "projection-canvas" }
+            let state revision =
+                { RuntimeReducer.initial identity with
+                    DocumentRevision = 1L
+                    DataRevision = revision
+                    LastTransportSequence = revision }
+
+            let revision1 = state 1L
+            let revision2 = state 2L
+            let gate1, generation1 = ProjectionCommitGate.beginCandidate revision1 ProjectionCommitGate.initial
+            let gate2, generation2 = ProjectionCommitGate.beginCandidate revision2 gate1
+
+            Expect.equal
+                (ProjectionCommitGate.pendingGenerationFor revision2 gate2)
+                (Some generation2)
+                "the newest candidate must own the pending generation"
+
+            let staleGate, staleCommit = ProjectionCommitGate.tryCommit revision2 generation1 revision1 gate2
+            Expect.isNone staleCommit "a superseded candidate must not commit"
+            Expect.equal staleGate gate2 "a stale completion must not mutate the active gate"
+
+            let mismatchGate, mismatchCommit = ProjectionCommitGate.tryCommit revision1 generation2 revision2 gate2
+            Expect.isNone mismatchCommit "a candidate that is no longer the current runtime state must not commit"
+            Expect.equal mismatchGate gate2 "a current-state mismatch must preserve the pending candidate"
+
+            let committedGate, committed = ProjectionCommitGate.tryCommit revision2 generation2 revision2 gate2
+            Expect.equal committed (Some revision2) "the current candidate must commit exactly once"
+            Expect.isNone committedGate.Pending "a successful commit must clear the pending candidate"
+
+            let duplicateGate, duplicateGeneration = ProjectionCommitGate.beginCandidate revision2 committedGate
+            let duplicateCommittedGate, duplicateCommit =
+                ProjectionCommitGate.tryCommit revision2 duplicateGeneration revision2 duplicateGate
+            Expect.isNone duplicateCommit "the same projected revision must not publish a duplicate receipt"
+            Expect.equal
+                duplicateCommittedGate.LastCommitted
+                committedGate.LastCommitted
+                "deduplication must preserve the committed watermark"
+
+        testCase "DYN-T-734 projection commit survives a heartbeat-only transport advance" <| fun _ ->
+            let identity =
+                { DocumentId = DocumentId "projection-heartbeat"
+                  CanvasInstanceId = CanvasInstanceId "projection-heartbeat-canvas" }
+            let candidate =
+                { RuntimeReducer.initial identity with
+                    DocumentRevision = 7L
+                    DataRevision = 11L
+                    LastTransportSequence = 40L }
+            let heartbeat =
+                { candidate with
+                    LastTransportSequence = 41L }
+            let gate, generation =
+                ProjectionCommitGate.beginCandidate candidate ProjectionCommitGate.initial
+
+            let committedGate, committed =
+                ProjectionCommitGate.tryCommit heartbeat generation candidate gate
+
+            Expect.isTrue
+                (ProjectionCommitGate.sameProjectionState candidate heartbeat)
+                "transport sequence alone must not change projected document/data/coverage identity"
+            Expect.equal
+                committed
+                (Some heartbeat)
+                "a heartbeat-only transport advance must publish the latest equivalent runtime envelope"
+            Expect.isNone committedGate.Pending "the completed candidate must release the pending gate"
+
+            let laterHeartbeat = { heartbeat with LastTransportSequence = 42L }
+            let duplicateGate, duplicateGeneration =
+                ProjectionCommitGate.beginCandidate laterHeartbeat committedGate
+            let _, duplicateCommit =
+                ProjectionCommitGate.tryCommit laterHeartbeat duplicateGeneration laterHeartbeat duplicateGate
+
+            Expect.isNone duplicateCommit "heartbeat-only transport traffic must not publish duplicate projections"
+            Expect.isFalse
+                (ProjectionCommitGate.sameProjectionState candidate { heartbeat with DataRevision = 12L })
+                "a data revision change must still invalidate the old projected state"
+
+        testCase "DYN-T-687 point hit selection uses rendered x/y geometry and stable trace identity" <| fun _ ->
+            let candidate traceId dataRef eventTime traceKind component x minimumY maximumY =
+                { RowId = "row-main"
+                  TraceId = traceId
+                  DataRef = dataRef
+                  EventTimeUtc = eventTime
+                  TraceKind = traceKind
+                  Component = component
+                  ScaleKey = "1m"
+                  Value = SduiValue.Number x
+                  X = x
+                  MinimumY = minimumY
+                  MaximumY = maximumY }
+
+            let candle = candidate "price" "series.price" "2026-10-24T01:00:00Z" "CANDLESTICK" "BAR" 100.0 30.0 70.0
+            let line = candidate "sma" "series.sma" "2026-10-24T01:00:00Z" "LINE" "POINT" 100.0 82.0 82.0
+            let later = candidate "later" "series.later" "2026-10-24T01:01:00Z" "LINE" "POINT" 140.0 50.0 50.0
+
+            Expect.equal
+                (RendererModel.tryNearestPointHit 101.0 50.0 [| candle; line; later |])
+                (Some candle)
+                "a click inside the rendered candle range selects BAR"
+            Expect.equal
+                (RendererModel.tryNearestPointHit 101.0 81.0 [| candle; line; later |])
+                (Some line)
+                "y distance distinguishes a line point at the same canonical x"
+            Expect.equal
+                (RendererModel.tryNearestPointHit 139.0 50.0 [| candle; line; later |])
+                (Some later)
+                "x distance selects the nearest rendered canonical point"
+            Expect.isNone
+                (RendererModel.tryNearestPointHit Double.NaN 50.0 [| candle |])
+                "non-finite browser geometry cannot produce an activation"
+
+        testCase "DYN-T-711 clicked trace identity wins over an overlapping candle fallback" <| fun _ ->
+            let candidate traceId traceKind component x minimumY maximumY =
+                { RowId = "price-30k"
+                  TraceId = traceId
+                  DataRef = "series." + traceId
+                  EventTimeUtc = "2026-03-27T02:30:00Z"
+                  TraceKind = traceKind
+                  Component = component
+                  ScaleKey = "30K"
+                  Value = SduiValue.Number x
+                  X = x
+                  MinimumY = minimumY
+                  MaximumY = maximumY }
+
+            let candle = candidate "fsstl.es-30k" "CANDLESTICK" "BAR" 500.0 20.0 90.0
+            let sma = candidate "fsstl.sma-30k-13" "LINE" "POINT" 496.0 74.0 74.0
+
+            Expect.equal
+                (RendererModel.tryNearestPointHitForTrace "fsstl.sma-30k-13" 500.0 70.0 [| candle; sma |])
+                (Some sma)
+                "the SVG path event target must keep the SMA trace even when candle geometry is nearer"
+            Expect.equal
+                (RendererModel.tryNearestPointHitForTrace "" 500.0 70.0 [| candle; sma |])
+                (Some candle)
+                "surface clicks without a trace target retain the geometric candle fallback"
+            Expect.equal
+                (RendererModel.tryNearestPointHitForTrace "missing" 500.0 70.0 [| candle; sma |])
+                (Some candle)
+                "an unknown DOM trace id must not suppress the canonical geometric fallback"
+
+        testCase "DYN-T-712 queued viewport action drains in the settlement callback before RAF fallback" <| fun _ ->
+            let events = ResizeArray<string>()
+            let mutable scheduled: (unit -> unit) option = None
+
+            TaWorkspaceRenderer.flushViewportIntentAfterActionSettled
+                (fun () -> events.Add "settled")
+                (fun () -> events.Add "flush-now")
+                (fun work ->
+                    events.Add "schedule-fallback"
+                    scheduled <- Some work)
+
+            Expect.sequenceEqual
+                events
+                [ "settled"; "flush-now"; "schedule-fallback" ]
+                "an already-ready queued drop must dispatch in the action settlement callback rather than wait for RAF"
+
+            scheduled |> Option.iter (fun work -> work ())
+            Expect.sequenceEqual
+                events
+                [ "settled"; "flush-now"; "schedule-fallback"; "flush-now" ]
+                "the RAF fallback remains available for a projection that was not ready during immediate drain"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.isGreaterThanOrEqual
+                (Text.RegularExpressions.Regex.Matches(source, "flushViewportIntentNowAndAfterFrame").Count)
+                3
+                "the immediate+RAF drain must be shared by both action settlement and Poll/PendingAction readiness transitions"
+
+        testCase "DYN-T-688 point activation emits only for the committed projection key" <| fun _ ->
+            let identity =
+                { DocumentId = DocumentId "tagging-document"
+                  CanvasInstanceId = CanvasInstanceId "tagging-canvas" }
+            let state revision =
+                { RuntimeReducer.initial identity with
+                    DocumentRevision = 7L
+                    DataRevision = revision
+                    LastTransportSequence = revision + 10L }
+            let committedState = state 11L
+            let gate, generation = ProjectionCommitGate.beginCandidate committedState ProjectionCommitGate.initial
+            let committedGate, committed = ProjectionCommitGate.tryCommit committedState generation committedState gate
+            Expect.isSome committed "the test projection must commit"
+            let hit =
+                { RowId = "row-main"
+                  TraceId = "price"
+                  DataRef = "series.price"
+                  EventTimeUtc = "2026-10-24T01:00:00Z"
+                  TraceKind = "CANDLESTICK"
+                  Component = "BAR"
+                  ScaleKey = "1m"
+                  Value = SduiValue.Number 101.25
+                  X = 100.0
+                  MinimumY = 30.0
+                  MaximumY = 70.0 }
+
+            let receipt = TaPointActivation.tryCreate committedGate.LastCommitted committedState "row-main" hit
+            Expect.isSome receipt "the current committed projection may publish a point activation"
+            let value = receipt.Value
+            Expect.equal value.Schema TaPointActivation.Schema "the browser-local contract is explicitly versioned"
+            Expect.equal value.Identity identity "canvas/document identity comes from the committed snapshot"
+            Expect.equal value.DataRevision 11L "the receipt carries the committed data revision"
+            Expect.equal value.BaseRowId "row-main" "the canonical base row is explicit"
+            Expect.equal value.RowId hit.RowId "the clicked row is explicit"
+            Expect.equal value.TraceId hit.TraceId "trace identity is stable"
+            Expect.equal value.DataRef hit.DataRef "Research resolves the point from stable dataRef/eventTime"
+            Expect.equal value.EventTimeUtc hit.EventTimeUtc "event time is the candidate timestamp, not a viewport index"
+            Expect.equal value.Component "BAR" "candlestick activation has the BAR component"
+            Expect.isNone
+                (TaPointActivation.tryCreate committedGate.LastCommitted (state 12L) "row-main" hit)
+                "a newer uncommitted runtime state cannot reuse the old commit key"
+            Expect.isNone
+                (TaPointActivation.tryCreate None committedState "row-main" hit)
+                "an uncommitted chart cannot publish"
+            let fieldNames = typeof<TaPointActivationReceiptV1>.GetProperties() |> Array.map _.Name |> Set.ofArray
+            Expect.isFalse (Set.contains "VisibleIndex" fieldNames) "the public receipt must not leak viewport index identity"
+
+            let pdi =
+                { hit with
+                    TraceId = "pdi"
+                    DataRef = "execution-series:101"
+                    TraceKind = "LINE"
+                    Component = "POINT"
+                    ScaleKey = "30m"
+                    Value = SduiValue.Number 22.5 }
+            let mdi =
+                { pdi with
+                    TraceId = "mdi"
+                    DataRef = "execution-series:102"
+                    Value = SduiValue.Number 18.25 }
+            let otherTimestamp =
+                { pdi with
+                    TraceId = "later"
+                    DataRef = "execution-series:103"
+                    EventTimeUtc = "2026-10-24T01:30:00Z" }
+            let grouped =
+                TaPointActivation.tryCreateV2
+                    committedGate.LastCommitted
+                    committedState
+                    "row-main"
+                    pdi
+                    [| pdi; mdi; otherTimestamp |]
+            Expect.isSome grouped "the committed click publishes the additive grouped activation"
+            let groupedValue = grouped.Value
+            Expect.equal groupedValue.Schema TaPointActivation.SchemaV2 "the grouped browser event is explicitly versioned"
+            Expect.equal groupedValue.ScaleKey "30m" "the activated scale is exact"
+            Expect.equal
+                (groupedValue.SameTimestampSeries |> Array.map (fun item -> item.TraceId, item.DataRef, item.Value))
+                [| "pdi", "execution-series:101", SduiValue.Number 22.5
+                   "mdi", "execution-series:102", SduiValue.Number 18.25 |]
+                "same-timestamp peers preserve stable persisted-series data refs and values"
+
+        testCase "DYN-T-689 main plot drag maps CSS movement to viewport bars with a click threshold" <| fun _ ->
+            Expect.equal
+                (RendererModel.mainPlotPanDelta 100 1000.0 500.0 400.0)
+                10
+                "dragging content left commits a later ten-bar window"
+            Expect.equal
+                (RendererModel.mainPlotPanDelta 100 1000.0 500.0 600.0)
+                -10
+                "dragging content right commits an earlier ten-bar window"
+            Expect.equal
+                (RendererModel.mainPlotPanDelta 100 0.0 500.0 400.0)
+                0
+                "invalid geometry cannot manufacture a pan"
+            Expect.isFalse
+                (RendererModel.mainPlotDragExceededThreshold RendererModel.MainPlotDragThresholdCssPixels 100.0 103.9)
+                "sub-threshold motion remains a datapoint click"
+            Expect.isTrue
+                (RendererModel.mainPlotDragExceededThreshold RendererModel.MainPlotDragThresholdCssPixels 100.0 104.0)
+                "threshold motion becomes a drag and suppresses the following click"
+
+        testCase "DYN-T-707 main plot right-click mode owns pan versus full range selection" <| fun _ ->
+            Expect.equal
+                (RendererModel.toggleMainPlotInteractionMode TaMainPlotInteractionMode.Cursor)
+                TaMainPlotInteractionMode.Resize
+                "right-click leaves cursor mode for full range selection"
+            Expect.equal
+                (RendererModel.toggleMainPlotInteractionMode TaMainPlotInteractionMode.Resize)
+                TaMainPlotInteractionMode.Cursor
+                "the next right-click restores cursor mode"
+            Expect.equal
+                (RendererModel.mainPlotInteractionDrag TaMainPlotInteractionMode.Cursor 1000.0 100.0)
+                TaWindowDrag.Move
+                "cursor mode always owns a pan regardless of pointer half"
+            Expect.equal
+                (RendererModel.mainPlotInteractionDrag TaMainPlotInteractionMode.Resize 1000.0 499.0)
+                "select-range"
+                "non-cursor mode selects the full pointer span even when starting in the left half"
+            Expect.equal
+                (RendererModel.mainPlotInteractionDrag TaMainPlotInteractionMode.Resize 1000.0 500.0)
+                "select-range"
+                "non-cursor mode selects the full pointer span even when starting in the right half"
+            Expect.equal
+                (RendererModel.mainPlotPanDelta 1000 1000.0 500.0 400.0)
+                100
+                "cursor drag follows the actual pointer distance instead of moving one slot"
+            Expect.equal
+                (RendererModel.mainPlotPanDelta 1000 1000.0 500.0 300.0)
+                200
+                "doubling pointer distance doubles the reverse viewport pan"
+            Expect.equal
+                (RendererModel.previewWindowBounds
+                    1
+                    4500
+                    4500
+                    { StartIndex = 1000; Count = 1000 }
+                    TaWindowDrag.ResizeLeft
+                    100)
+                { StartIndex = 1100; Count = 900 }
+                "dragging the left boundary right shrinks only the visible left side"
+            Expect.equal
+                (RendererModel.previewWindowBounds
+                    1
+                    4500
+                    4500
+                    { StartIndex = 1000; Count = 1000 }
+                    TaWindowDrag.ResizeRight
+                    100)
+                { StartIndex = 1000; Count = 1100 }
+                "dragging the right boundary right expands only the visible right side inside the resident"
+
+        testCase "DYN-T-714 non-cursor main plot drag normalizes a bounded range preview" <| fun _ ->
+            let forwardLeft, forwardWidth =
+                RendererModel.mainPlotRangePreviewBounds 1000.0 300.0 720.0
+            let reverseLeft, reverseWidth =
+                RendererModel.mainPlotRangePreviewBounds 1000.0 720.0 300.0
+            let clippedLeft, clippedWidth =
+                RendererModel.mainPlotRangePreviewBounds 1000.0 -40.0 1040.0
+            let stationaryLeft, stationaryWidth =
+                RendererModel.mainPlotRangePreviewBounds 1000.0 500.0 500.0
+
+            Expect.equal (forwardLeft, forwardWidth) (300.0, 420.0) "a rightward drag previews the exact pointer span"
+            Expect.equal (reverseLeft, reverseWidth) (300.0, 420.0) "a leftward drag normalizes to the same increasing range"
+            Expect.equal (clippedLeft, clippedWidth) (0.0, 1000.0) "preview geometry remains inside the plot track"
+            Expect.equal (stationaryLeft, stationaryWidth) (500.0, 0.0) "pointerdown alone has no visible preview width"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            for required in
+                [ "data-testid\" \"ta-main-plot-range-preview"
+                  "data-preview-visible"
+                  "data-preview-start-x"
+                  "data-preview-end-x"
+                  "data-preview-width"
+                  "mainPlotRangePreviewBounds"
+                  "let hideRangePreview ()"
+                  "let updateRangePreview currentClientX"
+                  "let cancel () =" ] do
+                Expect.stringContains source required ("missing main-plot range preview contract: " + required)
+
+        testCase "DYN-T-718 accepted event-range settlement owns a changed coverage scope" <| fun _ ->
+            Expect.isTrue
+                (RendererModel.eventRangeSettlementOwnsViewportScope true true true false)
+                "a consumed exact settlement must not be overwritten by the new coverage identity default"
+            Expect.isTrue
+                (RendererModel.eventRangeSettlementOwnsViewportScope true true false true)
+                "an awaiting matching settlement preserves its pending viewport across an intermediate coverage identity"
+            Expect.isFalse
+                (RendererModel.eventRangeSettlementOwnsViewportScope true false false true)
+                "a base-row mismatch is a real scope change and must not retain the old pending action"
+            Expect.isFalse
+                (RendererModel.eventRangeSettlementOwnsViewportScope false true false true)
+                "an unchanged coverage scope does not need to suppress default application"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains
+                source
+                "eventRangeSettlementOwnsViewportScope"
+                "the live accepted-data branch must use the tested scope precedence policy"
+
+        testCase "DYN-T-719 matching event-range settlement survives the full-preparation boundary" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let scopePolicyUseCount =
+                source.Split([| "RendererModel.eventRangeSettlementOwnsViewportScope" |], StringSplitOptions.None).Length - 1
+            Expect.equal
+                scopePolicyUseCount
+                2
+                "runtime-state scheduling and prepared-data acceptance must both preserve matching settlement ownership"
+            Expect.stringContains
+                source
+                "eventRangeSettlementOwnsPreparation"
+                "the pre-preparation state sink must retain matching pending event-range context"
+
+        testCase "DYN-T-720 action completion settles only a coherent committed prepared frame" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.isFalse
+                (source.Contains("settlePendingEventRangeProjectionFor runtimeState.Value latestPreparedData", StringComparison.Ordinal))
+                "a new runtime projection must never be paired with an older prepared timeline"
+            Expect.stringContains
+                source
+                "let committedState, committedPreparedData = chartCommittedFrame.Value"
+                "action completion must retry settlement from one atomic committed state/prepared pair"
+
+        testCase "DYN-T-716 accepted main relocation reanchors the requested event time exactly once" <| fun _ ->
+            let allTimes =
+                Array.init 4_840 (fun index ->
+                    DateTimeOffset(2022, 3, 1, 0, 0, 0, TimeSpan.Zero)
+                        .AddMinutes(float (index * 30))
+                        .ToString("O"))
+            let oldTimeline = allTimes[..4_499]
+            let relocatedTimeline = allTimes[340..4_839]
+            let requestedStart = oldTimeline[1_985]
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:main-settlement"
+                  CoverageRevision = 6L
+                  QueryGeneration = 2L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.30k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 50_430L
+                      ObservationCount = relocatedTimeline.Length
+                      BaseAxisRef = "axis.30k" }
+                  GlobalOverview = None }
+
+            Expect.equal
+                (RendererModel.mainPlotEventRangeProjectionSettlement
+                    1
+                    4_000
+                    relocatedTimeline
+                    requestedStart
+                    1_215
+                    2L
+                    true
+                    projection)
+                (TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 1_645; Count = 1_215 })
+                "accepted relocation maps the requested event time into the new active timeline instead of retaining optimistic local +340"
+            Expect.equal
+                (RendererModel.mainPlotEventRangeProjectionSettlement
+                    1
+                    4_000
+                    relocatedTimeline
+                    requestedStart
+                    1_215
+                    2L
+                    true
+                    { projection with QueryGeneration = 1L })
+                TaCoverageIntentProjectionSettlement.Await
+                "an older projection cannot settle the main pan"
+            let absentStart = allTimes[100]
+            Expect.equal
+                (RendererModel.mainPlotEventRangeProjectionSettlement
+                    1
+                    4_000
+                    relocatedTimeline
+                    absentStart
+                    1_215
+                    2L
+                    true
+                    projection)
+                TaCoverageIntentProjectionSettlement.Await
+                "a provisional projection keeps waiting while the action is pending"
+            Expect.equal
+                (RendererModel.mainPlotEventRangeProjectionSettlement
+                    1
+                    4_000
+                    relocatedTimeline
+                    absentStart
+                    1_215
+                    2L
+                    false
+                    projection)
+                TaCoverageIntentProjectionSettlement.Reject
+                "a terminal projection missing the requested event time rejects instead of preserving an optimistic local offset"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains source "pendingEventRangeSettlement" "Renderer must retain an event-time settlement context for accepted event-range relocation"
+            Expect.stringContains source "RendererModel.mainPlotEventRangeProjectionSettlement" "accepted prepared data must consume the exact event-time settlement helper"
+
+        testCase "DYN-T-715 cross-axis navigator drop uses the exact resident overview event-time timeline" <| fun _ ->
+            let activeTimeline =
+                [| "2022-03-15T02:30:00.0000000+00:00"
+                   "2022-03-15T03:00:00.0000000+00:00"
+                   "2022-03-15T03:30:00.0000000+00:00"
+                   "2022-03-15T04:00:00.0000000+00:00" |]
+            let overviewTimeline =
+                [| "2022-03-11T09:30:00.0000000+00:00"
+                   "2022-03-11T10:00:00.0000000+00:00"
+                   "2022-03-11T10:30:00.0000000+00:00"
+                   "2022-03-11T11:00:00.0000000+00:00" |]
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:event-time-authority"
+                  CoverageRevision = 5L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.30k"
+                  OverviewAnchors =
+                    overviewTimeline
+                    |> Array.mapi (fun index eventTime ->
+                        { ObservationOrdinal = 48_445L + int64 index
+                          EventTimeUtc = eventTime
+                          Value = SduiValue.Number(float index) })
+                  ActiveDetail =
+                    { StartObservationOrdinal = 49_567L
+                      ObservationCount = 79
+                      BaseAxisRef = "axis.30k" }
+                  GlobalOverview =
+                    Some
+                        { TotalObservationCount = 2_996_994L
+                          AxisRef = "axis.1k"
+                          Anchors = [||]
+                          ResidentStartObservationOrdinal = 1_433_048L
+                          ResidentObservationCount = 134_885 } }
+
+            Expect.sequenceEqual
+                (RendererModel.navigatorEventTimeline activeTimeline projection)
+                overviewTimeline
+                "cross-axis local zero maps to the resident overview local-zero event time"
+            let sameAxis =
+                { projection with
+                    GlobalOverview =
+                        projection.GlobalOverview
+                        |> Option.map (fun overview -> { overview with AxisRef = projection.ActiveDetail.BaseAxisRef }) }
+            Expect.sequenceEqual
+                (RendererModel.navigatorEventTimeline activeTimeline sameAxis)
+                activeTimeline
+                "same-axis navigation preserves the active prepared timeline"
+            Expect.sequenceEqual
+                (RendererModel.navigatorEventTimeline activeTimeline { projection with OverviewAnchors = projection.OverviewAnchors[..2] })
+                activeTimeline
+                "a non-exact overview length cannot trigger lossy index interpolation"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains source "setNavigatorWindowFromPrepared" "navigator local commit must use its frozen event-time projection"
+            Expect.stringContains source "RendererModel.navigatorVisibleEventRangePrepared" "navigator action range must use the overview authority selector"
+
+        testCase "DYN-T-717/DYN-T-724 navigator requests exact event-time materialization without an ordinal" <| fun _ ->
+            let activeTimeline =
+                [| "2022-03-15T02:30:00.0000000+00:00"
+                   "2022-03-15T03:00:00.0000000+00:00"
+                   "2022-03-15T03:30:00.0000000+00:00"
+                   "2022-03-15T04:00:00.0000000+00:00" |]
+            let overviewTimeline =
+                [| "2022-03-11T09:30:00.0000000+00:00"
+                   "2022-03-11T10:00:00.0000000+00:00"
+                   "2022-03-11T10:30:00.0000000+00:00"
+                   "2022-03-11T11:00:00.0000000+00:00" |]
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:cross-axis-materialization"
+                  CoverageRevision = 5L
+                  QueryGeneration = 7L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.30k"
+                  OverviewAnchors =
+                    overviewTimeline
+                    |> Array.mapi (fun index eventTime ->
+                        { ObservationOrdinal = 48_445L + int64 index
+                          EventTimeUtc = eventTime
+                          Value = SduiValue.Number(float index) })
+                  ActiveDetail =
+                    { StartObservationOrdinal = 49_567L
+                      ObservationCount = 79
+                      BaseAxisRef = "axis.30k" }
+                  GlobalOverview =
+                    Some
+                        { TotalObservationCount = 2_996_994L
+                          AxisRef = "axis.1k"
+                          Anchors = [||]
+                          ResidentStartObservationOrdinal = 1_433_048L
+                          ResidentObservationCount = 134_885 } }
+            let target = { StartIndex = 0; Count = 2 }
+            let intent =
+                RendererModel.tryCrossAxisNavigatorEventRangeIntent activeTimeline projection target
+                |> Option.get
+
+            Expect.equal intent.RangeAuthority TaCoverageRangeAuthority.ExplicitBounds "event time owns both requested bounds"
+            Expect.equal intent.Purpose TaCoverageWindowPurpose.NavigatorWindow "cross-axis navigator materialization must identify its origin"
+            Expect.isNone intent.StartObservationOrdinal "cross-axis event-time relocation must not invent a GLOBAL ordinal"
+            Expect.isNone intent.Direction "cross-axis relocation is not an adjacent-boundary request"
+            Expect.equal intent.ExpectedCoverageRevision (Some 5L) "materialization remains revision guarded"
+            Expect.equal intent.QueryGeneration 8L "materialization advances the frozen generation once"
+            Expect.equal intent.ObservationCount 2 "materialization preserves the drafted visible width"
+
+            let sameAxis =
+                { projection with
+                    GlobalOverview =
+                        projection.GlobalOverview
+                        |> Option.map (fun overview -> { overview with AxisRef = projection.ActiveDetail.BaseAxisRef }) }
+            Expect.isNone
+                (RendererModel.tryCrossAxisNavigatorEventRangeIntent activeTimeline sameAxis target)
+                "same-axis navigator keeps its existing resident/local action path"
+            let sameAxisIntent =
+                RendererModel.tryNavigatorEventRangeIntent sameAxis target
+                |> Option.get
+            Expect.equal sameAxisIntent.Purpose TaCoverageWindowPurpose.NavigatorWindow "accepted same-axis settlement must retain navigator origin"
+            Expect.equal sameAxisIntent.RangeAuthority TaCoverageRangeAuthority.ExplicitBounds "event time remains the target authority"
+            Expect.isNone sameAxisIntent.StartObservationOrdinal "same-axis navigator event-range materialization does not invent a GLOBAL ordinal"
+            Expect.isNone sameAxisIntent.Direction "a long body drag is not rewritten as an adjacent-boundary request"
+            Expect.equal sameAxisIntent.ObservationCount target.Count "the long body drag preserves the frozen target width"
+            Expect.isSome
+                (RendererModel.tryCrossAxisNavigatorEventRangeIntent
+                    activeTimeline
+                    { projection with OverviewAnchors = projection.OverviewAnchors[..2] }
+                    target)
+                "a lossy overview substitution falls back to the exact active timeline but still requests cross-axis materialization"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains
+                source
+                "RendererModel.tryNavigatorEventRangeIntent"
+                "the local navigator commit must retain typed navigator origin after axis settlement"
+
+        testCase "DYN-T-721 cross-axis exact active fallback still requests event-time materialization" <| fun _ ->
+            let activeTimeline =
+                [| "2022-03-11T10:00:00.0000000+00:00"
+                   "2022-03-11T10:30:00.0000000+00:00"
+                   "2022-03-11T11:00:00.0000000+00:00" |]
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:cross-axis-active-fallback"
+                  CoverageRevision = 5L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.1k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 49_567L
+                      ObservationCount = 79
+                      BaseAxisRef = "axis.30k" }
+                  GlobalOverview =
+                    Some
+                        { TotalObservationCount = 2_996_994L
+                          AxisRef = "axis.1k"
+                          Anchors = [||]
+                          ResidentStartObservationOrdinal = 1_433_048L
+                          ResidentObservationCount = 134_885 } }
+            Expect.isFalse
+                (RendererModel.usesCrossAxisNavigatorEventTimeline activeTimeline projection)
+                "unavailable one-to-one overview anchors must keep the exact prepared active timeline"
+            Expect.isSome
+                (RendererModel.tryCrossAxisNavigatorEventRangeIntent
+                    activeTimeline
+                    projection
+                    { StartIndex = 0; Count = 2 })
+                "cross-axis server materialization is still required when the exact range came from the active prepared timeline"
+
+        testCase "DYN-T-713 navigator edge handles anchor resize at the logical selection boundary" <| fun _ ->
+            let total = 4500
+            let trackLeft = 113.0
+            let trackWidth = 478.0
+            let targetCount = 80
+
+            let rightCommitted = { StartIndex = 3000; Count = 1500 }
+            let rightRatios = RendererModel.selectionRatios total rightCommitted
+            let rightHitCenter = trackLeft + trackWidth - 4.0
+            let rightTarget =
+                trackLeft
+                + trackWidth * (float rightCommitted.StartIndex + float targetCount) / float total
+            let rightAnchor =
+                RendererModel.navigatorDragAnchorClientX
+                    trackLeft
+                    trackWidth
+                    rightRatios
+                    TaWindowDrag.ResizeRight
+                    rightHitCenter
+            let rightDelta = int (Math.Round((rightTarget - rightAnchor) / trackWidth * float total))
+            let rightDraft =
+                RendererModel.previewWindowBounds 12 4500 total rightCommitted TaWindowDrag.ResizeRight rightDelta
+            Expect.equal rightAnchor (trackLeft + trackWidth) "the clamped right hit box still owns the logical right boundary"
+            Expect.equal rightDraft.Count targetCount "right-edge resize reaches the requested 80-bar width"
+
+            let leftCommitted = { StartIndex = 0; Count = 1500 }
+            let leftRatios = RendererModel.selectionRatios total leftCommitted
+            let leftHitCenter = trackLeft + 4.0
+            let leftTarget = trackLeft + trackWidth * float (leftCommitted.Count - targetCount) / float total
+            let leftAnchor =
+                RendererModel.navigatorDragAnchorClientX
+                    trackLeft
+                    trackWidth
+                    leftRatios
+                    TaWindowDrag.ResizeLeft
+                    leftHitCenter
+            let leftDelta = int (Math.Round((leftTarget - leftAnchor) / trackWidth * float total))
+            let leftDraft =
+                RendererModel.previewWindowBounds 12 4500 total leftCommitted TaWindowDrag.ResizeLeft leftDelta
+            Expect.equal leftAnchor trackLeft "the clamped left hit box still owns the logical left boundary"
+            Expect.equal leftDraft.Count targetCount "left-edge resize mirrors the requested 80-bar width"
+
+            let rawGrab = trackLeft + 221.5
+            Expect.equal
+                (RendererModel.navigatorDragAnchorClientX trackLeft trackWidth rightRatios TaWindowDrag.Move rawGrab)
+                rawGrab
+                "body move preserves the human's exact grab point"
+
+        testCase "DYN-T-708 only-coarse-row navigator never reinterprets active indexes as GLOBAL ordinals" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:only-30k-60k"
+                  CoverageRevision = 1L
+                  QueryGeneration = 0L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.30k"
+                  OverviewAnchors =
+                    Array.init 1491 (fun index ->
+                        { ObservationOrdinal = 2_952_345L + int64 index
+                          EventTimeUtc = DateTimeOffset(2024, 9, 1, 0, 0, 0, TimeSpan.Zero).AddMinutes(float (index * 30)).ToString("O")
+                          Value = SduiValue.Number(float index) })
+                  ActiveDetail =
+                    { StartObservationOrdinal = 2_952_345L
+                      ObservationCount = 44_649
+                      BaseAxisRef = "axis.30k" }
+                  GlobalOverview =
+                    Some
+                        { TotalObservationCount = 2_996_994L
+                          AxisRef = "axis.1k"
+                          Anchors = [||]
+                          ResidentStartObservationOrdinal = 2_952_345L
+                          ResidentObservationCount = 44_649 } }
+            let domain =
+                RendererModel.resolveNavigatorGestureDomain
+                    1
+                    4000
+                    1491
+                    { StartIndex = 0; Count = 1491 }
+                    None
+                    projection
+            Expect.equal domain.DomainCount 1491 "the only active row owns the local navigator count"
+            Expect.equal domain.CommittedWindow { StartIndex = 0; Count = 1491 } "the active-local window remains unchanged"
+            Expect.isFalse domain.UsesResidentAuthority "GLOBAL 1K and active 30K ordinals cannot be mixed without retained authority"
+
+            let leftShrink =
+                RendererModel.previewWindowBounds
+                    1
+                    4000
+                    domain.DomainCount
+                    domain.CommittedWindow
+                    TaWindowDrag.ResizeLeft
+                    200
+            Expect.equal leftShrink { StartIndex = 200; Count = 1291 } "the local 200-bar shrink remains exact"
+            Expect.isNone
+                (RendererModel.tryNavigatorGestureCoverageIntent domain projection leftShrink)
+                "an in-resident active-local resize must not dispatch a GLOBAL coverage action"
+
+            let legacyRetained =
+                { CoverageIdentity = projection.CoverageIdentity
+                  ResidentStartObservationOrdinal = 2_952_345L
+                  ResidentObservationCount = 44_649
+                  NavigationDomainCount = 1491
+                  ActiveDetailStartIndex = 0 }
+            let guardedDomain =
+                RendererModel.resolveNavigatorGestureDomain
+                    1
+                    4000
+                    1491
+                    { StartIndex = 0; Count = 1491 }
+                    (Some legacyRetained)
+                    projection
+            Expect.isFalse guardedDomain.UsesResidentAuthority "legacy retained state cannot opt a cross-axis projection into GLOBAL ordinal mapping"
+            Expect.equal guardedDomain.CommittedWindow domain.CommittedWindow "remote settlement keeps the active-local window"
+            Expect.equal guardedDomain.DomainCount domain.DomainCount "remote settlement keeps the active-local domain count"
+            Expect.isNone
+                (RendererModel.tryNavigatorGestureCoverageIntent guardedDomain projection leftShrink)
+                "remote-settled cross-axis resize stays an event-time VisibleRangeChanged without coverage intent"
+            Expect.equal
+                (RendererModel.navigatorSelectionRatiosForRenderWithAuthority
+                    None
+                    (Some projection)
+                    (Array.init 1491 string)
+                    { StartIndex = 0; Count = 1491 }
+                    (Some leftShrink)
+                    (Some legacyRetained))
+                (200.0 / 1491.0, 1.0)
+                "remote-settled preview geometry remains in the 30K active-local domain"
+            Expect.isNone
+                (RendererModel.tryCrossAxisResidentNavigatorAuthority 2_952_545L 1291 projection)
+                "a locally plausible +200 offset is still not a valid 1K-to-30K ordinal mapping"
+            Expect.isNone
+                (RendererModel.tryCrossAxisResidentNavigatorAuthority 2_995_494L 1500 projection)
+                "the captured tag8 1K target cannot become retained 30K navigator authority"
+
+        testCase "row Y coordinates mirror the five horizontal grid levels on both sides" <| fun _ ->
+            Expect.sequenceEqual
+                (RendererModel.yAxisTickValues 5 -2.0 6.0)
+                [| 6.0; 4.0; 2.0; 0.0; -2.0 |]
+                "top-to-bottom Y ticks must use the same high/low interpolation as the grid"
+            Expect.isEmpty
+                (RendererModel.yAxisTickValues 1 -2.0 6.0)
+                "a bilateral axis requires at least two finite tick coordinates"
+
+            Expect.equal
+                (RendererModel.tryYAxisCursorValue 10.0 92.0 -2.0 6.0 10.0)
+                (Some 6.0)
+                "the floating Y label maps the plot head to the visible high"
+            Expect.equal
+                (RendererModel.tryYAxisCursorValue 10.0 92.0 -2.0 6.0 56.0)
+                (Some 2.0)
+                "the floating Y label uses the same linear interpolation as the grid"
+            Expect.equal
+                (RendererModel.tryYAxisCursorValue 10.0 92.0 -2.0 6.0 112.0)
+                (Some -2.0)
+                "cursor motion below the plot clamps to the visible low"
+            Expect.isNone
+                (RendererModel.tryYAxisCursorValue 10.0 0.0 -2.0 6.0 56.0)
+                "invalid plot geometry cannot publish a floating value"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            for required in
+                [ "ta-y-axis-"
+                  "data-ta-y-axis-side"
+                  "data-ta-y-axis-tick-index"
+                  "data-ta-y-axis-value"
+                  "data-ta-y-axis-cursor"
+                  "data-ta-y-axis-cursor-side"
+                  "data-ta-y-axis-cursor-visible"
+                  "pointer-events:none" ] do
+                Expect.stringContains source required ("missing bilateral Y-axis DOM contract: " + required)
+
+        testCase "visible K-bar domain ignores remote extrema and keeps fixed CSS padding after resize" <| fun _ ->
+            let fullSourceBounds = Some(5.0, 104.0)
+            let visibleBounds = Some(100.0, 104.0)
+            let assertPadding chartPixelHeight =
+                let low, high =
+                    RendererModel.paddedBoundsForCssPixels
+                        0.0
+                        1.0
+                        250.0
+                        250.0
+                        chartPixelHeight
+                        15.0
+                        visibleBounds
+                let highY = RendererModel.normalize low high 0.0 250.0 104.0
+                let lowY = RendererModel.normalize low high 0.0 250.0 100.0
+                let scale = chartPixelHeight / 250.0
+                let topPaddingFromSvgEdge = highY * scale
+                let bottomPaddingFromSvgEdge = (250.0 - lowY) * scale
+                Expect.floatClose Accuracy.high topPaddingFromSvgEdge 15.0 "top padding is measured from the SVG edge"
+                Expect.floatClose Accuracy.high bottomPaddingFromSvgEdge 15.0 "bottom padding is measured from the SVG edge"
+                low, high
+
+            let defaultLow, _ = assertPadding 250.0
+            let resizedLow, _ = assertPadding 720.0
+            let fullSourceLow, _ =
+                RendererModel.paddedBoundsForCssPixels 0.0 1.0 250.0 250.0 250.0 15.0 fullSourceBounds
+            Expect.isGreaterThan defaultLow 90.0 "the visible-domain result must exclude the remote source low"
+            Expect.isLessThan fullSourceLow 5.0 "the control result confirms that including the full source would compress the viewport"
+            Expect.isGreaterThan resizedLow defaultLow "resizing must reduce data padding while preserving CSS padding"
+
+        testCase "workspace bootstrap distinguishes lifecycle progress from terminal failure" <| fun _ ->
+            let identity = { DocumentId = DocumentId "pending"; CanvasInstanceId = CanvasInstanceId "canvas" }
+            let initial = RuntimeReducer.initial identity
+            let preparing = RendererModel.workspaceBootstrapPresentation initial
+            Expect.equal preparing.State "preparing" "an unmounted channel is a normal bootstrap state"
+            Expect.isFalse preparing.IsError "bootstrap must not be presented as a terminal error"
+
+            let connecting = RendererModel.workspaceBootstrapPresentation { initial with Poll = RuntimePollState.MountedIdle }
+            Expect.equal connecting.State "connecting" "a mounted channel waits for its first document"
+            Expect.stringContains connecting.Detail "initial workspace document" "the user should see the actual wait condition"
+
+            let recovering =
+                RendererModel.workspaceBootstrapPresentation
+                    { initial with
+                        Poll = RuntimePollState.Backoff(DateTimeOffset.Parse("2026-07-13T07:00:00Z"))
+                        LastError = Some { ReasonCode = "transient-timeout"; Message = "retrying"; Recoverable = true } }
+            Expect.equal recovering.State "recovering" "recoverable errors keep the workspace lifecycle alive"
+            Expect.isFalse recovering.IsError "recoverable transport failures are not terminal"
+
+            let unavailable =
+                RendererModel.workspaceBootstrapPresentation
+                    { initial with LastError = Some { ReasonCode = "invalid-document"; Message = "rejected"; Recoverable = false } }
+            Expect.equal unavailable.State "unavailable" "non-recoverable errors are explicit"
+            Expect.isTrue unavailable.IsError "only terminal errors use error presentation"
+
+        testCase "typed candle series rejects malformed items" <| fun _ ->
+            let data =
+                Map [
+                    "price",
+                    SduiValue.Array
+                        [| candle "B1" 10.0 12.0 9.0 11.0 100.0
+                           SduiValue.Object(Map [ "t", SduiValue.Text "missing-fields" ]) |]
+                ]
+
+            let actual = RendererModel.candleSeries "price" data
+            Expect.equal actual.Length 1 "only the complete typed candle should survive"
+            Expect.equal actual[0].Close 11.0 "close must preserve transport value"
+
+        testCase "same-position preview updates preserve chart topology while appended bars rebuild it" <| fun _ ->
+            let identity =
+                { DocumentId = DocumentId "live-preview"
+                  CanvasInstanceId = CanvasInstanceId "live-preview-canvas" }
+            let row =
+                { RowId = "price"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = "price"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Traces = [||]
+                  Options = Map.empty }
+            let document =
+                { WorkspaceId = "live-preview"
+                  Title = "Live preview"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "price"
+                  Rows = [| row |]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+            let state data dataRevision =
+                { RuntimeReducer.initial identity with
+                    Document = Some document
+                    Data = Map [ "price", SduiValue.Array data ]
+                    DocumentRevision = 1L
+                    DataRevision = dataRevision
+                    LastTransportSequence = dataRevision }
+            let initial =
+                state
+                    [| candle "B1" 10.0 12.0 9.0 11.0 100.0
+                       candle "B2" 11.0 13.0 10.0 12.0 120.0 |]
+                    1L
+            let revisedPreview =
+                state
+                    [| candle "B1" 10.0 12.0 9.0 11.0 100.0
+                       candle "B2" 11.0 14.0 10.0 13.5 135.0 |]
+                    2L
+            let appended =
+                state
+                    [| candle "B1" 10.0 12.0 9.0 11.0 100.0
+                       candle "B2" 11.0 14.0 10.0 13.5 135.0
+                       candle "B3" 13.5 15.0 13.0 14.5 80.0 |]
+                    3L
+
+            Expect.isTrue
+                (TaWorkspaceRenderer.sameChartTopology initial revisedPreview)
+                "replacing the current bar at the same timestamp must preserve the mounted SVG topology"
+            Expect.isFalse
+                (TaWorkspaceRenderer.sameChartTopology revisedPreview appended)
+                "appending a new timestamp must rebuild the visible chart topology"
+
+        testCase "cache rehydrate data reference triggers repaint without revision inflation" <| fun _ ->
+            let identity =
+                { DocumentId = DocumentId "cache-repaint"
+                  CanvasInstanceId = CanvasInstanceId "cache-repaint-canvas" }
+            let initial =
+                { RuntimeReducer.initial identity with
+                    Data = Map [ "price", SduiValue.Array [||] ]
+                    DataRevision = 7L }
+            let pollOnly = { initial with Poll = RuntimePollState.Ready }
+            let rehydrated =
+                { initial with
+                    Data =
+                        Map [
+                            "price",
+                            SduiValue.Array [| candle "B1" 10.0 12.0 9.0 11.0 100.0 |]
+                        ] }
+
+            Expect.isFalse
+                (TaWorkspaceRenderer.runtimeDataChanged initial pollOnly)
+                "poll lifecycle changes must not prepare or repaint unchanged chart data"
+            Expect.isTrue
+                (TaWorkspaceRenderer.runtimeDataChanged initial rehydrated)
+                "cache rehydrate must repaint when Data changes while identity and authoritative revision stay fixed"
+            Expect.equal rehydrated.DataRevision initial.DataRevision "browser cache must not invent an authoritative revision"
+
+        testCase "legend lookup is qualified by row and row-local trace index" <| fun _ ->
+            let readers =
+                Map [
+                    "price", [| (fun _ -> Some "6025.50") |]
+                    "dmi", [| (fun _ -> Some "17.25"); (fun _ -> Some "21.75") |]
+                ]
+
+            Expect.equal
+                (TaWorkspaceRenderer.tryLegendValue readers "dmi" 0 12)
+                (Some "17.25")
+                "DMI index zero must not reuse price row index zero"
+            Expect.equal
+                (TaWorkspaceRenderer.tryLegendValue readers "dmi" 1 12)
+                (Some "21.75")
+                "each row-local trace index must resolve within its own reader collection"
+            Expect.equal
+                (TaWorkspaceRenderer.tryLegendValue readers "missing" 0 12)
+                None
+                "unknown rows fail closed instead of falling back to another row"
+
+        testCase "visible window clamps count and start" <| fun _ ->
+            let actual =
+                RendererModel.clampWindow 12 160 96 { StartIndex = 90; Count = 48 }
+
+            Expect.equal actual.Count 48 "requested count remains when bounded"
+            Expect.equal actual.StartIndex 48 "start clamps so the window ends at the series tail"
+
+        testCase "query draft is initialized from server document metadata without demo literals" <| fun _ ->
+            let actual =
+                RendererModel.queryDraft
+                    (Map [
+                        "query.sourceId", SduiValue.Text "binance"
+                        "query.instrument", SduiValue.Text "BTCUSDT"
+                        "query.intervalMinutes", SduiValue.Number 1.0
+                        "query.fromUtc", SduiValue.Text "2026-07-01"
+                        "query.toUtcExclusive", SduiValue.Text "2026-07-12"
+                        "query.includePartial", SduiValue.Bool false
+                    ])
+
+            Expect.equal actual.SourceId "binance" "Source identity should remain available to the renderer."
+            Expect.equal actual.Instrument "BTCUSDT" "Instrument must come from the RuntimeDocument."
+            Expect.equal actual.IntervalMinutes "1" "Interval must come from the RuntimeDocument."
+            Expect.equal actual.FromUtc "2026-07-01" "From boundary must remain server authoritative."
+            Expect.equal actual.ToUtcExclusive "2026-07-12" "Exclusive boundary must remain server authoritative."
+            Expect.isFalse actual.IncludePartial "Partial-bar policy must survive the SDUI document."
+
+            let empty = RendererModel.queryDraft Map.empty
+            Expect.equal empty.Instrument "" "Missing metadata must not fall back to a demo instrument."
+            Expect.equal empty.IntervalMinutes "" "Missing metadata must not fall back to a demo interval."
+
+        testCase "query viewport uses temporal intervals preserves gaps and ignores stale replies" <| fun _ ->
+            let row =
+                { RowId = "base"
+                  Kind = TaRowKind.Sma
+                  DataRef = "base"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = [||] }
+            let document =
+                { WorkspaceId = "query-window"
+                  Title = "Query viewport"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "base"
+                  Rows = [| row |]
+                  EditorSchemas = [||]
+                  AllowedActions = [| "change-query" |]
+                  DefaultView = Map.empty }
+            let point minute =
+                let startUtc = sprintf "2026-09-22T00:%02d:00Z" minute
+                let endUtc = sprintf "2026-09-22T00:%02d:00Z" (minute + 1)
+                temporalPoint
+                    ("query:" + string minute)
+                    "1K"
+                    startUtc
+                    endUtc
+                    endUtc
+                    (Some endUtc)
+                    PointFinality.Final
+                    TemporalProjection.CandleSpan
+                    (Some "complete")
+                    (Some(SduiValue.Object(Map [ "v", SduiValue.Number(float minute) ])))
+            let dataFor minutes =
+                Map [ "base", SduiValue.Array(minutes |> Array.map point) ]
+            let query fromUtc toUtc : TaQueryChange =
+                { SourceId = None
+                  Instrument = None
+                  IntervalMinutes = None
+                  FromUtc = Some fromUtc
+                  ToUtcExclusive = Some toUtc
+                  IncludePartial = Some true }
+            let loaded = dataFor [| 0; 1; 4; 6 |]
+
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-09-22T00:00:30Z" "2026-09-22T00:02:00Z") document loaded)
+                (TaQueryViewportSelection.Selected { StartIndex = 0; Count = 2 })
+                "selection begins where interval end is after From and stops where interval start reaches exclusive To"
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-09-22T00:02:30Z" "2026-09-22T00:03:30Z") document loaded)
+                TaQueryViewportSelection.NoIntersection
+                "a gap-only range must not invent observations"
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-09-22T00:00:00Z" "2026-09-22T00:07:00Z") document loaded)
+                (TaQueryViewportSelection.Selected { StartIndex = 0; Count = 4 })
+                "the full loaded range maps to the full local window"
+            Expect.equal
+                (RendererModel.queryViewportSelection 5 4 (query "2026-09-22T00:00:00Z" "2026-09-22T00:07:00Z") document loaded)
+                TaQueryViewportSelection.Stale
+                "an older reply cannot override a newer query generation"
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-09-22T00:07:00Z" "2026-09-22T00:06:00Z") document loaded)
+                (TaQueryViewportSelection.Invalid "query-range-invalid: FromUtc must be earlier than ToUtcExclusive.")
+                "invalid half-open bounds are explicit"
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-02-31" "2026-03-02") document loaded)
+                (TaQueryViewportSelection.Invalid "query-range-invalid: FromUtc and ToUtcExclusive must be valid UTC timestamps.")
+                "invalid calendar dates are rejected"
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-09-22T00:04:00Z" "2026-09-22T00:05:00Z") document (dataFor [| 0; 1 |]))
+                TaQueryViewportSelection.NoIntersection
+                "an unloaded range is not selected before its patch is merged"
+            Expect.equal
+                (RendererModel.queryViewportSelection 4 4 (query "2026-09-22T00:04:00Z" "2026-09-22T00:05:00Z") document (dataFor [| 0; 1; 4 |]))
+                (TaQueryViewportSelection.Selected { StartIndex = 2; Count = 1 })
+                "the same query selects after the bounded patch is merged"
+
+        testCase "DYN-T-733/DYN-T-735 accepted query waits for authoritative or positive materialization evidence" <| fun _ ->
+            let row =
+                { RowId = "base"
+                  Kind = TaRowKind.Sma
+                  DataRef = "base"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = [||] }
+            let document =
+                { WorkspaceId = "query-return"
+                  Title = "Query return viewport"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "base"
+                  Rows = [| row |]
+                  EditorSchemas = [||]
+                  AllowedActions = [| "change-query" |]
+                  DefaultView = Map.empty }
+            let point minute =
+                let startUtc = sprintf "2026-09-22T00:%02d:00Z" minute
+                let endUtc = sprintf "2026-09-22T00:%02d:00Z" (minute + 1)
+                temporalPoint
+                    ("return:" + string minute)
+                    "1K"
+                    startUtc
+                    endUtc
+                    endUtc
+                    (Some endUtc)
+                    PointFinality.Final
+                    TemporalProjection.CandleSpan
+                    (Some "complete")
+                    (Some(SduiValue.Object(Map [ "v", SduiValue.Number(float minute) ])))
+            let dataFor minutes =
+                Map [ "base", SduiValue.Array(minutes |> Array.map point) ]
+            let query : TaQueryChange =
+                { SourceId = None
+                  Instrument = None
+                  IntervalMinutes = None
+                  FromUtc = Some "2026-09-22T00:04:00Z"
+                  ToUtcExclusive = Some "2026-09-22T00:05:00Z"
+                  IncludePartial = Some true }
+
+            Expect.equal
+                (RendererModel.acceptedQueryViewportSettlement 19 19 24L 18L 24L 18L query document (dataFor [| 0; 1 |]))
+                TaAcceptedQueryViewportSettlement.AwaitAuthoritativeFrame
+                "the accepted callback must not turn the old frame's NoIntersection into a final viewport result"
+            Expect.equal
+                (RendererModel.acceptedQueryViewportSettlement 19 19 24L 18L 25L 18L query document (dataFor [| 0; 1; 4 |]))
+                (TaAcceptedQueryViewportSettlement.Settled(TaQueryViewportSelection.Selected { StartIndex = 2; Count = 1 }))
+                "materialized requested data settles even when the coverage-window generation is stable"
+            Expect.equal
+                (RendererModel.acceptedQueryViewportSettlement 19 19 24L 18L 25L 18L query document (dataFor [| 0; 1 |]))
+                TaAcceptedQueryViewportSettlement.AwaitAuthoritativeFrame
+                "a stable coverage-window generation must not finalize NoIntersection before the requested data materializes"
+            Expect.equal
+                (RendererModel.acceptedQueryViewportSettlement 19 19 24L 18L 25L 19L query document (dataFor [| 0; 1; 4 |]))
+                (TaAcceptedQueryViewportSettlement.Settled(TaQueryViewportSelection.Selected { StartIndex = 2; Count = 1 }))
+                "the viewport is selected only after both authoritative revisions advance"
+            Expect.equal
+                (RendererModel.acceptedQueryViewportSettlement 20 19 24L 18L 25L 19L query document (dataFor [| 0; 1; 4 |]))
+                (TaAcceptedQueryViewportSettlement.Settled TaQueryViewportSelection.Stale)
+                "a newer local query generation supersedes the pending selection"
+
+        testCase "DYN-T-733B production settles the accepted query only from committed prepared frames" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let submitStart = source.IndexOf("        let rec submitQuery", StringComparison.Ordinal)
+            let submitEnd = source.IndexOf("        let applyQuery", submitStart, StringComparison.Ordinal)
+            Expect.isGreaterThanOrEqual submitStart 0 "The production query submission path must exist."
+            Expect.isGreaterThan submitEnd submitStart "The production query submission body must be bounded."
+            let submitBody = source.Substring(submitStart, submitEnd - submitStart)
+            Expect.stringContains submitBody "BaselineDataRevision = baselineDataRevision" "The accepted intent must retain its dispatch-time data authority."
+            Expect.stringContains submitBody "BaselineQueryGeneration = baselineQueryGeneration" "The accepted intent must retain its dispatch-time query authority."
+            Expect.stringContains submitBody "shellPreparedFrame.Value" "The accepted callback must inspect the latest prepared frame used by the rendered shell."
+            Expect.isFalse
+                (submitBody.Contains("chartCommittedFrame.Value", StringComparison.Ordinal))
+                "A row-refresh prepared frame may not advance chartCommittedFrame, so the accepted callback must not wait on that narrower authority."
+            Expect.isFalse
+                (submitBody.Contains("RendererModel.queryViewportSelection", StringComparison.Ordinal))
+                "The accepted callback must not consume the viewport intent directly against runtimeState."
+            Expect.stringContains source "settlePendingQueryViewportFor next nextPreparedData" "Incremental prepared-frame acceptance must settle the pending query."
+            Expect.stringContains source "settlePendingQueryViewportFor current prepared" "Full prepared-frame acceptance must settle the pending query."
+
+        testCase "DYN-T-734 accepted query settlement exposes bounded DOM diagnostics" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains source "publishQueryViewportSettlementDiagnostics" "Settlement state must be published without depending on consumer logs."
+            for attribute in
+                [| "data-query-viewport-settlement-pending"
+                   "data-query-viewport-settlement-outcome"
+                   "data-query-viewport-settlement-intent-generation"
+                   "data-query-viewport-settlement-latest-generation"
+                   "data-query-viewport-settlement-baseline-data-revision"
+                   "data-query-viewport-settlement-baseline-query-generation"
+                   "data-query-viewport-settlement-current-data-revision"
+                   "data-query-viewport-settlement-current-query-generation"
+                   "data-query-viewport-settlement-selection-start"
+                   "data-query-viewport-settlement-selection-count"
+                   "data-query-viewport-settlement-applied-start"
+                   "data-query-viewport-settlement-applied-count" |] do
+                Expect.stringContains source attribute ("Missing bounded settlement diagnostic " + attribute)
+
+        testCase "visible window handles short series" <| fun _ ->
+            let actual =
+                RendererModel.clampWindow 12 160 5 { StartIndex = 20; Count = 48 }
+
+            Expect.equal actual { StartIndex = 0; Count = 5 } "short data renders all available points"
+
+        testCase "follow latest resolves to tail while historical viewport remains stable" <| fun _ ->
+            let requested = { StartIndex = 24; Count = 48 }
+            let latest = RendererModel.resolveWindow 12 160 2000 true requested
+            let historical = RendererModel.resolveWindow 12 160 2000 false requested
+            let latestAfterDelta = RendererModel.resolveWindow 12 160 2001 true requested
+            let historicalAfterDelta = RendererModel.resolveWindow 12 160 2001 false requested
+
+            Expect.equal latest { StartIndex = 1952; Count = 48 } "follow-latest should anchor the bounded window to the loaded tail"
+            Expect.equal latestAfterDelta { StartIndex = 1953; Count = 48 } "a delta should advance only a follow-latest viewport"
+            Expect.equal historical requested "a historical viewport should preserve its explicit start"
+            Expect.equal historicalAfterDelta requested "a delta must not force a historical viewport back to the tail"
+            Expect.equal (RendererModel.viewportMaximumStart 2000 latest) 1952 "navigator maximum start should expose the full loaded range"
+
+        testCase "bootstrap coverage expansion adopts the durable active detail only before user interaction" <| fun _ ->
+            let previous : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:bootstrap-durable"
+                  CoverageRevision = 0L
+                  QueryGeneration = 0L
+                  Completeness = TaCoverageCompleteness.Partial
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "bars"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 4468L
+                      ObservationCount = 32
+                      BaseAxisRef = "bars" }
+                  GlobalOverview = None }
+            let current =
+                { previous with
+                    CoverageRevision = 1L
+                    ActiveDetail =
+                        { StartObservationOrdinal = 3000L
+                          ObservationCount = 1500
+                          BaseAxisRef = "bars" }
+                    GlobalOverview =
+                        Some
+                            { TotalObservationCount = 10_000L
+                              AxisRef = "bars"
+                              Anchors = [||]
+                              ResidentStartObservationOrdinal = 0L
+                              ResidentObservationCount = 4500 } }
+            let bootstrapWindow = { StartIndex = 0; Count = 32 }
+            let expanded =
+                RendererModel.tryBootstrapCoverageExpansionWindow
+                    12
+                    1500
+                    32
+                    4500
+                    true
+                    bootstrapWindow
+                    previous
+                    current
+            Expect.equal expanded (Some { StartIndex = 3000; Count = 1500 }) "the accepted durable page replaces the untouched 32-bar bootstrap viewport"
+
+            let interactivePatch = { current with QueryGeneration = 1L }
+            let afterInteraction =
+                RendererModel.tryBootstrapCoverageExpansionWindow
+                    12
+                    1500
+                    32
+                    4500
+                    true
+                    bootstrapWindow
+                    previous
+                    interactivePatch
+            Expect.isNone afterInteraction "a user-generation coverage patch must preserve the user's local viewport"
+
+            let resizedBootstrap =
+                RendererModel.tryBootstrapCoverageExpansionWindow
+                    12
+                    1500
+                    32
+                    4500
+                    true
+                    { StartIndex = 12; Count = 20 }
+                    previous
+                    current
+            Expect.isNone resizedBootstrap "a resized bootstrap viewport is already user-owned and must not be reset"
+
+        testCase "navigator draft clamps without changing committed window until release" <| fun _ ->
+            let committed = { StartIndex = 1952; Count = 48 }
+            let preview = RendererModel.previewWindow 2000 committed -25
+            let followLatestAtHead, committedAtHead = RendererModel.commitPreview 2000 committed -25
+            let followLatestAtTail, committedAtTail = RendererModel.commitPreview 2000 committed 9999
+
+            Expect.equal committed { StartIndex = 1952; Count = 48 } "preview must not mutate the committed value"
+            Expect.equal preview { StartIndex = 0; Count = 48 } "preview clamps to the loaded-range head"
+            Expect.equal committedAtHead preview "release commits the same clamped preview window"
+            Expect.isFalse followLatestAtHead "historical release leaves follow-latest mode"
+            Expect.equal committedAtTail committed "tail release clamps to the maximum start"
+            Expect.isTrue followLatestAtTail "tail release restores follow-latest mode"
+
+        testCase "navigator release commits the final pointer intent before its scheduled paint" <| fun _ ->
+            let committed = { StartIndex = 0; Count = 1500 }
+            let published = { StartIndex = 1423; Count = 1500 }
+            let pending = { StartIndex = 1498; Count = 1500 }
+
+            Expect.equal
+                (RendererModel.releaseNavigatorDraft committed false (Some published) (Some pending) (Some pending))
+                pending
+                "The final pointer owns drop: a delayed RAF must not replace local1498 with the already-painted local1423."
+            for boundary in [ false; true ] do
+                Expect.equal
+                    (RendererModel.releaseNavigatorDraft committed boundary (Some published) (Some published) (Some pending))
+                    pending
+                    "Paint cadence cannot change the final drop target, inside or outside the resident edge."
+            Expect.equal
+                (RendererModel.releaseNavigatorDraft committed false None None (Some pending))
+                pending
+                "a pointer gesture completed before its first paint may still use its only candidate"
+            Expect.equal
+                (RendererModel.releaseNavigatorDraft committed false None None None)
+                committed
+                "a gesture without movement preserves the committed window"
+
+            Expect.equal
+                (RendererModel.releaseNavigatorDraft committed false (Some published) None None)
+                published
+                "Without a new pointer candidate the last rendered gesture baseline remains valid."
+
+            Expect.equal
+                (RendererModel.releaseNavigatorDraft committed true (Some published) (Some published) (Some { StartIndex = 0; Count = 200 }))
+                { StartIndex = 0; Count = 200 }
+                "an explicit loaded-boundary crossing must preserve its final clamped intent"
+
+        testCase "navigator pointerup and its published ratios use the same final pointer" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains source "pendingDraft <- Some(pointerDraft rawPointerEvent)" "Pointerup must sample its own position before release, not require a final RAF."
+            Expect.stringContains source "Action<Event>(finish)" "The document pointerup path must retain the event coordinates."
+            Expect.stringContains source "finish event" "The element pointerup path must retain the event coordinates too."
+            let startIndex = source.IndexOf("let finish rawPointerEvent =", StringComparison.Ordinal)
+            let dispatchIndex = source.IndexOf("let commitLocalDraft () =", startIndex, StringComparison.Ordinal)
+            let finalPublication = source.Substring(startIndex, dispatchIndex - startIndex)
+            Expect.stringContains finalPublication "navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft draft)" "The held drop geometry must use the same final draft as the action."
+            Expect.stringContains finalPublication "draftWindow.Value <- Some draft" "The final intent is published synchronously before dispatch."
+
+        testCase "chained navigator gesture starts from the last visible optimistic draft" <| fun _ ->
+            let authoritative = { StartIndex = 500; Count = 400 }
+            let published = { StartIndex = 430; Count = 200 }
+            let rendered = { StartIndex = 420; Count = 200 }
+
+            Expect.equal
+                (RendererModel.navigatorGestureBaseline authoritative (Some rendered) (Some published))
+                rendered
+                "the pixels already rendered for the user own the next gesture baseline"
+            Expect.equal
+                (RendererModel.navigatorGestureBaseline authoritative None (Some published))
+                published
+                "a published optimistic draft owns the baseline before afterRender records it"
+            Expect.equal
+                (RendererModel.navigatorGestureBaseline authoritative None None)
+                authoritative
+                "without an optimistic draft the authoritative window remains canonical"
+
+        testCase "queued navigator gesture rebases its displacement to the latest resident domain" <| fun _ ->
+            let previousTotal = 1484
+            let latestTotal = 862
+            let pointerDeltaRatio = 149.0 / float previousTotal
+            let latestCommitted = { StartIndex = 0; Count = latestTotal }
+            let rebasedDelta = RendererModel.navigatorGestureDeltaForDomain latestTotal pointerDeltaRatio
+
+            Expect.equal rebasedDelta 87 "the pointer displacement is rescaled instead of retaining the stale 1484-bar delta"
+            Expect.equal
+                (RendererModel.navigatorBoundaryDirection latestTotal latestCommitted TaWindowDrag.Move rebasedDelta)
+                (Some TaCoverageDirection.Later)
+                "a full latest resident must turn the rebased right move into a later coverage request"
+            Expect.equal
+                (RendererModel.navigatorGestureDeltaForDomain latestTotal Double.NaN)
+                0
+                "invalid pointer geometry cannot manufacture a rebased gesture"
+
+            let overview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "axis.global"
+                  Anchors = [||]
+                  ResidentStartObservationOrdinal = 2_989_574L
+                  ResidentObservationCount = 7420 }
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:no-1k-rebase"
+                  CoverageRevision = 8L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some overview.TotalObservationCount
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = overview.ResidentStartObservationOrdinal
+                      ObservationCount = latestTotal
+                      BaseAxisRef = "axis.5k" }
+                  GlobalOverview = Some overview }
+            let activeLocalDomain =
+                RendererModel.resolveNavigatorGestureDomain
+                    1
+                    4000
+                    latestTotal
+                    latestCommitted
+                    None
+                    projection
+            Expect.isFalse
+                activeLocalDomain.UsesResidentAuthority
+                "different axis refs cannot become resident authority merely because their ordinal numbers overlap"
+            Expect.isNone
+                (RendererModel.tryNavigatorGestureCoverageIntent
+                    activeLocalDomain
+                    projection
+                    { latestCommitted with StartIndex = rebasedDelta })
+                "a queued cross-axis gesture fails closed until a typed retained authority exists"
+
+        testCase "dual-bound navigator previews move and both resize handles" <| fun _ ->
+            let committed = { StartIndex = 1952; Count = 48 }
+            let moved = RendererModel.previewWindowBounds 12 2000 2000 committed TaWindowDrag.Move -952
+            let left = RendererModel.previewWindowBounds 12 2000 2000 committed TaWindowDrag.ResizeLeft -152
+            let right = RendererModel.previewWindowBounds 12 2000 2000 committed TaWindowDrag.ResizeRight -20
+            let full = RendererModel.previewWindowBounds 12 2000 2000 committed TaWindowDrag.ResizeLeft -9999
+            let followLatest, committedFull = RendererModel.commitWindowBounds 12 2000 2000 full
+
+            Expect.equal moved { StartIndex = 1000; Count = 48 } "selection move preserves width"
+            Expect.equal left { StartIndex = 1800; Count = 200 } "left handle expands toward history"
+            Expect.equal right { StartIndex = 1952; Count = 28 } "right handle shrinks at the tail"
+            Expect.equal committedFull { StartIndex = 0; Count = 2000 } "left handle can expose the complete loaded range"
+            Expect.isTrue followLatest "a full-range window still ends at the loaded tail"
+            Expect.equal (RendererModel.selectionRatios 2000 committedFull) (0.0, 1.0) "full range occupies the complete overview"
+
+        testCase "navigator gesture ownership remains stable across a 4500-observation resident domain" <| fun _ ->
+            let committed = { StartIndex = 1700; Count = 1000 }
+            let left = RendererModel.previewWindowBounds 12 4500 4500 committed TaWindowDrag.ResizeLeft -300
+            let right = RendererModel.previewWindowBounds 12 4500 4500 committed TaWindowDrag.ResizeRight 300
+            let moved = RendererModel.previewWindowBounds 12 4500 4500 committed TaWindowDrag.Move 300
+
+            Expect.equal left { StartIndex = 1400; Count = 1300 } "Left ownership changes only the left bound."
+            Expect.equal right { StartIndex = 1700; Count = 1300 } "Right ownership changes only the right bound."
+            Expect.equal moved { StartIndex = 2000; Count = 1000 } "Body ownership moves the selection without changing width."
+
+        testCase "capped navigator right resize preserves the existing left handle behavior" <| fun _ ->
+            let atCap = { StartIndex = 1500; Count = 1500 }
+            Expect.equal
+                (RendererModel.previewWindowBounds 12 1500 4500 atCap TaWindowDrag.ResizeLeft -300)
+                { StartIndex = 1200; Count = 1500 }
+                "The existing left outward translation remains the user-approved baseline."
+            Expect.equal
+                (RendererModel.previewWindowBounds 12 1500 4500 atCap TaWindowDrag.ResizeLeft 300)
+                { StartIndex = 1800; Count = 1200 }
+                "The existing left inward gesture still shrinks the window."
+            let cases : (string * TaVisibleWindow * int * TaVisibleWindow) list =
+                [ "at cap", atCap, 300, { StartIndex = 1800; Count = 1500 }
+                  "inward", atCap, -300, { StartIndex = 1500; Count = 1200 }
+                  "minimum", atCap, -9999, { StartIndex = 1500; Count = 12 }
+                  "below cap", { StartIndex = 1500; Count = 700 }, 300, { StartIndex = 1500; Count = 1000 }
+                  "cross cap", { StartIndex = 1500; Count = 1200 }, 600, { StartIndex = 1800; Count = 1500 }
+                  "resident tail", { StartIndex = 2700; Count = 1500 }, 600, { StartIndex = 3000; Count = 1500 } ]
+            for label, committed, delta, expected in cases do
+                Expect.equal
+                    (RendererModel.previewWindowBounds 12 1500 4500 committed TaWindowDrag.ResizeRight delta)
+                    expected
+                    ("Right resize follows the independent interval example: " + label)
+
+        testCase "capped navigator resize is reflection symmetric across resident boundaries" <| fun _ ->
+            let reflect total (window: TaVisibleWindow) =
+                { window with StartIndex = total - window.StartIndex - window.Count }
+            let windows : (int * TaVisibleWindow) list =
+                [ 0, { StartIndex = 0; Count = 0 }
+                  8, { StartIndex = 0; Count = 8 }
+                  1500, { StartIndex = 0; Count = 1500 }
+                  4500, { StartIndex = 0; Count = 1500 }
+                  4500, { StartIndex = 1500; Count = 1500 }
+                  4500, { StartIndex = 3000; Count = 1500 }
+                  4500, { StartIndex = 1700; Count = 700 } ]
+            for total, committed in windows do
+                for delta in [ -9999; -4500; -1500; -300; -1; 0; 1; 300; 1500; 4500; 9999 ] do
+                    let right = RendererModel.previewWindowBounds 12 1500 total committed TaWindowDrag.ResizeRight delta
+                    let left =
+                        RendererModel.previewWindowBounds 12 1500 total (reflect total committed) TaWindowDrag.ResizeLeft (-delta)
+                    Expect.equal right (reflect total left) "Reflecting the domain and pointer delta exchanges left and right."
+                    Expect.isTrue (right.StartIndex >= 0 && right.StartIndex + right.Count <= total) "Resizing stays within the resident domain."
+                    Expect.isTrue (right.Count <= min 1500 total) "The visible width remains bounded by the advertised maximum."
+
+        testCase "budgeted work coalesces cheap recursive tasks with FIFO and count bounds" <| fun _ ->
+            let turns = Collections.Generic.Queue<unit -> unit>()
+            let observed = ResizeArray<int>()
+            let metrics = ResizeArray<TaWorkSchedulingMetrics>()
+            let mutable now = 0.0
+            let schedule = RendererModel.createBudgetedWorkScheduler 4.0 64 turns.Enqueue (fun () -> now) metrics.Add
+            let rec enqueue index =
+                schedule (fun () ->
+                    observed.Add index
+                    if index < 999 then enqueue (index + 1))
+            enqueue 0
+            Expect.isEmpty observed "Work does not run in the scheduling caller."
+            while turns.Count > 0 do
+                Expect.equal turns.Count 1 "Reentrant scheduling retains a single browser turn."
+                now <- now + 16.0
+                turns.Dequeue() ()
+            Expect.sequenceEqual observed [ 0 .. 999 ] "No work is lost, duplicated or reordered."
+            let final = metrics[metrics.Count - 1]
+            Expect.equal final.TurnCount 16 "1000 cheap steps need 16 bounded turns, not 1000 frames."
+            Expect.equal final.WorkCount 1000 "Every atomic step is counted."
+            Expect.equal final.WorkMilliseconds 0.0 "A stationary fake clock still reaches the count budget."
+            Expect.equal final.WallMilliseconds 256.0 "Wall time includes waiting for browser turns."
+            Expect.equal final.QueueMilliseconds 256.0 "Queue wait is distinct from synchronous work."
+            Expect.equal final.PendingCount 0 "A completed batch retains no queued work."
+
+        testCase "budgeted work yields after the time budget without splitting an atomic step" <| fun _ ->
+            let turns = Collections.Generic.Queue<unit -> unit>()
+            let metrics = ResizeArray<TaWorkSchedulingMetrics>()
+            let mutable now = 0.0
+            let mutable completed = 0
+            let schedule = RendererModel.createBudgetedWorkScheduler 4.0 64 turns.Enqueue (fun () -> now) metrics.Add
+            for _ in 1 .. 7 do schedule (fun () -> now <- now + 1.5; completed <- completed + 1)
+            turns.Dequeue() ()
+            Expect.equal completed 3 "The third indivisible step reaches 4.5ms; the fourth must yield."
+            Expect.equal turns.Count 1 "Exactly one continuation is queued."
+            turns.Dequeue() ()
+            Expect.equal completed 6 "The next turn receives a fresh time budget."
+            turns.Dequeue() ()
+            Expect.equal completed 7 "The remaining work completes."
+            let final = metrics[metrics.Count - 1]
+            Expect.equal final.WorkMilliseconds 10.5 "Work measures callback time only."
+            Expect.equal final.MaximumTurnMilliseconds 4.5 "One atomic step may cross the soft elapsed budget."
+
+        testCase "initial preparation uses a larger bounded turn while incremental work stays responsive" <| fun _ ->
+            let run budget =
+                let turns = Collections.Generic.Queue<unit -> unit>()
+                let metrics = ResizeArray<TaWorkSchedulingMetrics>()
+                let mutable now = 0.0
+                let mutable completed = 0
+                let schedule =
+                    RendererModel.createBudgetedWorkScheduler
+                        budget
+                        RendererModel.ScheduledWorkMaximumCount
+                        turns.Enqueue
+                        (fun () -> now)
+                        metrics.Add
+                for _ in 1 .. 100 do
+                    schedule (fun () ->
+                        now <- now + 3.0
+                        completed <- completed + 1)
+                while turns.Count > 0 do
+                    now <- now + 16.0
+                    turns.Dequeue() ()
+                completed, metrics[metrics.Count - 1]
+
+            let initialCompleted, initial = run (RendererModel.preparationWorkBudget true)
+            let incrementalCompleted, incremental = run (RendererModel.preparationWorkBudget false)
+            Expect.equal initialCompleted 100 "Initial preparation preserves every ordered atomic work item."
+            Expect.equal incrementalCompleted 100 "Incremental preparation preserves every ordered atomic work item."
+            Expect.equal initial.WorkMilliseconds incremental.WorkMilliseconds "Both policies perform identical work."
+            Expect.isLessThanOrEqual initial.TurnCount 17 "A blank first paint needs at most seventeen bounded turns for this workload."
+            Expect.equal incremental.TurnCount 50 "Interactive incremental work retains the four-millisecond yield budget."
+            Expect.isLessThan initial.TurnCount incremental.TurnCount "Initial preparation removes avoidable RAF queue turns."
+
+        testCase "budgeted work clears a failed batch and can accept a new batch" <| fun _ ->
+            let turns = Collections.Generic.Queue<unit -> unit>()
+            let mutable completed = 0
+            let schedule = RendererModel.createBudgetedWorkScheduler 4.0 64 turns.Enqueue (fun () -> 0.0) ignore
+            schedule (fun () -> failwith "expected atomic-work failure")
+            schedule (fun () -> completed <- completed + 100)
+            Expect.throws (fun () -> turns.Dequeue() ()) "Unhandled work failure is not silently accepted."
+            Expect.equal turns.Count 0 "A failed batch must not reschedule old work."
+            schedule (fun () -> completed <- completed + 1)
+            turns.Dequeue() ()
+            Expect.equal completed 1 "Only newly scheduled work runs after failure."
+
+        testCase "budgeted work rejects invalid budgets before scheduling" <| fun _ ->
+            let turns = Collections.Generic.Queue<unit -> unit>()
+            for milliseconds, count in [ 0.0, 64; -1.0, 64; Double.NaN, 64; Double.PositiveInfinity, 64; 4.0, 0; 4.0, -1 ] do
+                Expect.throws
+                    (fun () -> RendererModel.createBudgetedWorkScheduler milliseconds count turns.Enqueue (fun () -> 0.0) ignore |> ignore)
+                    "Both budgets must be positive and elapsed budget finite."
+            Expect.equal turns.Count 0 "Rejected configuration has no scheduled side effect."
+
+        testCase "RFC-0031 cross-axis overview uses event time and all gestures emit boundary intent" <| fun _ ->
+            let start = DateTimeOffset(2026, 9, 29, 0, 0, 0, TimeSpan.Zero)
+            let time minutes = start.AddMinutes(float minutes).ToString("O")
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "ES|1K-detail|60K-overview"
+                  CoverageRevision = 1L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Partial
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "axis.60k"
+                  OverviewAnchors =
+                    [| for index, minute in [| 0, 0; 1, 60; 2, 120; 3, 180 |] do
+                           yield
+                               { ObservationOrdinal = int64 index
+                                 EventTimeUtc = time minute
+                                 Value = SduiValue.Number(float index) } |]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 0L
+                      ObservationCount = 10
+                      BaseAxisRef = "axis.1k" }
+                  GlobalOverview = None }
+            let detailTimeline = [| for minute in 70 .. 79 -> time minute |]
+
+            match RendererModel.overviewSelectionRatios projection detailTimeline { StartIndex = 0; Count = 10 } with
+            | Some(left, right) ->
+                Expect.floatClose Accuracy.high left 0.25 "The 1K detail head maps to its preceding 60K overview candle."
+                Expect.floatClose Accuracy.high right 0.5 "The visible 1K interval occupies exactly one 60K overview candle."
+            | None -> failtest "Cross-axis selection must resolve by canonical event time."
+            let residentProjection =
+                { projection with
+                    TotalObservationCount = Some 900L
+                    ActiveDetail =
+                        { projection.ActiveDetail with
+                            StartObservationOrdinal = 700L } }
+            match
+                RendererModel.overviewSelectionRatiosForGlobalWindow
+                    residentProjection
+                    detailTimeline
+                    { StartIndex = 700; Count = 5 }
+            with
+            | Some(left, _) ->
+                Expect.floatClose Accuracy.high left 0.25 "A right-handle draft must keep the committed timestamp-mapped left boundary."
+            | None -> failtest "A resident global draft must map through the canonical overview timeline."
+            let frozenGestureRatios = 0.25, 0.5
+            let shiftedProjection =
+                { residentProjection with
+                    CoverageRevision = 2L
+                    QueryGeneration = 2L
+                    ActiveDetail =
+                        { residentProjection.ActiveDetail with
+                            StartObservationOrdinal = 650L } }
+            let ratiosDuringAuthoritativeFrame =
+                RendererModel.navigatorSelectionRatiosForRender
+                    (Some frozenGestureRatios)
+                    (Some shiftedProjection)
+                    detailTimeline
+                    { StartIndex = 0; Count = 10 }
+                    (Some { StartIndex = 700; Count = 5 })
+            Expect.equal
+                ratiosDuringAuthoritativeFrame
+                frozenGestureRatios
+                "An authoritative frame received before pointerup must not rewrite the active gesture geometry."
+            Expect.equal
+                (RendererModel.eventTimeSlot (RendererModel.tryOverviewTimeline projection |> Option.defaultValue [||]) (time 130))
+                (Some 2)
+                "A stripe between overview anchors maps to the preceding authoritative slot."
+
+            let head = { StartIndex = 0; Count = 20 }
+            let tail = { StartIndex = 80; Count = 20 }
+            let earlierMove = RendererModel.navigatorBoundaryDirection 100 head TaWindowDrag.Move -1
+            let laterMove = RendererModel.navigatorBoundaryDirection 100 tail TaWindowDrag.Move 1
+            Expect.equal
+                (RendererModel.navigatorBoundaryDirection 100 head TaWindowDrag.ResizeLeft -1)
+                earlierMove
+                "ResizeLeft crossing the loaded head must emit the same earlier intent as Move."
+            Expect.equal
+                (RendererModel.navigatorBoundaryDirection 100 tail TaWindowDrag.ResizeRight 1)
+                laterMove
+                "ResizeRight crossing the loaded tail must emit the same later intent as Move."
+            Expect.isSome earlierMove "Move crossing the loaded head requests earlier coverage."
+            Expect.isSome laterMove "Move crossing the loaded tail requests later coverage."
+            Expect.isNone
+                (RendererModel.navigatorBoundaryDirection 100 { StartIndex = 20; Count = 20 } TaWindowDrag.ResizeLeft 1)
+                "An in-range resize remains local."
+
+            let optimistic = Some { StartIndex = 1498; Count = 1500 }
+            Expect.equal
+                (RendererModel.optimisticViewportAfterActionSettlement true optimistic)
+                optimistic
+                "A queued action retains the latest optimistic viewport when the previous visible-range action settles."
+            Expect.isNone
+                (RendererModel.optimisticViewportAfterActionSettlement false optimistic)
+                "Accepted or rejected visible-range action clears an unqueued optimistic viewport exactly once."
+
+        testCase "coverage projection and action settlement preserve the newest optimistic viewport" <| fun _ ->
+            let optimistic = Some { StartIndex = 1423; Count = 1500 }
+            Expect.equal
+                (RendererModel.optimisticCoverageViewportAfterProjection true false optimistic)
+                optimistic
+                "A projection arriving before the Accepted response retains the released viewport until the action settles."
+            Expect.equal
+                (RendererModel.optimisticCoverageViewportAfterProjection false true optimistic)
+                optimistic
+                "A newer queued viewport intent survives the prior coverage projection."
+            Expect.isNone
+                (RendererModel.optimisticCoverageViewportAfterProjection false false optimistic)
+                "A settled coverage action clears its optimistic viewport after the matching projection commits."
+
+        testCase "RFC-0031 overview anchors preserve authored OHLC without inventing OC wicks" <| fun _ ->
+            let objectValue values = SduiValue.Object(Map values)
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "overview-shapes"
+                  CoverageRevision = 1L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Partial
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "axis.60k"
+                  OverviewAnchors =
+                    [| { ObservationOrdinal = 0L
+                         EventTimeUtc = "2026-09-29T00:00:00Z"
+                         Value = objectValue [ "open", SduiValue.Number 100.0; "high", SduiValue.Number 104.0; "low", SduiValue.Number 98.0; "close", SduiValue.Number 103.0 ] }
+                       { ObservationOrdinal = 1L
+                         EventTimeUtc = "2026-09-29T01:00:00Z"
+                         Value = objectValue [ "open", SduiValue.Number 103.0; "close", SduiValue.Number 101.0 ] }
+                       { ObservationOrdinal = 2L
+                         EventTimeUtc = "2026-09-29T02:00:00Z"
+                         Value = SduiValue.Number 101.0 } |]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 0L
+                      ObservationCount = 3
+                      BaseAxisRef = "axis.1k" }
+                  GlobalOverview = None }
+            let points = RendererModel.overviewPointsForCoverage projection
+            Expect.equal points.Length 3 "OHLC, OC and scalar anchors all remain candlesticks."
+            Expect.equal (points[0].Open, points[0].High, points[0].Low, points[0].Close) (100.0, Some 104.0, Some 98.0, 103.0) "OHLC remains exact."
+            Expect.equal (points[1].High, points[1].Low) (None, None) "OC remains body-only and must not invent wick bounds."
+            Expect.equal (points[2].Open, points[2].High, points[2].Low, points[2].Close) (101.0, None, None, 101.0) "A scalar remains a flat body without invented wicks."
+
+        testCase "overview compaction aggregates contiguous OHLC buckets and preserves source coverage" <| fun _ ->
+            let point index high low =
+                { Timestamp = $"T{index}"
+                  Open = float index
+                  High = high
+                  Low = low
+                  Close = float index + 0.5
+                  Volume = 1.0
+                  SourceStartIndex = index
+                  SourceEndExclusive = index + 1 }
+            let source =
+                Array.init 8000 (fun index ->
+                    point index (Some(if index = 4321 then 99_999.0 else float index + 1.0)) (Some(float index - 1.0)))
+            let compacted = RendererModel.compactOverviewCandles 280 source
+            Expect.equal compacted.Length 280 "Visual output remains bounded."
+            Expect.equal compacted[0].SourceStartIndex 0 "The first bucket starts at the loaded head."
+            Expect.equal compacted[compacted.Length - 1].SourceEndExclusive 8000 "The final bucket reaches the loaded tail."
+            Expect.isTrue (compacted |> Array.pairwise |> Array.forall (fun (left, right) -> left.SourceEndExclusive = right.SourceStartIndex)) "Buckets cover the source contiguously without point-drop gaps."
+            Expect.isTrue (compacted |> Array.exists (fun value -> value.High = Some 99_999.0)) "A source high between uniform sample indexes survives aggregation."
+
+            let bodyOnly = source |> Array.map (fun value -> { value with High = None; Low = None })
+            let compactedBodyOnly = RendererModel.compactOverviewCandles 280 bodyOnly
+            Expect.isTrue (compactedBodyOnly |> Array.forall (fun value -> value.High.IsNone && value.Low.IsNone)) "OC-only buckets must not invent high or low values."
+
+        testCase "overview geometry excludes non-finite prices instead of poisoning every SVG coordinate" <| fun _ ->
+            let point index openValue high low closeValue =
+                { Timestamp = $"T{index}"
+                  Open = openValue
+                  High = high
+                  Low = low
+                  Close = closeValue
+                  Volume = 1.0
+                  SourceStartIndex = index
+                  SourceEndExclusive = index + 1 }
+
+            let cleaned =
+                [| point 0 100.0 (Some 104.0) (Some 98.0) 103.0
+                   point 1 Double.NaN (Some 105.0) (Some 99.0) 102.0
+                   point 2 102.0 (Some Double.PositiveInfinity) (Some 100.0) 101.0 |]
+                |> RendererModel.compactOverviewCandles 10
+
+            Expect.equal cleaned.Length 2 "A candle with a non-finite body is excluded."
+            Expect.equal (cleaned[1].High, cleaned[1].Low) (None, None) "A non-finite authored wick becomes body-only instead of poisoning the chart range."
+
+            let low, high =
+                RendererModel.paddedRange 0.0 1.0 [| Double.NaN; 10.0; Double.NegativeInfinity; 20.0 |]
+            Expect.floatClose Accuracy.high low 9.2 "Finite values determine the padded lower bound."
+            Expect.floatClose Accuracy.high high 20.8 "Finite values determine the padded upper bound."
+
+        testCase "navigator visual geometry preserves the exact resolved-window ratio" <| fun _ ->
+            let total = 1_000_000
+            let minimumWindow = { StartIndex = total - 12; Count = 12 }
+            let ratios = RendererModel.selectionRatios total minimumWindow
+            let selectionX, selectionWidth = RendererModel.navigatorSelectionBounds 1000.0 ratios
+
+            Expect.floatClose Accuracy.high selectionX 999.988 "the tail selection starts at its true loaded-domain ratio"
+            Expect.floatClose Accuracy.high selectionWidth 0.012 "visual width must not be inflated to a fixed pixel or viewBox floor"
+
+        testCase "global resident strip expands visual and hit geometry around the exact semantic center" <| fun _ ->
+            let overview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "axis.global"
+                  Anchors = [||]
+                  ResidentStartObservationOrdinal = 1_000_000L
+                  ResidentObservationCount = 1500 }
+            let resident =
+                { StartObservationOrdinal = overview.ResidentStartObservationOrdinal
+                  ObservationCount = overview.ResidentObservationCount }
+            let ratios = RendererModel.globalResidentSelectionRatios overview resident
+            let semanticX, semanticWidth = RendererModel.navigatorSelectionBounds 1000.0 ratios
+            let renderedWidth = 1436.0
+            let visualX, visualWidth = RendererModel.navigatorMinimumCssSelectionBounds 1000.0 renderedWidth 12.0 ratios
+            let hitX, hitWidth = RendererModel.navigatorMinimumCssSelectionBounds 1000.0 renderedWidth 16.0 ratios
+            let center x width = x + width / 2.0
+            let cssWidth viewBoxWidth = viewBoxWidth / 1000.0 * renderedWidth
+
+            Expect.isLessThan semanticWidth 1.0 "The real three-million-point semantic strip is sub-pixel in the SVG domain."
+            Expect.floatClose Accuracy.high (cssWidth visualWidth) 12.0 "The visible strip has a deterministic CSS-pixel minimum width."
+            Expect.floatClose Accuracy.high (cssWidth hitWidth) 16.0 "The move hit target has a deterministic CSS-pixel minimum width."
+            Expect.floatClose Accuracy.high (center visualX visualWidth) (center semanticX semanticWidth) "Visual expansion must not move the resident ordinal center."
+            Expect.floatClose Accuracy.high (center hitX hitWidth) (center semanticX semanticWidth) "Hit expansion must not move the resident ordinal center."
+
+        testCase "navigator hit resolver keeps resize and move deterministic for tiny selections" <| fun _ ->
+            let ratios = 0.5, 0.5001
+            let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer
+
+            Expect.equal (mode 490.0) (Some TaWindowDrag.ResizeLeft) "the left outer zone resizes the left boundary"
+            Expect.equal (mode 500.05) (Some TaWindowDrag.Move) "the middle overlap zone moves the tiny selection"
+            Expect.equal (mode 510.0) (Some TaWindowDrag.ResizeRight) "the right outer zone resizes the right boundary"
+            Expect.equal (mode 450.0) None "a pointer outside the transparent interaction union does nothing"
+
+            let tailMode pointer = RendererModel.navigatorDragMode 1000.0 24.0 (0.997, 1.0) pointer
+            Expect.equal (tailMode 988.0) (Some TaWindowDrag.ResizeLeft) "a clipped tail union retains its left resize zone"
+            Expect.equal (tailMode 998.5) (Some TaWindowDrag.Move) "the visible tail selection center remains a move zone"
+            Expect.equal (tailMode 1000.0) (Some TaWindowDrag.ResizeRight) "the track edge retains the right resize zone"
+
+        testCase "document viewport cap and loaded coverage projection remain independent" <| fun _ ->
+            let projection =
+                { CoverageIdentity = "coverage:es-1k"
+                  CoverageRevision = 7L
+                  QueryGeneration = 11L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 1_000_000L
+                  Segments =
+                    [| { SegmentId = "history"
+                         StartEventTimeUtc = "2020-01-01T00:00:00Z"
+                         EndEventTimeExclusiveUtc = "2026-09-28T00:00:00Z"
+                         StartObservationOrdinal = 0L
+                         ObservationCount = 1_000_000L } |]
+                  OverviewAxisRef = "axis.1k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 999_750L
+                      ObservationCount = 250
+                      BaseAxisRef = "axis.1k" }
+                  GlobalOverview = None }
+            let defaultView =
+                Map.empty
+                |> TaLoadedCoverageCodec.applyMaximumVisibleBars 250
+                |> TaLoadedCoverageCodec.apply projection
+
+            Expect.equal (RendererModel.documentMaximumVisibleBars 4000 defaultView) 250 "A validated per-document cap must override the host fallback."
+            Expect.isTrue
+                (RendererModel.isStaleCoverageCandidate 12L defaultView)
+                "A candidate from an older query generation must not replace the committed viewport."
+            Expect.isFalse
+                (RendererModel.isStaleCoverageCandidate 11L defaultView)
+                "The current query generation remains eligible for commit."
+            match RendererModel.tryCoverageNavigatorWindow 250 { StartIndex = 202; Count = 48 } defaultView with
+            | Some(decoded, domainCount, window) ->
+                Expect.equal decoded.CoverageRevision 7L "The navigator must retain the accepted coverage revision."
+                Expect.equal domainCount 1_000_000 "The navigator domain must use complete coverage observations, not active detail length."
+                Expect.equal window { StartIndex = 999_952; Count = 48 } "The visible window must project onto global observation ordinals."
+            | None -> failtest "Valid loaded coverage projection must resolve a navigator window."
+
+            let earlier =
+                RendererModel.tryAdjacentCoverageIntent
+                    TaCoverageDirection.Earlier
+                    250
+                    250
+                    { StartIndex = 0; Count = 250 }
+                    { projection with
+                        TotalObservationCount = Some 500L
+                        ActiveDetail = { projection.ActiveDetail with StartObservationOrdinal = 250L; ObservationCount = 250 } }
+            Expect.equal
+                (earlier |> Option.bind _.StartObservationOrdinal, earlier |> Option.map _.ObservationCount)
+                (Some 0L, Some 250)
+                "Earlier must request one fixed-width adjacent page, not one quarter of the current window."
+
+            let boundaryProjection =
+                { projection with
+                    TotalObservationCount = Some 500L
+                    ActiveDetail = { projection.ActiveDetail with StartObservationOrdinal = 250L; ObservationCount = 250 } }
+            let exactEarlier =
+                RendererModel.tryMainPlotPanCoverageIntent
+                    250
+                    250
+                    { StartIndex = 0; Count = 250 }
+                    -10
+                    boundaryProjection
+            Expect.equal
+                (exactEarlier |> Option.bind _.StartObservationOrdinal, exactEarlier |> Option.map _.ObservationCount)
+                (Some 240L, Some 250)
+                "main-plot boundary pan must preserve count and use the actual ten-bar drag, not jump one page"
+
+            let exactLater =
+                RendererModel.tryMainPlotPanCoverageIntent
+                    250
+                    250
+                    { StartIndex = 0; Count = 250 }
+                    10
+                    { boundaryProjection with ActiveDetail = { boundaryProjection.ActiveDetail with StartObservationOrdinal = 0L } }
+            Expect.equal
+                (exactLater |> Option.bind _.StartObservationOrdinal, exactLater |> Option.map _.ObservationCount)
+                (Some 10L, Some 250)
+                "main-plot pan direction must follow the signed K-bar delta without changing width"
+
+            let expandedProjection =
+                { boundaryProjection with
+                    QueryGeneration = boundaryProjection.QueryGeneration + 1L
+                    ActiveDetail =
+                        { boundaryProjection.ActiveDetail with
+                            StartObservationOrdinal = 2_993_994L
+                            ObservationCount = 3000 } }
+            Expect.equal
+                (RendererModel.tryCoverageIntentReanchorWindow
+                    1
+                    4000
+                    3000
+                    2_995_074L
+                    1500
+                    expandedProjection)
+                (Some { StartIndex = 1080; Count = 1500 })
+                "an expanded resident interval must reanchor the exact requested absolute start instead of fixing local start at zero"
+            Expect.isNone
+                (RendererModel.tryCoverageIntentReanchorWindow
+                    1
+                    4000
+                    3000
+                    2_992_000L
+                    1500
+                    expandedProjection)
+                "a response that does not contain the requested absolute window cannot settle the pending pan"
+
+            Expect.equal
+                (RendererModel.coverageIntentProjectionSettlement
+                    1
+                    4000
+                    3000
+                    2_995_074L
+                    1500
+                    (expandedProjection.QueryGeneration + 1L)
+                    false
+                    expandedProjection)
+                TaCoverageIntentProjectionSettlement.Await
+                "a projection older than the requested query generation is not terminal"
+            Expect.equal
+                (RendererModel.coverageIntentProjectionSettlement
+                    1
+                    4000
+                    3000
+                    2_995_074L
+                    1500
+                    expandedProjection.QueryGeneration
+                    true
+                    expandedProjection)
+                (TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 1080; Count = 1500 })
+                "an authoritative frame containing the request may reanchor before the action callback settles"
+            Expect.equal
+                (RendererModel.coverageIntentProjectionSettlement
+                    1
+                    4000
+                    3000
+                    2_992_000L
+                    1500
+                    expandedProjection.QueryGeneration
+                    true
+                    expandedProjection)
+                TaCoverageIntentProjectionSettlement.Await
+                "a non-containing frame remains provisional while the action callback is pending"
+            Expect.equal
+                (RendererModel.coverageIntentProjectionSettlement
+                    1
+                    4000
+                    3000
+                    2_992_000L
+                    1500
+                    expandedProjection.QueryGeneration
+                    false
+                    expandedProjection)
+                TaCoverageIntentProjectionSettlement.Reject
+                "a matching terminal frame that cannot contain the request rejects instead of retaining Preview forever"
+
+            let residentOverviewAnchors =
+                Array.init 1484 (fun index ->
+                    { ObservationOrdinal = 599_618L + int64 index
+                      EventTimeUtc = DateTimeOffset(2026, 7, 3, 8, 20, 0, TimeSpan.Zero).AddMinutes(float (index * 5)).ToString("O")
+                      Value = SduiValue.Number(float index) })
+            let crossAxisProjection : TaLoadedCoverageProjection =
+                { expandedProjection with
+                    QueryGeneration = expandedProjection.QueryGeneration + 1L
+                    OverviewAxisRef = "ta-overview-axis"
+                    OverviewAnchors = residentOverviewAnchors
+                    ActiveDetail =
+                        { StartObservationOrdinal = 600_240L
+                          ObservationCount = 862
+                          BaseAxisRef = "axis.5k" }
+                    GlobalOverview =
+                        Some
+                            { TotalObservationCount = 2_996_994L
+                              AxisRef = "axis.1k"
+                              Anchors = [||]
+                              ResidentStartObservationOrdinal = 2_989_574L
+                              ResidentObservationCount = 7420 } }
+            Expect.equal
+                (RendererModel.coverageIntentProjectionSettlement
+                    1
+                    4000
+                    862
+                    2_989_722L
+                    862
+                    crossAxisProjection.QueryGeneration
+                    true
+                    crossAxisProjection)
+                (TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 0; Count = 862 })
+                "a matching cross-axis frame must settle on its authoritative active-local window instead of comparing unrelated ordinals"
+
+            let residentAuthority =
+                RendererModel.tryCrossAxisResidentNavigatorAuthority
+                    2_989_574L
+                    862
+                    crossAxisProjection
+            Expect.isNone
+                residentAuthority
+                "a GLOBAL-axis target cannot manufacture retained authority for a different active/base axis"
+            Expect.isNone
+                (RendererModel.tryResidentNavigatorWindowWithAuthority
+                    862
+                    { StartIndex = 0; Count = 862 }
+                    residentAuthority
+                    crossAxisProjection)
+                "cross-axis settlement must remain active-local instead of reusing GLOBAL ordinal authority"
+            Expect.equal
+                (RendererModel.navigatorSelectionRatiosForRenderWithAuthority
+                    None
+                    (Some crossAxisProjection)
+                    (Array.init 862 string)
+                    { StartIndex = 0; Count = 862 }
+                    None
+                    residentAuthority)
+                (0.0, 1.0)
+                "without exact cross-axis mapping, settled render geometry stays in the active-local domain"
+
+            let movedAuthority =
+                RendererModel.tryCrossAxisResidentNavigatorAuthority
+                    2_989_722L
+                    862
+                    crossAxisProjection
+            Expect.isNone
+                movedAuthority
+                "moving a normalized GLOBAL target cannot create active-axis navigator authority"
+            Expect.isNone
+                (RendererModel.tryResidentNavigatorWindowWithAuthority
+                    862
+                    { StartIndex = 0; Count = 862 }
+                    movedAuthority
+                    crossAxisProjection)
+                "a later remote settlement must not re-enable GLOBAL-to-active ordinal addition"
+            Expect.isNone
+                (RendererModel.tryCrossAxisResidentNavigatorAuthority
+                    601_102L
+                    862
+                    crossAxisProjection)
+                "an active-axis ordinal cannot be retained as GLOBAL navigator authority"
+
+            let allLoaded =
+                RendererModel.tryViewAllCoverageIntent
+                    4000
+                    { projection with
+                        TotalObservationCount = Some 3022L
+                        ActiveDetail = { projection.ActiveDetail with StartObservationOrdinal = 788L; ObservationCount = 724 } }
+            Expect.equal
+                (allLoaded |> Option.bind _.StartObservationOrdinal, allLoaded |> Option.map _.ObservationCount)
+                (Some 0L, Some 3022)
+                "View All must request the complete loaded domain when it is below the document cap."
+
+            let cappedLoaded = RendererModel.tryViewAllCoverageIntent 4000 projection
+            Expect.equal
+                (cappedLoaded |> Option.bind _.StartObservationOrdinal, cappedLoaded |> Option.map _.ObservationCount)
+                (Some 996_000L, Some 4000)
+                "View All must request the loaded-domain tail when coverage exceeds the document cap."
+
+            let loadedStart = RendererModel.tryLoadedCoverageEdgeIntent TaLoadedCoverageEdge.Start 48 4000 projection
+            let loadedEnd = RendererModel.tryLoadedCoverageEdgeIntent TaLoadedCoverageEdge.End 48 4000 projection
+            Expect.equal
+                (loadedStart |> Option.bind _.StartObservationOrdinal, loadedStart |> Option.bind _.Direction)
+                (Some 0L, Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier)
+                "The typed start-edge intent targets the loaded head."
+            Expect.equal
+                (loadedEnd |> Option.bind _.StartObservationOrdinal, loadedEnd |> Option.bind _.Direction)
+                (Some 999_952L, Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later)
+                "The typed end-edge intent targets the loaded tail."
+
+        testCase "DYN-T-722 cross-axis main-plot boundary pan uses active-detail authority" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:main-boundary-cross-axis"
+                  CoverageRevision = 5L
+                  QueryGeneration = 2L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident.30k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 50_090L
+                      ObservationCount = 1_215
+                      BaseAxisRef = "axis.active.30k" }
+                  GlobalOverview =
+                    Some
+                        { TotalObservationCount = 2_996_994L
+                          AxisRef = "axis.global.1k"
+                          Anchors = [||]
+                          ResidentStartObservationOrdinal = 1_387_905L
+                          ResidentObservationCount = 134_906 } }
+            let intent =
+                RendererModel.tryMainPlotPanCoverageIntent
+                    1500
+                    4500
+                    { StartIndex = 3150; Count = 1215 }
+                    340
+                    projection
+                |> Option.get
+
+            Expect.equal intent.StartObservationOrdinal (Some 50_430L) "cross-axis local offset must not be added to the active-detail ordinal"
+            Expect.equal intent.ObservationCount 1215 "the boundary request preserves the visible width"
+            Expect.equal intent.Direction (Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later) "the positive drag requests later coverage"
+            Expect.equal intent.QueryGeneration 3L "the boundary request advances the frozen generation once"
+            Expect.equal
+                (RendererModel.mainPlotPanBoundaryDirection 4500 { StartIndex = 3150; Count = 1215 } 340)
+                (Some PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Later)
+                "the exact Gate A geometry is a later boundary request"
+            Expect.isNone
+                (RendererModel.mainPlotPanBoundaryDirection 4500 { StartIndex = 1645; Count = 1215 } 340)
+                "the same delta remains an in-range event-time pan from the earlier setup position"
+            Expect.isNone
+                (RendererModel.mainPlotPanBoundaryDirection 4500 { StartIndex = 3150; Count = 1215 } 0)
+                "a zero-delta gesture never requests coverage"
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains
+                source
+                "RendererModel.mainPlotPanBoundaryDirection timeline.Length committed delta"
+                "the live main-plot release must classify an out-of-range pan"
+            Expect.stringContains source "requestAdjacentCoverage direction delta" "the live boundary path must reuse typed adjacent coverage dispatch"
+
+        testCase "DYN-T-736 returned active-local overscroll keeps event-time authority and queues one directional navigator request" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:return-2026-active-local"
+                  CoverageRevision = 24L
+                  QueryGeneration = 19L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "axis.active.30k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 0L
+                      ObservationCount = 1491
+                      BaseAxisRef = "axis.active.30k" }
+                  GlobalOverview = None }
+
+            let intent =
+                RendererModel.tryNavigatorAdjacentEventRangeIntent
+                    TaCoverageDirection.Earlier
+                    1491
+                    projection
+                |> Option.get
+
+            Expect.isTrue
+                (RendererModel.requiresNavigatorAdjacentEventRangeMaterialization projection)
+                "a returned no-global active-local projection requires the directional event-range seam"
+            Expect.isNone intent.StartObservationOrdinal "a returned query-relative ordinal zero cannot locate earlier bars"
+            Expect.equal
+                intent.Direction
+                (Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier)
+                "the exact event-time range keeps an Earlier materialization hint"
+            Expect.equal intent.ObservationCount 1491 "the visible width is preserved independently from the 1,500-point fetch cap"
+            Expect.equal intent.ExpectedCoverageRevision (Some 24L) "the request remains revision guarded"
+            Expect.equal intent.QueryGeneration 20L "the request advances the coverage generation exactly once"
+            Expect.equal intent.RangeAuthority TaCoverageRangeAuthority.ExplicitBounds "event time remains the position authority"
+            Expect.equal intent.Purpose TaCoverageWindowPurpose.NavigatorWindow "the consumer retains navigator semantics"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains source "TaQueuedViewportIntent.NavigatorAdjacentCoverage" "an active-local overscroll must survive an already-pending action"
+            Expect.stringContains source "sendOrQueueNavigatorAdjacentCoverage" "the live drop path must use the queue-aware directional event-range seam"
+
+        testCase "DYN-T-739 returned navigator separates directional fetch capacity from viewport width" <| fun _ ->
+            Expect.equal
+                (RendererModel.navigatorAdjacentObservationCounts 1500 1491)
+                (1500, 1491)
+                "the Research host receives the full directional fetch capacity while settlement preserves the gesture width"
+            Expect.equal
+                (RendererModel.navigatorAdjacentObservationCounts 100 130)
+                (100, 100)
+                "viewport settlement cannot exceed the bounded request capacity"
+            Expect.equal
+                (RendererModel.navigatorAdjacentObservationCounts 0 0)
+                (1, 1)
+                "both counts remain valid at the lower bound"
+
+        testCase "DYN-T-737 cross-axis global-backed left edge uses adjacent event-time authority" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:initial-global-backed"
+                  CoverageRevision = 1L
+                  QueryGeneration = 0L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 2_996_994L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.active.30k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 99_189L
+                      ObservationCount = 1500
+                      BaseAxisRef = "axis.active.30k" }
+                  GlobalOverview =
+                    Some
+                        { TotalObservationCount = 2_996_994L
+                          AxisRef = "axis.global.1k"
+                          Anchors = [||]
+                          ResidentStartObservationOrdinal = 1_387_905L
+                          ResidentObservationCount = 134_906 } }
+
+            Expect.isTrue
+                (RendererModel.requiresNavigatorAdjacentEventRangeMaterialization projection)
+                "a cross-axis GLOBAL cannot suppress earlier loading or supply ordinals for the active axis"
+
+            let intent = RendererModel.tryNavigatorAdjacentEventRangeIntent TaCoverageDirection.Earlier 1500 projection |> Option.get
+            Expect.isNone intent.StartObservationOrdinal "the cross-axis continuation is anchored by event time"
+            Expect.equal intent.ObservationCount 1500 "the directional request asks for the full continuation page"
+            Expect.isFalse
+                (RendererModel.requiresNavigatorAdjacentEventRangeMaterialization
+                    { projection with GlobalOverview = projection.GlobalOverview |> Option.map (fun overview -> { overview with AxisRef = projection.ActiveDetail.BaseAxisRef }) })
+                "same-axis resident ordinal authority retains its existing route"
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.stringContains
+                source
+                "when RendererModel.requiresNavigatorAdjacentEventRangeMaterialization projection"
+                "the live adjacent dispatcher must be gated by projection authority"
+            Expect.stringContains
+                source
+                "when projection.GlobalOverview.IsSome"
+                "the live global-backed branch must remain on the local event-time commit route"
+
+        testCase "non-GLOBAL selection uses loaded coordinates while active-only window math stays bounded" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:global-drag"
+                  CoverageRevision = 17L
+                  QueryGeneration = 23L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 900L
+                  Segments =
+                    [| { SegmentId = "loaded"
+                         StartEventTimeUtc = "2026-09-01T00:00:00Z"
+                         EndEventTimeExclusiveUtc = "2026-10-01T00:00:00Z"
+                         StartObservationOrdinal = 0L
+                         ObservationCount = 900L } |]
+                  OverviewAxisRef = "axis.overview"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 700L
+                      ObservationCount = 200
+                      BaseAxisRef = "axis.detail" }
+                  GlobalOverview = None }
+
+            let localTotal = 200
+            let committed = { StartIndex = 40; Count = 80 }
+            let renderedRatios =
+                RendererModel.navigatorSelectionRatiosForRender None (Some projection) [| for index in 0 .. localTotal - 1 -> string index |] committed None
+            let moved = RendererModel.previewWindowBounds 12 4000 localTotal committed TaWindowDrag.Move -26
+            let resizedToHead = RendererModel.previewWindowBounds 12 4000 localTotal committed TaWindowDrag.ResizeLeft -40
+
+            Expect.equal renderedRatios (740.0 / 900.0, 820.0 / 900.0) "D39: the selection includes ActiveDetail.Start and matches the 900-point loaded label."
+            Expect.equal moved { StartIndex = 14; Count = 80 } "A local move remains in resident-relative indexes."
+            Expect.equal resizedToHead { StartIndex = 0; Count = 120 } "Reaching the resident head is still a local resize."
+            Expect.isNone
+                (RendererModel.navigatorBoundaryDirection localTotal committed TaWindowDrag.ResizeLeft -40)
+                "Landing exactly on the local head must not request coverage."
+            Expect.equal projection.CoverageRevision 17L "A local-only gesture leaves coverage authority untouched."
+
+            let explicitOverscroll =
+                RendererModel.navigatorBoundaryDirection localTotal committed TaWindowDrag.ResizeLeft -41
+            Expect.equal explicitOverscroll (Some TaCoverageDirection.Earlier) "Only an explicit release beyond the local edge requests adjacent coverage."
+
+            match RendererModel.tryAdjacentCoverageIntent TaCoverageDirection.Earlier 4000 localTotal committed projection with
+            | Some intent ->
+                Expect.equal intent.StartObservationOrdinal (Some 660L) "The explicit earlier request is derived from the frozen resident-local window."
+                Expect.equal intent.ObservationCount 80 "The adjacent request preserves the resident-local visible width."
+                Expect.equal intent.ExpectedCoverageRevision (Some 17L) "Release remains revision guarded."
+                Expect.equal intent.QueryGeneration 24L "Release advances the frozen query generation exactly once."
+            | None -> failtest "An explicit resident-edge overscroll must produce one typed coverage intent."
+
+            let largeDomainCount = int64 Int32.MaxValue + 10_000L
+            let largeProjection =
+                { projection with
+                    TotalObservationCount = Some largeDomainCount
+                    Segments =
+                        [| { projection.Segments[0] with
+                               ObservationCount = largeDomainCount } |] }
+            let largeStart = int64 Int32.MaxValue + 1_000L
+            match RendererModel.tryLoadedCoverageWindowIntentAt largeProjection largeStart 48 with
+            | Some intent ->
+                Expect.equal intent.StartObservationOrdinal (Some largeStart) "Loaded edge targets must retain int64 ordinals."
+            | None -> failtest "A valid int64 loaded ordinal must not be narrowed to an Int32 window."
+
+        testCase "DYN-T-684 global resident draft moves one fixed-width window across the whole series" <| fun _ ->
+            let overview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "axis.global"
+                  Anchors = [||]
+                  ResidentStartObservationOrdinal = 1_000_000L
+                  ResidentObservationCount = 4500 }
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:global-resident"
+                  CoverageRevision = 41L
+                  QueryGeneration = 8L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some overview.TotalObservationCount
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = overview.ResidentStartObservationOrdinal + 1500L
+                      ObservationCount = 700
+                      BaseAxisRef = "axis.detail" }
+                  GlobalOverview = Some overview }
+
+            let committed =
+                RendererModel.tryGlobalResidentWindow projection
+                |> Option.defaultWith (fun () -> failtest "The valid global overview must expose one resident window.")
+            let draft = RendererModel.previewGlobalResidentWindow overview.TotalObservationCount committed 250_000L
+            let left, right = RendererModel.globalResidentSelectionRatios overview draft
+            Expect.equal draft.ObservationCount 4500 "Global drag must preserve the advertised resident width."
+            Expect.equal draft.StartObservationOrdinal 1_250_000L "Global drag moves in the whole-series ordinal domain."
+            Expect.floatClose Accuracy.high left (1_250_000.0 / 2_996_994.0) "The visible left ratio follows the drafted resident start."
+            Expect.floatClose Accuracy.high right (1_254_500.0 / 2_996_994.0) "The visible right ratio preserves resident width."
+
+            match RendererModel.tryGlobalResidentRelocationIntent projection draft with
+            | Some intent ->
+                Expect.equal intent.ExpectedCoverageRevision (Some 41L) "Global drop remains revision guarded."
+                Expect.equal intent.QueryGeneration 9L "Global drop advances one generation."
+                Expect.equal intent.StartObservationOrdinal (Some 1_250_000L) "Global drop keeps the drafted ordinal."
+                Expect.equal intent.ObservationCount 4500 "Global drop is not clamped to the inner 4000-detail policy."
+                let acceptedProjection =
+                    { projection with
+                        CoverageRevision = 42L
+                        QueryGeneration = 9L
+                        GlobalOverview =
+                            Some
+                                { overview with
+                                    ResidentStartObservationOrdinal = 1_250_000L } }
+                Expect.isTrue
+                    (RendererModel.globalResidentProjectionMatches intent acceptedProjection)
+                    "Only the matching revision/generation and resident interval settle the optimistic draft."
+            | None -> failtest "A bounded global resident draft must produce one relocation intent."
+
+            Expect.equal
+                (RendererModel.innerViewportAfterResidentRelocation 4500 { StartIndex = 1500; Count = 700 })
+                { StartIndex = 1500; Count = 700 }
+                "Relocating the resident window keeps the inner viewport width and resident-relative offset."
+
+        testCase "DYN-T-703 main-plot grab pan relocates the resident while preserving the inner viewport" <| fun _ ->
+            let overview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "axis.global"
+                  Anchors = [||]
+                  ResidentStartObservationOrdinal = 1_000_000L
+                  ResidentObservationCount = 4500 }
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:main-plot-resident"
+                  CoverageRevision = 41L
+                  QueryGeneration = 8L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some overview.TotalObservationCount
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = overview.ResidentStartObservationOrdinal + 1500L
+                      ObservationCount = 700
+                      BaseAxisRef = "axis.detail" }
+                  GlobalOverview = Some overview }
+
+            let visibleCount = 1500
+            let trackLeft = 82.0
+            let trackWidth = 1000.0
+            let startClientX = trackLeft + 500.0666666667
+            let currentClientX = trackLeft + 219.9333333333
+            let anchoredDelta =
+                RendererModel.mainPlotAnchoredPanDelta
+                    visibleCount
+                    trackLeft
+                    trackWidth
+                    startClientX
+                    currentClientX
+            let startSlot = RendererModel.cursorIndexFromClientX visibleCount trackLeft trackWidth startClientX |> Option.get
+            let currentSlot = RendererModel.cursorIndexFromClientX visibleCount trackLeft trackWidth currentClientX |> Option.get
+            Expect.equal anchoredDelta 421 "Discrete slot anchoring must not lose the bar hidden by continuous-pixel rounding."
+            Expect.equal
+                (1_001_500L + int64 startSlot)
+                (1_001_500L + int64 anchoredDelta + int64 currentSlot)
+                "After relocation, the same physical pointer position must resolve to the exact down-time bar."
+
+            match RendererModel.tryMainPlotResidentRelocationIntent 120 projection with
+            | Some(draft, intent) ->
+                Expect.equal draft.StartObservationOrdinal 1_000_120L "The resident window follows the signed main-plot K-bar delta."
+                Expect.equal draft.ObservationCount 4500 "Main-plot pan preserves resident width."
+                Expect.equal intent.StartObservationOrdinal (Some 1_000_120L) "The relocation action carries the exact resident start."
+                Expect.equal intent.ObservationCount 4500 "The relocation action preserves resident width."
+                Expect.equal intent.QueryGeneration 9L "The relocation advances the frozen query generation exactly once."
+                Expect.equal
+                    (RendererModel.innerViewportAfterResidentRelocation draft.ObservationCount { StartIndex = 1500; Count = 700 })
+                    { StartIndex = 1500; Count = 700 }
+                    "The same resident-relative viewport makes the absolute visible window move by the same delta."
+            | None -> failtest "A bounded main-plot pan with GLOBAL authority must produce one resident relocation intent."
+
+        testCase "DYN-T-704 cross-axis main-plot drop preserves the exact formal-base pointer time" <| fun _ ->
+            let startTime = DateTimeOffset(2026,6,1,0,0,0,TimeSpan.Zero)
+            let formalBaseTimeline =
+                Array.init 40 (fun index -> startTime.AddMinutes(float(index * 30)).ToString("O"))
+            let committed = { StartIndex = 5; Count = 20 }
+            let trackLeft = 82.0
+            let trackWidth = 1000.0
+            let startClientX = trackLeft + 525.0
+            let currentClientX = trackLeft + 325.0
+            let startSlot = RendererModel.cursorIndexFromClientX committed.Count trackLeft trackWidth startClientX |> Option.get
+            let currentSlot = RendererModel.cursorIndexFromClientX committed.Count trackLeft trackWidth currentClientX |> Option.get
+            let activeDelta =
+                RendererModel.mainPlotAnchoredPanDelta committed.Count trackLeft trackWidth startClientX currentClientX
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:formal-base-main-pan"
+                  CoverageRevision = 41L
+                  QueryGeneration = 8L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident.30k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 250_000L
+                      ObservationCount = formalBaseTimeline.Length
+                      BaseAxisRef = "axis.base.30k" }
+                  GlobalOverview = None }
+            Expect.equal
+                activeDelta
+                4
+                "The physical drag spans four 30K base slots."
+            match RendererModel.tryMainPlotPanWindow formalBaseTimeline.Length committed activeDelta with
+            | Some next ->
+                Expect.equal next { StartIndex = 9; Count = 20 } "The target visible range moves by the formal-base slot delta."
+                Expect.equal
+                    formalBaseTimeline[committed.StartIndex + startSlot]
+                    formalBaseTimeline[next.StartIndex + currentSlot]
+                    "After drop, the same physical pointer resolves to the exact captured formal-base event time."
+                let intent = RendererModel.tryMainPlotEventRangeIntent projection next |> Option.get
+                Expect.equal intent.ExpectedCoverageRevision (Some 41L) "The typed event-range action guards the captured coverage revision."
+                Expect.equal intent.QueryGeneration 9L "The typed event-range action advances the captured query generation once."
+                Expect.isNone intent.StartObservationOrdinal "The consumer must resolve the exact active StartKey from event time."
+                Expect.equal intent.ObservationCount next.Count "The typed event-range action preserves the target visible width."
+                Expect.isNone intent.Direction "Main CURSOR pan is not an adjacent-boundary request."
+                Expect.equal intent.RangeAuthority TaCoverageRangeAuthority.ExplicitBounds "The typed event range explicitly owns both bounds."
+                Expect.equal intent.Purpose TaCoverageWindowPurpose.MainPlotPan "Main CURSOR pan must identify its origin."
+            | None -> failtest "A bounded formal-base pan must produce one exact target visible window."
+            Expect.isNone
+                (RendererModel.tryMainPlotPanWindow formalBaseTimeline.Length committed -6)
+                "A target outside the captured formal-base range must fail closed instead of using sampled GLOBAL anchors."
+
+        testCase "global navigator authority survives an unknown loaded total" <| fun _ ->
+            let globalOverview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "axis.global"
+                  Anchors = [||]
+                  ResidentStartObservationOrdinal = 1_496_833L
+                  ResidentObservationCount = 4500 }
+            let partial : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:real-right-edge"
+                  CoverageRevision = 7L
+                  QueryGeneration = 6L
+                  Completeness = TaCoverageCompleteness.Partial
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 1_500_631L
+                      ObservationCount = 702
+                      BaseAxisRef = "axis.detail" }
+                  GlobalOverview = Some globalOverview }
+            for total in [ None; Some globalOverview.TotalObservationCount ] do
+                let projection = { partial with TotalObservationCount = total }
+                let later =
+                    RendererModel.tryResidentAdjacentCoverageIntent TaCoverageDirection.Later 1500 { StartIndex = 3798; Count = 702 } projection
+                    |> Option.get
+                Expect.equal later.StartObservationOrdinal (Some 1_502_131L) "The global domain permits one full page beyond the resident edge; unknown loaded total cannot clamp it back to active start1500631."
+                let queued = RendererModel.tryLoadedCoverageWindowIntentAt projection 1_502_131L 702 |> Option.get
+                Expect.equal queued.Direction (Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Later) "Queued rebuilding uses the same domain and eviction direction."
+                let endIntent = RendererModel.tryLoadedCoverageEdgeIntent TaLoadedCoverageEdge.End 702 1500 projection |> Option.get
+                Expect.equal endIntent.StartObservationOrdinal (Some(2_996_994L - 702L)) "The global end is independent of the loaded tail."
+                let allIntent = RendererModel.tryViewAllCoverageIntent 1500 projection |> Option.get
+                Expect.equal allIntent.StartObservationOrdinal (Some(2_996_994L - 1500L)) "Global view-all uses its authority while preserving the visible cap."
+                Expect.isNone (RendererModel.tryLoadedCoverageWindowIntentAt projection (2_996_994L - 701L) 702) "The actual global endpoint still rejects overflow."
+            let legacy = { partial with GlobalOverview = None }
+            Expect.isNone (RendererModel.tryLoadedCoverageWindowIntentAt legacy 1_502_131L 702) "Absent global authority preserves the original loaded-domain bound."
+
+        testCase "accepted global coverage maps active detail into the resident-local navigator domain" <| fun _ ->
+            let acceptedOverview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "axis.global"
+                  Anchors = [||]
+                  ResidentStartObservationOrdinal = 2_995_494L
+                  ResidentObservationCount = 1500 }
+            let acceptedProjection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "coverage:accepted-resident"
+                  CoverageRevision = 2L
+                  QueryGeneration = 1L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some acceptedOverview.TotalObservationCount
+                  Segments = [||]
+                  OverviewAxisRef = "axis.resident"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = acceptedOverview.ResidentStartObservationOrdinal
+                      ObservationCount = 1500
+                      BaseAxisRef = "axis.global" }
+                  GlobalOverview = Some acceptedOverview }
+
+            match RendererModel.tryResidentNavigatorWindow 1500 { StartIndex = 0; Count = 1500 } acceptedProjection with
+            | Some(_, total, window) ->
+                Expect.equal total 1500 "The accepted auto-open frame exposes only its actual resident count."
+                Expect.equal window { StartIndex = 0; Count = 1500 } "Global ordinals map to resident-local 0/1500."
+            | None -> failtest "A valid accepted GlobalOverview must map into the resident-local navigator domain."
+
+            match
+                RendererModel.tryResidentAdjacentCoverageIntent
+                    TaCoverageDirection.Earlier
+                    1500
+                    { StartIndex = 0; Count = 700 }
+                    acceptedProjection
+            with
+            | Some intent ->
+                Expect.equal intent.StartObservationOrdinal (Some(acceptedOverview.ResidentStartObservationOrdinal - 1500L)) "The first earlier overscroll crosses one 1500-bar resident page."
+                Expect.equal intent.ObservationCount 700 "Resident expansion preserves the 700-bar visible width."
+            | None -> failtest "The accepted resident head must produce one earlier-page coverage intent."
+
+            let expandedOverview =
+                { acceptedOverview with
+                    ResidentStartObservationOrdinal = 1_000_000L
+                    ResidentObservationCount = 4500 }
+            let expandedProjection =
+                { acceptedProjection with
+                    CoverageRevision = 4L
+                    QueryGeneration = 3L
+                    ActiveDetail =
+                        { acceptedProjection.ActiveDetail with
+                            StartObservationOrdinal = expandedOverview.ResidentStartObservationOrdinal + 3000L
+                            ObservationCount = 1500 }
+                    GlobalOverview = Some expandedOverview }
+            let activeWindow = { StartIndex = 0; Count = 700 }
+            let committed = { StartIndex = 3000; Count = 700 }
+
+            match RendererModel.tryResidentNavigatorWindow 1500 activeWindow expandedProjection with
+            | Some(_, total, window) ->
+                Expect.equal total 4500 "The resident thumbnail uses the advertised resident domain."
+                Expect.equal window committed "ActiveDetail.Start minus ResidentStart preserves the resident-local offset."
+            | None -> failtest "Expanded resident coverage must retain its local active-detail offset."
+
+            let renderedRatios =
+                RendererModel.navigatorSelectionRatiosForRender
+                    None
+                    (Some expandedProjection)
+                    (Array.create 1500 "2026-10-23T00:00:00Z")
+                    activeWindow
+                    None
+            Expect.floatClose Accuracy.high (fst renderedRatios) (3000.0 / 4500.0) "The selection begins at the active detail's resident-local offset."
+            Expect.floatClose Accuracy.high (snd renderedRatios) (3700.0 / 4500.0) "The visible width remains 700 inside the resident domain."
+
+            let movedToHead = RendererModel.previewWindowBounds 12 4000 4500 committed TaWindowDrag.Move -3000
+            Expect.equal movedToHead { StartIndex = 0; Count = 700 } "Moving to the resident head preserves the 700-bar grab width."
+
+            match RendererModel.tryResidentCoverageWindowIntent expandedProjection movedToHead with
+            | Some intent ->
+                Expect.equal intent.StartObservationOrdinal (Some expandedOverview.ResidentStartObservationOrdinal) "A resident-local drop maps back to the exact global ordinal."
+                Expect.equal intent.ObservationCount 700 "A resident-local drop preserves visible width."
+            | None -> failtest "A bounded resident-local drop must produce one typed coverage intent."
+
+            match RendererModel.tryResidentAdjacentCoverageIntent TaCoverageDirection.Earlier 1500 movedToHead expandedProjection with
+            | Some intent ->
+                Expect.equal intent.StartObservationOrdinal (Some(expandedOverview.ResidentStartObservationOrdinal - 1500L)) "Left overscroll crosses one document-sized resident page."
+                Expect.equal intent.ObservationCount 700 "Left overscroll keeps the active visible width."
+            | None -> failtest "Left resident overscroll must produce an earlier coverage intent."
+
+            let movedToTail = { StartIndex = 3800; Count = 700 }
+            match RendererModel.tryResidentAdjacentCoverageIntent TaCoverageDirection.Later 1500 movedToTail expandedProjection with
+            | Some intent ->
+                Expect.equal intent.StartObservationOrdinal (Some(expandedOverview.ResidentStartObservationOrdinal + 5300L)) "Right overscroll crosses the symmetric 1500-bar resident page."
+                Expect.equal intent.ObservationCount 700 "Right overscroll keeps the active visible width."
+            | None -> failtest "Right resident overscroll must produce a later coverage intent."
+
+            let middleNarrow = { StartIndex = 1198; Count = 702 }
+            for direction, expected in
+                [ TaCoverageDirection.Earlier, expandedOverview.ResidentStartObservationOrdinal - 1500L
+                  TaCoverageDirection.Later, expandedOverview.ResidentStartObservationOrdinal + 4500L - 702L + 1500L ] do
+                match RendererModel.tryResidentAdjacentCoverageIntent direction 1500 middleNarrow expandedProjection with
+                | Some intent ->
+                    Expect.equal intent.StartObservationOrdinal (Some expected) "An overscroll loads a full page beyond the resident edge, independent of the gesture's starting offset."
+                    Expect.equal intent.ObservationCount 702 "The resident page delta must not change the visible width."
+                    match RendererModel.tryLoadedCoverageWindowIntentAt expandedProjection expected 702 with
+                    | Some dispatched ->
+                        Expect.equal dispatched.Direction intent.Direction "Rebuilding a queued ordinal target must preserve the resident eviction direction at the maximum capacity."
+                    | None -> failtest "The queued resident target must remain dispatchable."
+                | None -> failtest "A resident overscroll must have a bounded target."
+
+            let capturedEarlierStart = expandedOverview.ResidentStartObservationOrdinal - 1500L
+            let shiftedOverview =
+                { expandedOverview with
+                    ResidentStartObservationOrdinal = capturedEarlierStart }
+            let shiftedProjection =
+                { expandedProjection with
+                    CoverageRevision = 5L
+                    QueryGeneration = 4L
+                    ActiveDetail =
+                        { expandedProjection.ActiveDetail with
+                            StartObservationOrdinal = expandedOverview.ResidentStartObservationOrdinal
+                            ObservationCount = 1500 }
+                    GlobalOverview = Some shiftedOverview }
+            match RendererModel.tryLoadedCoverageWindowIntentAt shiftedProjection capturedEarlierStart 702 with
+            | Some dispatched ->
+                Expect.equal dispatched.StartObservationOrdinal (Some capturedEarlierStart) "A gesture queued behind an earlier action keeps the absolute T-relative target captured at pointer-up."
+                Expect.isNone dispatched.Direction "The accepted prior action must not turn the captured target into another Earlier page."
+                Expect.equal dispatched.ExpectedCoverageRevision (Some 5L) "Dispatch refreshes only the optimistic concurrency revision."
+                Expect.equal dispatched.QueryGeneration 5L "Dispatch advances from the latest accepted query generation."
+            | None -> failtest "The captured absolute target must remain dispatchable after the prior action shifts resident coverage."
+
+            let newerProjection =
+                { expandedProjection with
+                    CoverageRevision = 5L
+                    QueryGeneration = 4L
+                    ActiveDetail =
+                        { expandedProjection.ActiveDetail with
+                            StartObservationOrdinal = expandedOverview.ResidentStartObservationOrdinal + 1198L
+                            ObservationCount = 702 } }
+            Expect.isTrue (RendererModel.residentGestureScopeMatches expandedProjection expandedProjection) "An unchanged resident remains valid."
+            Expect.isTrue (RendererModel.residentGestureScopeMatches expandedProjection newerProjection) "An earlier action's accepted viewport must not invalidate a later gesture in the same resident."
+            for invalid in
+                [ { newerProjection with CoverageIdentity = "coverage:other" }
+                  { newerProjection with CoverageRevision = 3L }
+                  { newerProjection with QueryGeneration = 2L }
+                  { newerProjection with GlobalOverview = None }
+                  { newerProjection with GlobalOverview = Some { expandedOverview with ResidentStartObservationOrdinal = 900_000L } }
+                  { newerProjection with GlobalOverview = Some { expandedOverview with ResidentObservationCount = 3000 } } ] do
+                Expect.isFalse (RendererModel.residentGestureScopeMatches expandedProjection invalid) "A changed scope or stale authority must not receive the old gesture."
+            match RendererModel.tryResidentCoverageWindowIntent newerProjection middleNarrow with
+            | Some intent ->
+                Expect.equal intent.ExpectedCoverageRevision (Some 5L) "Dispatch uses the latest accepted revision."
+                Expect.equal intent.QueryGeneration 5L "The next gesture gets a new generation."
+                Expect.equal intent.StartObservationOrdinal (Some 1_001_198L) "Revision rebasing preserves the user's absolute target."
+                Expect.equal intent.ObservationCount 702 "Revision rebasing preserves width."
+            | None -> failtest "The same-resident gesture must remain dispatchable after an earlier action."
+
+        testCase "resident body reaches an edge before requesting an outside page" <| fun _ ->
+            let middle = { StartIndex = 1198; Count = 702 }
+            let direction delta pointer = RendererModel.residentNavigatorBoundaryDirection 3000 middle TaWindowDrag.Move delta pointer 1000.0
+            Expect.isNone (direction -1500 2.0) "A pointer still inside the left edge clamps locally despite its grab offset."
+            Expect.isNone (direction 2000 998.0) "A pointer still inside the right edge clamps locally despite its grab offset."
+            Expect.equal (direction -1500 -2.0) (Some TaCoverageDirection.Earlier) "Only an actual left track overscroll requests the earlier page."
+            Expect.equal (direction 2000 1002.0) (Some TaCoverageDirection.Later) "Only an actual right track overscroll requests the later page."
+            Expect.isNone (direction -1500 0.0) "Landing exactly on the left track boundary is local."
+            Expect.isNone (direction 2000 1000.0) "Landing exactly on the right track boundary is local."
+
+        testCase "navigator drag delta uses the SVG client box rather than its bordered bounding box" <| fun _ ->
+            let visibleSelectionCssWidth = 478.0
+            Expect.equal
+                (RendererModel.navigatorGestureDeltaForDomain 4500 (-visibleSelectionCssWidth / 1434.0))
+                -1500
+                "One rendered third of the 1434px SVG client box must move exactly 1500 of 4500 observations."
+            Expect.equal
+                (RendererModel.navigatorGestureDeltaForDomain 4500 (-visibleSelectionCssWidth / 1436.0))
+                -1498
+                "Including the two CSS border pixels reproduces the cumulative two-observation drift."
+
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let startIndex = source.IndexOf("        let startNavigatorDrag", StringComparison.Ordinal)
+            let endIndex = source.IndexOf("        let finishNavigatorDragFromElement", startIndex, StringComparison.Ordinal)
+            let handlerBody = source.Substring(startIndex, endIndex - startIndex)
+            Expect.stringContains handlerBody "[data-testid='ta-overview-interaction-surface']" "Production drag math must measure the border-free SVG interaction surface."
+            Expect.stringContains handlerBody "RendererModel.navigatorGestureDeltaForDomain" "Production must use the tested domain-delta conversion."
+
+        testCase "DYN-T-731 global-backed resident track requires physical overscroll" <| fun _ ->
+            let committed = { StartIndex = 1198; Count = 80 }
+            let rawDelta = -1200
+            let draft =
+                RendererModel.previewWindowBounds 1 4000 4500 committed TaWindowDrag.Move rawDelta
+
+            Expect.equal draft { StartIndex = 0; Count = 80 } "the rendered preview already owns exact local zero"
+            Expect.equal
+                (RendererModel.navigatorGestureBoundaryDirection false 4500 committed TaWindowDrag.Move rawDelta 10.0 1200.0)
+                (Some TaCoverageDirection.Earlier)
+                "a local-only navigator retains logical-boundary behavior"
+            Expect.isNone
+                (RendererModel.navigatorGestureBoundaryDirection true 4500 committed TaWindowDrag.Move rawDelta 10.0 1200.0)
+                "selection touching or clamped at the boundary while pointer remains inside must not page"
+            Expect.equal
+                (RendererModel.navigatorGestureBoundaryDirection true 4500 committed TaWindowDrag.Move rawDelta -0.1 1200.0)
+                (Some TaCoverageDirection.Earlier)
+                "an actual physical overscroll still requests earlier resident coverage"
+
+        testCase "DYN-T-740 touching the loaded edge does not request continuation" <| fun _ ->
+            let committed = { StartIndex = 1198; Count = 80 }
+            for hasGlobalTrack in [ false; true ] do
+                Expect.isNone
+                    (RendererModel.navigatorGestureBoundaryDirection hasGlobalTrack 4500 committed TaWindowDrag.Move -1198 10.0 1200.0)
+                    "touching the loaded head must keep the resident range unchanged"
+                Expect.isNone
+                    (RendererModel.navigatorGestureBoundaryDirection hasGlobalTrack 4500 committed TaWindowDrag.Move -1197 10.4 1200.0)
+                    "an interior position does not request another page"
+                Expect.isNone
+                    (RendererModel.navigatorGestureBoundaryDirection hasGlobalTrack 4500 { StartIndex = 0; Count = 80 } TaWindowDrag.Move 0 10.0 1200.0)
+                    "a click without movement at the boundary cannot request repeated pages"
+                Expect.isNone
+                    (RendererModel.navigatorGestureBoundaryDirection hasGlobalTrack 4500 committed TaWindowDrag.ResizeLeft -1198 0.0 1200.0)
+                    "resizing to the existing head does not request a page"
+
+        testCase "DYN-T-732 move snaps the rendered selection right edge to maximum start" <| fun _ ->
+            let total = 4500
+            let draft = { StartIndex = 4418; Count = 79 }
+            let snapped =
+                RendererModel.snapNavigatorMoveDraftToPhysicalEdges
+                    total TaWindowDrag.Move 1436.0 1.0 25.174667 13.587333679199219 1423.4127 draft
+
+            Expect.equal snapped { StartIndex = 4421; Count = 79 } "the exact rendered right edge owns maximum start"
+            Expect.equal
+                (RendererModel.snapNavigatorMoveDraftToPhysicalEdges
+                    total TaWindowDrag.Move 1436.0 1.0 25.174667 13.587333679199219 1400.0 draft)
+                draft
+                "an interior move preserves the ordinary bar draft"
+            Expect.equal
+                (RendererModel.snapNavigatorMoveDraftToPhysicalEdges
+                    total TaWindowDrag.Move 1436.0 1.0 25.174667 13.587333679199219 1436.1 draft)
+                draft
+                "a pointer outside the track remains available to the Later coverage branch"
+            Expect.equal
+                (RendererModel.navigatorGestureBoundaryDirection true total { StartIndex = 0; Count = 79 } TaWindowDrag.Move 4422 1436.1 1436.0)
+                (Some TaCoverageDirection.Later)
+                "physical overscroll still requests later resident coverage"
+
+        testCase "navigator hit resolver uses boundary targets and interior move for ordinary selections" <| fun _ ->
+            let ratios = 0.2, 0.4
+            let mode pointer = RendererModel.navigatorDragMode 1000.0 24.0 ratios pointer
+
+            Expect.equal (mode 200.0) (Some TaWindowDrag.ResizeLeft) "the exact left boundary resizes left"
+            Expect.equal (mode 400.0) (Some TaWindowDrag.ResizeRight) "the exact right boundary resizes right"
+            Expect.equal (mode 300.0) (Some TaWindowDrag.Move) "the selection interior moves the window"
+            Expect.equal (mode 100.0) None "unrelated overview clicks must not start a drag"
+
+        testCase "navigator hit resolver preserves visible edge resize zones for a tiny clipped selection" <| fun _ ->
+            let ratios = 0.988, 1.0
+            let mode pointer = RendererModel.navigatorDragMode 1400.0 24.0 ratios pointer
+
+            Expect.equal (mode 1384.0) (Some TaWindowDrag.ResizeLeft) "one CSS pixel inside the visible left edge resizes left"
+            Expect.equal (mode 1391.6) (Some TaWindowDrag.Move) "the true center remains a move zone"
+            Expect.equal (mode 1399.0) (Some TaWindowDrag.ResizeRight) "one CSS pixel inside the clipped right edge resizes right"
+            Expect.equal (mode 1370.0) None "points outside the bounded hit target remain unrelated"
+
+        testCase "overview sampling is deterministic and bounded" <| fun _ ->
+            let values = [| 0 .. 1999 |]
+            let sampled = RendererModel.sampleEvenly 250 values
+            Expect.equal sampled.Length 250 "overview must not create one visual item per loaded bar"
+            Expect.equal sampled[0] 0 "sampling preserves the loaded head"
+            Expect.equal sampled[sampled.Length - 1] 1999 "sampling preserves the loaded tail"
+            Expect.sequenceEqual (RendererModel.sampleEvenly 8 [| 1; 2; 3 |]) [| 1; 2; 3 |] "short inputs remain exact"
+
+        testCase "projected line compaction preserves ordered bucket extrema without group allocations" <| fun _ ->
+            let point index value =
+                index,
+                { Timestamp = "T" + string index
+                  Value = value
+                  Temporal = None }
+            let values =
+                [| point 0 4.0
+                   point 1 1.0
+                   point 2 9.0
+                   point 3 3.0
+                   point 4 8.0
+                   point 5 2.0
+                   point 6 7.0
+                   point 7 5.0 |]
+
+            let compacted = RendererModel.compactProjectedLinePoints 4 8 values
+            Expect.sequenceEqual
+                (compacted |> Array.map (fun (slotIndex, point) -> slotIndex, point.Value))
+                [| 1, 1.0; 2, 9.0; 4, 8.0; 5, 2.0 |]
+                "each bucket must retain its first min/max points in chronological order"
+            Expect.sequenceEqual
+                (RendererModel.compactProjectedLinePoints 8 8 values)
+                values
+                "a viewport within the visual budget must remain exact"
+
+        testCase "pointer ratio maps deterministically to a visible bar" <| fun _ ->
+            Expect.equal (RendererModel.cursorIndexFromRatio 48 0.0) (Some 0) "left edge should select the first visible bar"
+            Expect.equal (RendererModel.cursorIndexFromRatio 48 0.5) (Some 24) "middle should select the nearest visible bar"
+            Expect.equal (RendererModel.cursorIndexFromRatio 48 1.0) (Some 47) "right edge should select the last visible bar"
+            Expect.equal (RendererModel.cursorIndexFromClientX 48 100.0 800.0 300.0) (Some 12) "client coordinates should be normalized by the actual row width"
+            Expect.equal (RendererModel.cursorIndexFromRatio 0 0.5) None "empty series has no cursor index"
+            Expect.equal (RendererModel.cursorIndexFromClientX 48 0.0 0.0 10.0) None "zero-width row cannot be hit-tested"
+
+        testCase "cursor, line and candle use the same slot centers" <| fun _ ->
+            Expect.equal (RendererModel.slotCenter 1000.0 48 0) (Some(1000.0 / 96.0)) "first cursor is centered in the first candle slot"
+            Expect.equal (RendererModel.slotCenter 1000.0 48 24) (Some(1000.0 / 48.0 * 24.5)) "middle cursor shares the line and candle center"
+            Expect.equal (RendererModel.slotCenter 1000.0 48 47) (Some(1000.0 / 48.0 * 47.5)) "last cursor remains half a slot inside the plot"
+            Expect.equal (RendererModel.slotCenter 1000.0 0 0) None "empty plots have no slot center"
+
+        testCase "select window is deterministic" <| fun _ ->
+            let actual = RendererModel.selectWindow { StartIndex = 2; Count = 3 } [| 0; 1; 2; 3; 4; 5 |]
+            Expect.sequenceEqual actual [| 2; 3; 4 |] "window must preserve ordering"
+
+            let beyondShortWarmup = RendererModel.selectWindow { StartIndex = 1952; Count = 48 } [| 0 .. 1767 |]
+            Expect.isEmpty beyondShortWarmup "a short warm-up trace must not throw when the canonical viewport starts after its last point"
+
+        testCase "normalization keeps higher value visually above lower" <| fun _ ->
+            let lowY = RendererModel.normalize 10.0 20.0 5.0 100.0 10.0
+            let highY = RendererModel.normalize 10.0 20.0 5.0 100.0 20.0
+            Expect.isLessThan highY lowY "SVG y decreases as value rises"
+
+        testCase "shared cursor snapshot aligns every visible row by window index" <| fun _ ->
+            let line timestamp value =
+                SduiValue.Object(Map [ "t", SduiValue.Text timestamp; "v", SduiValue.Number value ])
+
+            let row rowId kind dataRef =
+                { RowId = rowId
+                  Kind = kind
+                  DataRef = dataRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Traces = [||]
+                  Options = Map.empty }
+
+            let document =
+                { WorkspaceId = "cursor-test"
+                  Title = "Cursor"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "price"
+                  Rows = [| row "price" TaRowKind.Candlestick "price"; row "sma" TaRowKind.Sma "sma" |]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+
+            let data =
+                Map [
+                    "price", SduiValue.Array [| candle "B1" 10.0 12.0 9.0 11.0 100.0; candle "B2" 11.0 13.0 10.0 12.0 120.0 |]
+                    "sma", SduiValue.Array [| line "B1" 10.5; line "B2" 11.5 |]
+                ]
+
+            let snapshot = RendererModel.cursorSnapshot document data { StartIndex = 0; Count = 2 } 1 |> Option.defaultWith (fun () -> failwith "cursor missing")
+            Expect.equal snapshot.Timestamp "B2" "Cursor timestamp should come from the shared visible index."
+            Expect.equal (snapshot.Values |> Array.map _.Label) [| "price"; "sma" |] "Every visible row should expose one cursor value."
+            Expect.stringContains snapshot.Values[0].Value "C 12" "Price detail should expose OHLC."
+            Expect.equal snapshot.Values[1].Value "11.5" "Indicator detail should align to the same bar."
+
+        testCase "shared cursor aligns short warm-up traces by timestamp rather than local index" <| fun _ ->
+            let line timestamp value =
+                SduiValue.Object(Map [ "t", SduiValue.Text timestamp; "v", SduiValue.Number value ])
+
+            let trace traceId kind dataRef =
+                { TraceId = traceId
+                  Kind = kind
+                  DataRef = dataRef
+                  Label = traceId
+                  Color = ""
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+
+            let row =
+                { RowId = "price"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = "price"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Traces =
+                    [| trace "price" TaTraceKind.Candlestick "price"
+                       trace "sma233" TaTraceKind.Line "sma233" |]
+                  Options = Map.empty }
+
+            let document =
+                { WorkspaceId = "warm-up-test"
+                  Title = "Warm-up"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "price"
+                  Rows = [| row |]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+
+            let data =
+                Map [
+                    "price",
+                    SduiValue.Array
+                        [| candle "B1" 10.0 12.0 9.0 11.0 100.0
+                           candle "B2" 11.0 13.0 10.0 12.0 120.0
+                           candle "B3" 12.0 14.0 11.0 13.0 130.0 |]
+                    "sma233", SduiValue.Array [| line "B2" 11.5; line "B3" 12.5 |]
+                ]
+
+            let timeline = RendererModel.referenceTimeline document.Rows data
+            Expect.sequenceEqual timeline [| "B1"; "B2"; "B3" |] "candles define the canonical viewport timeline"
+
+            let first = RendererModel.cursorSnapshot document data { StartIndex = 0; Count = 3 } 0 |> Option.defaultWith (fun () -> failwith "first cursor missing")
+            Expect.equal first.Timestamp "B1" "the first canonical bar remains addressable"
+            Expect.equal (first.Values |> Array.map _.Label) [| "price" |] "an indicator without a warm-up value stays absent instead of shifting B2 onto B1"
+
+            let last = RendererModel.cursorSnapshot document data { StartIndex = 0; Count = 3 } 2 |> Option.defaultWith (fun () -> failwith "last cursor missing")
+            Expect.equal last.Timestamp "B3" "the cursor targets the canonical timestamp"
+            Expect.equal (last.Values |> Array.map _.Label) [| "price"; "sma233" |] "the warmed-up indicator joins at its exact timestamp"
+            Expect.equal last.Values[1].Value "12.5" "the indicator value must not be offset by its shorter history"
+
+        testCase "explicit base row controls event-time axis and visible range" <| fun _ ->
+            let line timestamp value =
+                SduiValue.Object(Map [ "t", SduiValue.Text timestamp; "v", SduiValue.Number value ])
+            let row rowId dataRef =
+                { RowId = rowId
+                  Kind = TaRowKind.Sma
+                  DataRef = dataRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = [||] }
+            let baseTimes =
+                [| "2026-09-08T01:00:00Z"
+                   "2026-09-08T01:01:00Z"
+                   "2026-09-08T01:02:00Z" |]
+            let document =
+                { WorkspaceId = "base-row-test"
+                  Title = "Base row"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "base"
+                  Rows = [| row "base" "base"; row "longer" "longer" |]
+                  EditorSchemas = [||]
+                  AllowedActions = [| "shared-cursor-changed"; "visible-range-changed" |]
+                  DefaultView = Map.empty }
+            let data =
+                Map [
+                    "base", SduiValue.Array(baseTimes |> Array.mapi (fun index timestamp -> line timestamp (float index)))
+                    "longer",
+                    SduiValue.Array
+                        [| line "2026-09-08T00:59:00Z" 0.0
+                           line "2026-09-08T01:00:00Z" 1.0
+                           line "2026-09-08T01:01:00Z" 2.0
+                           line "2026-09-08T01:02:00Z" 3.0
+                           line "2026-09-08T01:03:00Z" 4.0 |] ]
+
+            Expect.sequenceEqual (RendererModel.referenceTimelineForDocument document data) baseTimes "Host-selected base row must win over a longer visible series."
+            let range =
+                RendererModel.visibleEventRange document data { StartIndex = 0; Count = 2 }
+                |> Option.defaultWith (fun () -> failtest "Visible event range missing.")
+            Expect.equal range.BaseRowId "base" "Range must retain the explicit base identity."
+            Expect.equal range.StartEventTimeUtc baseTimes[0] "Range starts at the first visible base datapoint."
+            Expect.equal range.EndEventTimeExclusiveUtc baseTimes[2] "Range ends at the next base datapoint."
+
+            let cursor = RendererModel.cursorSnapshot document data { StartIndex = 0; Count = 3 } 1 |> Option.get
+            Expect.equal cursor.Timestamp baseTimes[1] "Cursor must land on a real base datapoint."
+
+        testCase "coarse cursor values require finalized event-time evidence" <| fun _ ->
+            let temporalLine sourceId scale startTime endTime availableAt finality projection value =
+                SduiValue.Object(
+                    Map [
+                        "_type", SduiValue.Text "temporal-point.v1"
+                        "sourceIntervalId", SduiValue.Text sourceId
+                        "scaleKey", SduiValue.Text scale
+                        "intervalStartUtc", SduiValue.Text startTime
+                        "intervalEndUtc", SduiValue.Text endTime
+                        "observedThroughUtc", SduiValue.Text endTime
+                        "availableAtUtc", SduiValue.Text availableAt
+                        "finality", SduiValue.Text finality
+                        "projection", SduiValue.Text projection
+                        "value", SduiValue.Object(Map [ "t", SduiValue.Text startTime; "v", SduiValue.Number value ]) ])
+            let row rowId dataRef =
+                { RowId = rowId
+                  Kind = TaRowKind.Sma
+                  DataRef = dataRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = [||] }
+            let document =
+                { WorkspaceId = "finality-test"
+                  Title = "Finality"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "base"
+                  Rows = [| row "base" "base"; row "coarse" "coarse" |]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+            let cursorTime = "2026-09-08T01:04:00Z"
+            let basePreview =
+                temporalLine "base-0104" "1k" cursorTime "2026-09-08T01:05:00Z" "2026-09-08T01:04:30Z" "preview" "candle-span" 104.0
+            let priorFinal =
+                temporalLine "coarse-0055" "5k" "2026-09-08T00:55:00Z" "2026-09-08T01:00:00Z" "2026-09-08T01:00:00Z" "final" "candle-span" 10.0
+            let currentPreview =
+                temporalLine "coarse-0100-preview" "5k" "2026-09-08T01:00:00Z" "2026-09-08T01:05:00Z" "2026-09-08T01:04:30Z" "preview" "candle-span" 99.0
+            let currentFinal =
+                temporalLine "coarse-0100-final" "5k" "2026-09-08T01:00:00Z" "2026-09-08T01:05:00Z" "2026-09-08T01:05:00Z" "final" "candle-span" 20.0
+            let snapshot coarse =
+                RendererModel.cursorSnapshot
+                    document
+                    (Map [ "base", SduiValue.Array [| basePreview |]; "coarse", SduiValue.Array coarse ])
+                    { StartIndex = 0; Count = 1 }
+                    0
+                |> Option.defaultWith (fun () -> failtest "cursor snapshot missing")
+
+            let fallback = snapshot [| priorFinal; currentPreview |]
+            Expect.stringStarts fallback.Values[0].Value "104" "base row may expose its current preview datapoint."
+            Expect.stringStarts fallback.Values[1].Value "10" "unfinished coarse data must fall back to the latest available finalized value."
+
+            let containing = snapshot [| priorFinal; currentPreview; currentFinal |]
+            Expect.stringStarts containing.Values[1].Value "20" "a finalized coarse interval containing base event-time wins over as-of fallback."
+
+        testCase "status presentation preserves all freshness quality and last-good error states" <| fun _ ->
+            let identity = { DocumentId = DocumentId "status-doc"; CanvasInstanceId = CanvasInstanceId "status-canvas" }
+            let state =
+                { Identity = identity
+                  Document = None
+                  Data =
+                    Map [
+                        "status",
+                        SduiValue.Object(
+                            Map [
+                                "freshness", SduiValue.Text "stale"
+                                "lagSeconds", SduiValue.Number 45.0
+                                "reasonCode", SduiValue.Text "source-stopped"
+                                "label", SduiValue.Text "STALE / 45s"
+                                "watermarkUtc", SduiValue.Text "2026-07-11T00:00:00Z"
+                                "quality", SduiValue.Text "gap suspected"
+                            ])
+                    ]
+                  DocumentRevision = 1L
+                  DataRevision = 9L
+                  LastTransportSequence = 3L
+                  View = { Values = Map.empty }
+                  Poll = RuntimePollState.Backoff(DateTimeOffset.Parse("2026-07-11T00:01:00Z"))
+                  LastError = Some { ReasonCode = "delta-timeout"; Message = "retaining last good canvas"; Recoverable = true } }
+
+            let actual = RendererModel.statusPresentation "status" state
+            Expect.equal actual.Freshness (TaFreshness.Stale(TimeSpan.FromSeconds 45.0, "source-stopped")) "Stale kind and lag should remain typed."
+            Expect.equal actual.Quality (Some "gap suspected") "Quality should remain visible."
+            Expect.isTrue (actual.Error |> Option.exists (fun value -> value.Contains "delta-timeout")) "Recoverable error should be presented without dropping data."
+
+        testCase "time labels expose first middle and last visible bar" <| fun _ ->
+            Expect.equal (RendererModel.timeLabels [| "B1"; "B2"; "B3"; "B4"; "B5" |]) [| 0, "B1"; 2, "B3"; 4, "B5" |] "Shared time labels should be stable."
+
+        testCase "browser timestamp labels remain compact" <| fun _ ->
+            Expect.equal (TaWorkspaceRenderer.compactTimestamp "2026-07-01T03:55:00.0000000+00:00") "07-01 03:55" "TA labels should not expose the full transport timestamp."
+            Expect.equal (TaWorkspaceRenderer.compactTimestamp "B1") "B1" "Non-ISO labels should remain unchanged."
+
+        testCase "DYN-T-630 display formatter handles summer winter and UTC+8 rollover" <| fun _ ->
+            let summer = "2026-06-17T22:01:00Z"
+            let winter = "2026-01-02T15:00:00Z"
+            let formatted zone value = TaDisplayTimeFormatter.tryFormat zone value |> Option.get
+            Expect.equal (formatted SduiDisplayTimeZone.Utc summer).FullText "2026-06-17 22:01:00 UTC" "UTC is unchanged."
+            Expect.equal (formatted SduiDisplayTimeZone.AmericaChicago summer).FullText "2026-06-17 17:01:00 CDT" "Chicago summer uses CDT."
+            Expect.equal (formatted SduiDisplayTimeZone.AmericaNewYork summer).FullText "2026-06-17 18:01:00 EDT" "New York summer uses EDT."
+            Expect.equal (formatted SduiDisplayTimeZone.FixedUtcPlus8 summer).FullText "2026-06-18 06:01:00 UTC+8" "UTC+8 rolls to the next day."
+            Expect.equal (formatted SduiDisplayTimeZone.AmericaChicago winter).FullText "2026-01-02 09:00:00 CST" "Chicago winter uses CST."
+            Expect.equal (formatted SduiDisplayTimeZone.AmericaNewYork winter).FullText "2026-01-02 10:00:00 EST" "New York winter uses EST."
+
+        testCase "DYN-T-630 display formatter changes offset at US DST boundaries" <| fun _ ->
+            let compact zone value = TaDisplayTimeFormatter.tryFormat zone value |> Option.map _.FullText
+            Expect.equal (compact SduiDisplayTimeZone.AmericaChicago "2026-03-08T07:59:59Z") (Some "2026-03-08 01:59:59 CST") "Chicago remains standard before 08:00Z."
+            Expect.equal (compact SduiDisplayTimeZone.AmericaChicago "2026-03-08T08:00:00Z") (Some "2026-03-08 03:00:00 CDT") "Chicago springs forward at 08:00Z."
+            Expect.equal (compact SduiDisplayTimeZone.AmericaNewYork "2026-11-01T05:59:59Z") (Some "2026-11-01 01:59:59 EDT") "New York remains daylight before 06:00Z."
+            Expect.equal (compact SduiDisplayTimeZone.AmericaNewYork "2026-11-01T06:00:00Z") (Some "2026-11-01 01:00:00 EST") "New York falls back at 06:00Z."
+            Expect.equal (TaDisplayTimeFormatter.tryFormat SduiDisplayTimeZone.Utc "not-a-time") None "Invalid canonical values fail closed."
+
+        testCase "authored row label is the shared card and toolbar display name" <| fun _ ->
+            let trace =
+                { TraceId = "es-1k"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = "es-1k"
+                  Label = "ES_1K / 1K"
+                  Color = ""
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let row =
+                { RowId = "price-1k"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = trace.DataRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map [ "label", SduiValue.Text "ES 1K + SMA(20)" ]
+                  Traces = [| trace |] }
+
+            Expect.equal (TaWorkspaceRenderer.rowDisplayLabel row) "ES 1K + SMA(20)" "Toolbar should use the authored TA_ROW label."
+            Expect.equal (TaWorkspaceRenderer.rowTitle row row.Traces) "ES 1K + SMA(20)" "Row card should use the same authored TA_ROW label."
+            let unlabeled = { row with Options = Map.empty }
+            Expect.equal (TaWorkspaceRenderer.rowDisplayLabel unlabeled) "Candlestick" "Toolbar fallback should remain the typed row kind."
+            Expect.equal (TaWorkspaceRenderer.rowTitle unlabeled unlabeled.Traces) "ES_1K / 1K" "Card fallback should retain the trace label."
+
+        testCase "DYN-T-671 bound row display keeps custom label and reports authoritative editor values" <| fun _ ->
+            let schema =
+                { TemplateKey = "ta.sma"
+                  DisplayName = "SMA overlay"
+                  SchemaRevision = 1L
+                  Fields =
+                    [| { Key = "periods"
+                         Label = "Periods"
+                         Kind = EditorValueKind.List(EditorValueKind.Integer(Some 1L, Some 500L), Some 1, Some 8)
+                         Required = true
+                         DefaultValue = None } |] }
+            let row =
+                { RowId = "sma"
+                  Kind = TaRowKind.Sma
+                  DataRef = "series.sma"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map [ "label", SduiValue.Text "Custom strategy label" ]
+                  Traces = [||] }
+                |> TaRowEditorBinding.attach
+                    { TemplateKey = schema.TemplateKey
+                      Values =
+                        [| { Path = "periods[0]"; Value = EditorScalarValue.Number 17.0 }
+                           { Path = "periods[1]"; Value = EditorScalarValue.Number 21.0 }
+                           { Path = "periods[2]"; Value = EditorScalarValue.Number 34.0 } |] }
+                |> Result.defaultWith (fun errors -> failtest (errors |> List.map _.Message |> String.concat "; "))
+
+            Expect.equal
+                (TaWorkspaceRenderer.rowDisplayLabelWithEditor [| schema |] row)
+                "Custom strategy label · SMA overlay · Periods 17, 21, 34"
+                "The custom label remains visible while the schema-bound values provide the authoritative parameter summary."
+
+        testCase "DYN-T-672 editor mutation accepts matching replacement identity and rejects stale documents" <| fun _ ->
+            let first =
+                { DocumentId = DocumentId "editor-document-a"
+                  CanvasInstanceId = CanvasInstanceId "editor-canvas-a" }
+            let replacement =
+                { DocumentId = DocumentId "editor-document-b"
+                  CanvasInstanceId = CanvasInstanceId "editor-canvas-b" }
+
+            Expect.isFalse
+                (EditorMutationGate.authoritativeDocumentAdvanced first 7L first 7L true)
+                "The unchanged base document cannot complete a mutation."
+            Expect.isFalse
+                (EditorMutationGate.authoritativeDocumentAdvanced first 7L first 6L true)
+                "A stale revision of the same document cannot complete a mutation."
+            Expect.isFalse
+                (EditorMutationGate.authoritativeDocumentAdvanced first 7L replacement 1L false)
+                "A replacement identity with the wrong binding cannot complete a mutation."
+            Expect.isTrue
+                (EditorMutationGate.authoritativeDocumentAdvanced first 7L first 8L true)
+                "A matching newer revision of the same document completes the mutation."
+            Expect.isTrue
+                (EditorMutationGate.authoritativeDocumentAdvanced first 7L replacement 1L true)
+                "A matching authoritative replacement identity completes even when its revision restarts at one."
+
+        testCase "document shell cache key includes runtime document and canvas identity" <| fun _ ->
+            let first =
+                RuntimeReducer.initial
+                    { DocumentId = DocumentId "run-29"
+                      CanvasInstanceId = CanvasInstanceId "canvas-29" }
+            let same = RuntimeReducer.initial first.Identity
+            let replacement =
+                RuntimeReducer.initial
+                    { DocumentId = DocumentId "run-30"
+                      CanvasInstanceId = CanvasInstanceId "canvas-30" }
+
+            Expect.isTrue (TaWorkspaceRenderer.sameDocumentShell first same) "The same runtime identity and revision should reuse its shell."
+            Expect.isFalse (TaWorkspaceRenderer.sameDocumentShell first replacement) "A replacement run must rebuild the shell even when both revisions start at zero."
+            Expect.isTrue
+                (TaWorkspaceRenderer.sameDocumentShell first { same with DocumentRevision = 1L })
+                "A revision-only accepted acknowledgement must reuse the semantic shell."
+
+            let projection revision generation activeStart =
+                { CoverageIdentity = "coverage:semantic-shell"
+                  CoverageRevision = revision
+                  QueryGeneration = generation
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 500L
+                  Segments = [||]
+                  OverviewAxisRef = "axis.1k"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = activeStart
+                      ObservationCount = 250
+                      BaseAxisRef = "axis.1k" }
+                  GlobalOverview = None }
+            let document coverage =
+                { WorkspaceId = "semantic-shell"
+                  Title = "Semantic shell"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = None
+                  Rows = [||]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty |> TaLoadedCoverageCodec.apply coverage }
+            let withDocument revision coverage =
+                { first with
+                    Document = Some(document coverage)
+                    DocumentRevision = revision }
+            let coverageA = projection 1L 1L 0L
+            let coverageAck = projection 2L 2L 0L
+            let coveragePage = projection 2L 2L 250L
+
+            Expect.isTrue
+                (TaWorkspaceRenderer.sameDocumentShell (withDocument 1L coverageA) (withDocument 2L coverageAck))
+                "Coverage/query counters alone must not replace the semantic shell."
+            Expect.isFalse
+                (TaWorkspaceRenderer.sameDocumentShell (withDocument 1L coverageA) (withDocument 2L coveragePage))
+                "A different active detail page must replace the semantic shell."
+            Expect.notEqual
+                (ProjectionCommitGate.key (withDocument 1L coverageA))
+                (ProjectionCommitGate.key (withDocument 1L coverageAck))
+                "Atomic frame publication must include coverage revision and query generation even if a malformed producer reuses the document revision."
+
+        testCase "latest row legend falls back to the last available presentation slot" <| fun _ ->
+            let read index =
+                if index = 3 then
+                    Some
+                        { Timestamp = "2026-09-03T13:03:00Z"
+                          Value = "101.25" }
+                else
+                    None
+            Expect.equal
+                (TaWorkspaceRenderer.tryReadAtOrBefore read 4 |> Option.map _.Value)
+                (Some "101.25")
+                "No-cursor legend state must retain the latest available value when the final presentation slot is sparse."
+            Expect.isNone (read 4) "Exact cursor reads must remain sparse instead of silently moving to another slot."
+
+        testCase "incremental temporal null retains an explicit projected source slot" <| fun _ ->
+            let axisRef = "axis.legend-null"
+            let axis =
+                { AxisRef = axisRef
+                  Revision = 1L
+                  Points =
+                    [| for position in 0L .. 2L do
+                           let startUtc = DateTimeOffset(2026, 9, 25, 1, int position, 0, TimeSpan.Zero)
+                           yield
+                               { Position = position
+                                 SourceIntervalId = $"legend-null:{position}"
+                                 ScaleKey = "1K"
+                                 IntervalStartUtc = startUtc
+                                 IntervalEndUtc = startUtc.AddMinutes 1.0
+                                 EventTimeUtc = Some(startUtc.AddMinutes 1.0)
+                                 ObservedThroughUtc = startUtc.AddMinutes 1.0
+                                 AvailableAtUtc = Some(startUtc.AddMinutes 1.0)
+                                 Finality = PointFinality.Final
+                                 Projection = TemporalProjection.CandleSpan
+                                 Quality = Some "complete" } |] }
+            let series values =
+                { AxisRef = axisRef
+                  AxisRevision = 1L
+                  Points = values |> Array.mapi (fun index value -> { Position = int64 index; Value = value }) }
+            let data values =
+                Map [ axisRef, TemporalAxisCodec.encode axis; "series.sma", TemporalSeriesCodec.encode (series values) ]
+            let initial = RendererModel.prepareData (data [| SduiValue.Number 10.0; SduiValue.Number 11.0; SduiValue.Number 12.0 |])
+            let revised = RendererModel.prepareDataIncremental initial (data [| SduiValue.Number 10.0; SduiValue.Number 11.0; SduiValue.Null |])
+            let reference = axis.Points |> Array.map (fun point -> point.EventTimeUtc.Value.ToString("O"))
+            let projected = RendererModel.projectedSourceTimestamps reference "series.sma" revised
+            let projectedUnavailable =
+                RendererModel.projectedLastSourceTimestampWhere
+                    (fun point -> RendererModel.parseLineResolved point.Temporal point.Payload |> Option.isNone)
+                    reference
+                    "series.sma"
+                    revised
+            Expect.equal projected[1] (Some reference[2]) "The explicit null point must retain its source interval at the projected slot."
+            Expect.equal projectedUnavailable[1] (Some reference[2]) "The bounded last-source path must retain the explicit null slot without rescanning the series."
+            let revisedSeries = revised.ResolvedSeries |> Map.find "series.sma"
+            Expect.equal revisedSeries[2].Payload (Some SduiValue.Null) "Incremental preparation must preserve the explicit null payload."
+
+        testCase "multi-scale temporal projection aligns candle spans repeated lines and causal step values" <| fun _ ->
+            let timestamps =
+                [| for minute in 0 .. 9 -> sprintf "2026-09-03T13:%02d:00.0000000+00:00" minute |]
+            let baseCandles =
+                timestamps
+                |> Array.mapi (fun index timestamp -> candle timestamp (100.0 + float index) (102.0 + float index) (99.0 + float index) (101.0 + float index) 20.0)
+            let coarseLine =
+                [| temporalPoint
+                       "es-5k:1300"
+                       "5K"
+                       "2026-09-03T13:00:00Z"
+                       "2026-09-03T13:05:00Z"
+                       "2026-09-03T13:05:00Z"
+                       (Some "2026-09-03T13:05:00Z")
+                       PointFinality.Final
+                       TemporalProjection.RepeatAcrossBaseBuckets
+                       (Some "complete")
+                       (Some(SduiValue.Object(Map [ "v", SduiValue.Number 10.0 ])))
+                   temporalPoint
+                       "es-5k:1305"
+                       "5K"
+                       "2026-09-03T13:05:00Z"
+                       "2026-09-03T13:10:00Z"
+                       "2026-09-03T13:10:00Z"
+                       (Some "2026-09-03T13:10:00Z")
+                       PointFinality.Final
+                       TemporalProjection.RepeatAcrossBaseBuckets
+                       (Some "complete")
+                       (Some(SduiValue.Object(Map [ "v", SduiValue.Number 20.0 ]))) |]
+            let coarseCandle =
+                temporalPoint
+                    "es-5k:1300"
+                    "5K"
+                    "2026-09-03T13:00:00Z"
+                    "2026-09-03T13:05:00Z"
+                    "2026-09-03T13:05:00Z"
+                    (Some "2026-09-03T13:05:00Z")
+                    PointFinality.Final
+                    TemporalProjection.CandleSpan
+                    (Some "complete")
+                    (Some(SduiValue.Object(Map [ "o", SduiValue.Number 100.0; "h", SduiValue.Number 110.0; "l", SduiValue.Number 95.0; "c", SduiValue.Number 108.0; "v", SduiValue.Number 90.0 ])) )
+            let stepLine =
+                temporalPoint
+                    "es-5k:1300-step"
+                    "5K"
+                    "2026-09-03T13:00:00Z"
+                    "2026-09-03T13:05:00Z"
+                    "2026-09-03T13:05:00Z"
+                    (Some "2026-09-03T13:05:00Z")
+                    PointFinality.Final
+                    TemporalProjection.StepAfterClose
+                    (Some "complete")
+                    (Some(SduiValue.Object(Map [ "v", SduiValue.Number 33.0 ])))
+            let laterStepLine =
+                temporalPoint
+                    "es-5k:1305-step"
+                    "5K"
+                    "2026-09-03T13:05:00Z"
+                    "2026-09-03T13:10:00Z"
+                    "2026-09-03T13:08:00Z"
+                    (Some "2026-09-03T13:08:00Z")
+                    PointFinality.Final
+                    TemporalProjection.StepAfterClose
+                    (Some "complete")
+                    (Some(SduiValue.Object(Map [ "v", SduiValue.Number 44.0 ])))
+            let trace traceId kind dataRef label =
+                { TraceId = traceId; Kind = kind; DataRef = dataRef; Label = label; Color = ""; Width = 1.0; Visible = true; CandleDataRefs = None; Options = Map.empty }
+            let row =
+                { RowId = "multi-scale"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = "series.base"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces =
+                    [| trace "base" TaTraceKind.Candlestick "series.base" "1K"
+                       trace "coarse-candle" TaTraceKind.Candlestick "series.coarse-candle" "5K candle"
+                       trace "coarse-line" TaTraceKind.Line "series.coarse-line" "5K SMA"
+                       trace "step-line" TaTraceKind.Line "series.step-line" "5K causal step" |] }
+            let data =
+                Map [
+                    "series.base", SduiValue.Array baseCandles
+                    "series.coarse-candle", SduiValue.Array [| coarseCandle |]
+                    "series.coarse-line", SduiValue.Array coarseLine
+                    "series.step-line", SduiValue.Array [| stepLine; laterStepLine |]
+                ]
+
+            Expect.sequenceEqual (RendererModel.referenceTimeline [| row |] data) timestamps "The longest real timestamp series is the base axis."
+            let parsedCandle = RendererModel.candleSeries "series.coarse-candle" data |> Array.exactlyOne
+            Expect.equal (RendererModel.candleSlotRange timestamps parsedCandle) (Some(0, 5)) "A 5K source candle spans five real 1K slots without cloning source records."
+            let projectedCandles = RendererModel.projectedCandleSlots timestamps parsedCandle
+            Expect.equal projectedCandles.Length 5 "A 5K source candle must render once at each real constituent 1K slot."
+            Expect.sequenceEqual (projectedCandles |> Array.map (fun (index, _, _) -> index)) [| 0; 1; 2; 3; 4 |] "Projected candles retain the actual base-axis slot positions."
+            Expect.isTrue (projectedCandles |> Array.forall (fun (_, span, point) -> span = 5 && (point.Temporal |> Option.exists (fun value -> value.SourceIntervalId = "es-5k:1300")))) "Every projected candle retains its canonical source interval identity."
+            let cursorValues = RendererModel.projectedCandleCursorValues false timestamps [| parsedCandle |]
+            let legacyCursorValues = timestamps |> Array.map (fun timestamp -> RendererModel.tryCandleForCursor false timestamp [| parsedCandle |])
+            Expect.sequenceEqual cursorValues legacyCursorValues "The linear cursor projection preserves finalized match and as-of fallback semantics."
+            let sparseTimestamps = timestamps |> Array.removeAt 2
+            let sparseProjected = RendererModel.projectedCandleSlots sparseTimestamps parsedCandle
+            Expect.equal sparseProjected.Length 4 "Projection must not invent a missing base-axis slot."
+            let repeated = RendererModel.lineSeries "series.coarse-line" data |> RendererModel.projectedLinePoints timestamps
+            Expect.equal repeated.Length 10 "Two final 5K values project across ten 1K presentation cells."
+            Expect.sequenceEqual (repeated |> Array.map (snd >> _.Value)) [| 10.0; 10.0; 10.0; 10.0; 10.0; 20.0; 20.0; 20.0; 20.0; 20.0 |] "Repeated cells preserve each source interval value."
+            let stepped = RendererModel.lineSeries "series.step-line" data |> RendererModel.projectedLinePoints timestamps
+            Expect.sequenceEqual (stepped |> Array.map fst) [| 5; 6; 7; 8; 9 |] "Step-after-close remains invisible before owner-provided availability."
+            Expect.sequenceEqual (stepped |> Array.map (snd >> _.Value)) [| 33.0; 33.0; 33.0; 44.0; 44.0 |] "A later causal step replaces the prior suffix without expanding every overlapping source range."
+            let metadata = RendererModel.rowTemporalMetadata row data
+            Expect.isTrue (metadata |> Array.exists (fun value -> value.ScaleKey = "5K" && value.Quality = Some "complete")) "Legend metadata preserves scale and quality."
+
+            let document =
+                { WorkspaceId = "multi-scale"
+                  Title = "Multi scale"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "multi-scale"
+                  Rows = [| row |]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+            let cursor = RendererModel.cursorSnapshot document data { StartIndex = 0; Count = 10 } 3 |> Option.defaultWith (fun () -> failwith "cursor missing")
+            Expect.isTrue (cursor.Values |> Array.exists (fun value -> value.Value.Contains("5K final | es-5k:1300"))) "Cursor traces a repeated presentation cell back to its source interval."
+
+        testCase "overlay and separate rows independently render reused data refs" <| fun _ ->
+            let timestamps =
+                [| "2026-09-03T13:00:00.0000000+00:00"
+                   "2026-09-03T13:01:00.0000000+00:00" |]
+            let series offset =
+                timestamps
+                |> Array.mapi (fun index timestamp -> candle timestamp (offset + float index) (offset + float index + 2.0) (offset + float index - 1.0) (offset + float index + 1.0) 20.0)
+            let trace traceId dataRef label =
+                { TraceId = traceId
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = dataRef
+                  Label = label
+                  Color = ""
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let row rowId dataRef traces =
+                { RowId = rowId
+                  Kind = TaRowKind.Candlestick
+                  DataRef = dataRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = traces }
+            let rows =
+                [| row "overlay" "series.1k" [| trace "overlay-1k" "series.1k" "Overlay 1K"; trace "overlay-5k" "series.5k" "Overlay 5K" |]
+                   row "separate-1k" "series.1k" [| trace "separate-1k" "series.1k" "Separate 1K" |]
+                   row "separate-5k" "series.5k" [| trace "separate-5k" "series.5k" "Separate 5K" |] |]
+            let document =
+                { WorkspaceId = "overlay-and-separate"
+                  Title = "Overlay and separate rows"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some "overlay"
+                  Rows = rows
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+            let data = Map [ "series.1k", SduiValue.Array(series 100.0); "series.5k", SduiValue.Array(series 200.0) ]
+
+            Expect.isEmpty (RuntimeValidation.documentErrors DynamicRuntimeDefaults.limits document) "Cross-row DataRef reuse is a valid document contract."
+            Expect.sequenceEqual (RendererModel.referenceTimelineForDocument document data) timestamps "The overlay base row owns the shared real-time axis."
+            let cursor = RendererModel.cursorSnapshotForRows document rows data { StartIndex = 0; Count = 2 } 1 |> Option.defaultWith (fun () -> failwith "cursor missing")
+            Expect.sequenceEqual
+                (cursor.Values |> Array.map _.Label)
+                [| "Overlay 1K"; "Overlay 5K"; "Separate 1K"; "Separate 5K" |]
+                "Overlay and separate rows must resolve the reused immutable series independently."
+
+        testCase "shared temporal axis joins five scalar candle components without filling gaps" <| fun _ ->
+            let axisRef = "axis.ha.1k"
+            let time minute = DateTimeOffset(2026, 9, 8, 1, minute, 0, TimeSpan.Zero)
+            let axisPoint position minute =
+                { Position = position
+                  SourceIntervalId = $"ha:{minute}"
+                  ScaleKey = "1K"
+                  IntervalStartUtc = time minute
+                  IntervalEndUtc = (time minute).AddMinutes 1.0
+                  EventTimeUtc = Some((time minute).AddMinutes 1.0)
+                  ObservedThroughUtc = (time minute).AddMinutes 1.0
+                  AvailableAtUtc = Some((time minute).AddMinutes 1.0)
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "complete" }
+            let series values =
+                { AxisRef = axisRef
+                  AxisRevision = 7L
+                  Points =
+                    values
+                    |> Array.mapi (fun index value ->
+                        { Position = if index = 0 then 40L else 41L
+                          Value = SduiValue.Number value }) }
+                |> TemporalSeriesCodec.encode
+            let refs =
+                { OpenRef = "ha.open"
+                  HighRef = "ha.high"
+                  LowRef = "ha.low"
+                  CloseRef = "ha.close"
+                  VolumeRef = "ha.volume" }
+            let trace =
+                { TraceId = "ha"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = refs.OpenRef
+                  Label = "Heikin-Ashi 1K"
+                  Color = ""
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = Some refs
+                  Options = Map.empty }
+            let row =
+                { RowId = "ha"
+                  Kind = TaRowKind.HeikinAshi
+                  DataRef = refs.OpenRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Traces = [| trace |]
+                  Options = Map.empty }
+            let data =
+                Map [ axisRef, TemporalAxisCodec.encode { AxisRef = axisRef; Revision = 7L; Points = [| axisPoint 40L 0; axisPoint 41L 5 |] }
+                      refs.OpenRef, series [| 100.0; 105.0 |]
+                      refs.HighRef, series [| 110.0; 115.0 |]
+                      refs.LowRef, series [| 95.0; 101.0 |]
+                      refs.CloseRef, series [| 108.0; 112.0 |]
+                      refs.VolumeRef, series [| 900.0; 1200.0 |] ]
+            let candles = RendererModel.candleSeriesForTrace trace data
+            let prepared = RendererModel.prepareData data
+            let preparedCandles = RendererModel.candleSeriesForTracePrepared trace prepared
+            Expect.equal candles.Length 2 "Five shared-axis scalar series should synthesize two candles."
+            Expect.sequenceEqual preparedCandles candles "Prepared shared-axis candle projection must preserve raw-path semantics."
+            Expect.sequenceEqual
+                (RendererModel.lineSeriesPrepared refs.CloseRef prepared)
+                (RendererModel.lineSeries refs.CloseRef data)
+                "Prepared shared-axis line projection must preserve raw-path semantics."
+            Expect.equal (candles |> Array.map _.Timestamp) [| "2026-09-08T01:01:00.0000000+00:00"; "2026-09-08T01:06:00.0000000+00:00" |] "Candle presentation must use the owner-authored event time without filling the irregular gap."
+            Expect.equal candles[1].Open 105.0 "Open component should join by axis position."
+            Expect.equal candles[1].High 115.0 "High component should join by axis position."
+            Expect.equal candles[1].Low 101.0 "Low component should join by axis position."
+            Expect.equal candles[1].Close 112.0 "Close component should join by axis position."
+            Expect.equal candles[1].Volume 1200.0 "Volume component should join by axis position."
+            Expect.equal (RendererModel.referenceTimeline [| row |] data).Length 2 "Shared timeline should expose only actual axis positions."
+            Expect.equal TaWorkspaceRenderer.defaultOptions.MaximumVisibleBars 4000 "Default renderer viewport must accept the stakeholder 4,000-bar gate."
+
+            Expect.equal
+                (RendererModel.initialViewportWindow 12 48 4000 3563 (Map [ "visibleBars", SduiValue.Number 4000.0 ]))
+                { StartIndex = 0; Count = 3563 }
+                "A fresh renderer must honor document visibleBars and clamp it to the reference length."
+            Expect.equal
+                (RendererModel.initialViewportWindow 12 48 4000 5000 (Map [ "visibleBars", SduiValue.Number 9000.0 ]))
+                { StartIndex = 1000; Count = 4000 }
+                "Document visibleBars must remain bounded by the renderer maximum."
+            Expect.equal
+                (RendererModel.initialViewportWindow 12 48 4000 3563 Map.empty)
+                { StartIndex = 3515; Count = 48 }
+                "A missing document visibleBars value must retain the renderer fallback."
+            Expect.equal
+                (RendererModel.initialViewportWindow 12 48 4000 3563 (Map [ "visibleBars", SduiValue.Number 12.5 ]))
+                { StartIndex = 3515; Count = 48 }
+                "A non-integral document visibleBars value must not corrupt the viewport."
+
+            let missingCloseData = data |> Map.add refs.CloseRef (series [| 108.0 |])
+            let missingCloseCandles =
+                missingCloseData
+                |> RendererModel.prepareData
+                |> RendererModel.candleSeriesForTracePrepared trace
+            Expect.equal missingCloseCandles.Length 1 "A missing close component must omit the incomplete candle instead of filling the gap."
+            Expect.equal missingCloseCandles[0].Timestamp candles[0].Timestamp "The retained candle must preserve the authored temporal presentation."
+
+            let replaceTemporalTail revisionKey revision replacement value =
+                match value with
+                | SduiValue.Object fields ->
+                    match fields["points"] with
+                    | SduiValue.Array points ->
+                        let nextPoints = Array.copy points
+                        nextPoints[nextPoints.Length - 1] <- replacement
+                        fields
+                        |> Map.add revisionKey (SduiValue.Number revision)
+                        |> Map.add "points" (SduiValue.Array nextPoints)
+                        |> SduiValue.Object
+                    | _ -> failtest "Temporal points must be an array."
+                | _ -> failtest "Temporal data must be an object."
+            let repinTemporalSeries revision value =
+                match value with
+                | SduiValue.Object fields ->
+                    fields
+                    |> Map.add "axisRevision" (SduiValue.Number revision)
+                    |> SduiValue.Object
+                | _ -> failtest "Temporal series must be an object."
+            let revisedAxisPoint = axisPoint 41L 5 |> TemporalAxisCodec.encodePoint
+            let revisedClosePoint =
+                TemporalSeriesCodec.encodePoint { Position = 41L; Value = SduiValue.Number 113.25 }
+            let revisedData =
+                data
+                |> Map.map (fun dataRef value ->
+                    if dataRef = axisRef then replaceTemporalTail "revision" 8.0 revisedAxisPoint value
+                    elif dataRef = refs.CloseRef then replaceTemporalTail "axisRevision" 8.0 revisedClosePoint value
+                    else repinTemporalSeries 8.0 value)
+            let revisedPrepared = RendererModel.prepareDataIncremental prepared revisedData
+            let revisedCandles = RendererModel.candleSeriesForTracePrepared trace revisedPrepared
+            Expect.equal revisedCandles[1].Close 113.25 "Incremental preparation must expose same-position close replacement."
+            Expect.isTrue
+                (Object.ReferenceEquals(prepared.ResolvedSeries[refs.OpenRef][0], revisedPrepared.ResolvedSeries[refs.OpenRef][0]))
+                "Incremental preparation must retain an unaffected prefix instead of rematerializing all retained points."
+            Expect.isFalse
+                (Object.ReferenceEquals(prepared.ResolvedSeries[refs.OpenRef][1], revisedPrepared.ResolvedSeries[refs.OpenRef][1]))
+                "A changed axis position must refresh dependent temporal metadata."
+
+        testCase "DYN-TA-T-099 canonical event time drives presentation without changing topology identity" <| fun _ ->
+            let axisRef = "axis.event-time.5k"
+            let intervalStart minute = DateTimeOffset(2026, 9, 24, 3, minute, 0, TimeSpan.Zero)
+            let point position startMinute eventMinute finality =
+                let startUtc = intervalStart startMinute
+                { Position = position
+                  SourceIntervalId = $"5k:{startMinute}"
+                  ScaleKey = "5K"
+                  IntervalStartUtc = startUtc
+                  IntervalEndUtc = startUtc.AddMinutes 1.0
+                  EventTimeUtc = Some(intervalStart eventMinute)
+                  ObservedThroughUtc = intervalStart eventMinute
+                  AvailableAtUtc = if finality = PointFinality.Final then Some(intervalStart eventMinute) else None
+                  Finality = finality
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "authoritative" }
+            let lineTrace =
+                { TraceId = "sma-5k"
+                  Kind = TaTraceKind.Line
+                  DataRef = "series.event-time.sma"
+                  Label = "SMA 5K"
+                  Color = "#2563eb"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let data eventMinute revision =
+                let axis =
+                    { AxisRef = axisRef
+                      Revision = revision
+                      Points =
+                        [| point 0L 4 5 PointFinality.Final
+                           point 1L 5 eventMinute PointFinality.Preview |] }
+                let series =
+                    { AxisRef = axisRef
+                      AxisRevision = revision
+                      Points =
+                        [| { Position = 0L; Value = SduiValue.Number 100.0 }
+                           { Position = 1L; Value = SduiValue.Number 101.0 } |] }
+                Map [ axisRef, TemporalAxisCodec.encode axis; lineTrace.DataRef, TemporalSeriesCodec.encode series ]
+
+            let initial = RendererModel.prepareData (data 6 1L)
+            let revised = RendererModel.prepareData (data 7 2L)
+            Expect.sequenceEqual
+                (RendererModel.traceTimestampsPrepared lineTrace initial)
+                [| "2026-09-24T03:05:00.0000000+00:00"; "2026-09-24T03:06:00.0000000+00:00" |]
+                "Completed and forming points must expose the owner-authored presentation time."
+            Expect.sequenceEqual
+                (RendererModel.traceTimestampsPrepared lineTrace revised)
+                [| "2026-09-24T03:05:00.0000000+00:00"; "2026-09-24T03:07:00.0000000+00:00" |]
+                "A forming preview may advance its presentation time in-place."
+            Expect.sequenceEqual
+                (RendererModel.traceTopologyTimestampsPrepared lineTrace initial)
+                (RendererModel.traceTopologyTimestampsPrepared lineTrace revised)
+                "Same-position preview event-time updates must not change chart topology identity."
+            Expect.equal
+                ((RendererModel.lineSeriesPrepared lineTrace.DataRef revised |> Array.item 1).Timestamp)
+                "2026-09-24T03:07:00.0000000+00:00"
+                "The row value and cursor reader must receive the revised canonical event time."
+
+        testCase "DYN-T-548 triangle direction is independent from anchor" <| fun _ ->
+            let up = RendererModel.markerTrianglePoints TaMarkerShape.TriangleUp 10.0 20.0 4.5 |> Option.get
+            let down = RendererModel.markerTrianglePoints TaMarkerShape.TriangleDown 10.0 20.0 4.5 |> Option.get
+            Expect.equal up [| 5.5, 24.5; 14.5, 24.5; 10.0, 15.5 |] "TriangleUp must point toward the top of the screen."
+            Expect.equal down [| 5.5, 15.5; 14.5, 15.5; 10.0, 24.5 |] "TriangleDown must point toward the bottom of the screen."
+            Expect.isNone (RendererModel.markerTrianglePoints TaMarkerShape.Circle 10.0 20.0 4.5) "Non-triangle shapes do not use triangle geometry."
+
+        testCase "DYN-T-573 marker budget is four direct glyphs plus one deterministic overflow cluster" <| fun _ ->
+            let target =
+                { Timestamp = "2026-09-24T01:00:00Z"
+                  Open = 100.0
+                  High = 102.0
+                  Low = 99.0
+                  Close = 101.0
+                  Volume = 10.0
+                  Temporal = None }
+            let placement index =
+                { TraceId = if index % 2 = 0 then "orders-a" else "orders-b"
+                  TargetTraceId = "price"
+                  Position = 10.0
+                  SlotIndex = 7
+                  Lane = index
+                  Target = target
+                  Marker =
+                    { MarkerId = $"order-{index}"
+                      EventTimeUtc = "2026-09-24T01:00:00Z"
+                      Anchor = TaMarkerAnchor.AboveBar
+                      Shape = TaMarkerShape.Circle
+                      Fill = TaMarkerFill.Outline
+                      Color = "#2563eb"
+                      Label = Some $"Order {index}"
+                      Tooltip = [||] } }
+            let direct, overflow = Array.init 7 placement |> RendererModel.markerPresentation
+            Expect.equal direct.Length 4 "Only four marker glyphs render directly in one aggregate lane."
+            Expect.sequenceEqual (direct |> Array.map (fun value -> value.Marker.MarkerId)) [| "order-0"; "order-1"; "order-2"; "order-3" |] "Direct glyph order is deterministic."
+            Expect.equal overflow.Length 1 "Overflow collapses into one cluster control."
+            Expect.equal overflow[0].Markers.Length 3 "The cluster preserves every hidden marker."
+            Expect.equal overflow[0].Lane 4 "The cluster occupies the fixed lane after the direct budget."
+            let cursorItems = Array.init 7 placement |> RendererModel.markerCursorItems 7
+            Expect.equal cursorItems.Length 7 "The fixed-height OFI band retains every labeled marker at the selected slot."
+            Expect.sequenceEqual
+                (cursorItems |> Array.map _.MarkerId)
+                [| "order-0"; "order-2"; "order-4"; "order-6"; "order-1"; "order-3"; "order-5" |]
+                "OFI compact items are deterministic across marker traces."
+            Expect.isTrue (cursorItems |> Array.forall (fun item -> item.EventTimeUtc = "2026-09-24T01:00:00Z")) "OFI items retain the marker's exact event time rather than reconstructing it from the row axis."
+            Expect.isTrue (cursorItems |> Array.forall (fun item -> item.Tooltip.Contains "Event time:")) "OFI items retain the glyph tooltip payload."
+            Expect.isEmpty (Array.init 7 placement |> RendererModel.markerCursorItems 6) "A cursor slot without events keeps an empty OFI band."
+
+        testCase "DYN-T-572 overview stripes collapse same trace and assign cross-trace lanes" <| fun _ ->
+            let stripe id color =
+                { StripeId = id
+                  EventTimeUtc = "2026-09-24T01:00:00Z"
+                  Color = color
+                  StrokeWidthCssPixels = 1.0
+                  Label = None
+                  Tooltip = [||] }
+            let placement traceId order stripeValue =
+                { TraceId = traceId
+                  TargetTraceId = "price"
+                  CollisionGroup = "trade-events"
+                  LayerOrder = order
+                  Position = 10.0
+                  SlotIndex = 7
+                  Stripe = stripeValue }
+            let visuals =
+                [| placement "signals" 2 (stripe "signal-a" "#2563eb")
+                   placement "signals" 2 (stripe "signal-b" "#2563eb")
+                   placement "fills" 1 (stripe "fill-a" "#dc2626") |]
+                |> RendererModel.overviewStripeVisuals
+            Expect.equal visuals.Length 2 "Same trace and pixel collapse into one stripe visual."
+            Expect.equal visuals[0].TraceId "fills" "LayerOrder determines the first collision lane."
+            Expect.equal visuals[0].Lane 0 "Lowest LayerOrder owns lane zero."
+            Expect.equal visuals[1].Lane 1 "The next trace receives the next deterministic lane."
+            Expect.equal visuals[1].Stripes.Length 2 "Collapsed stripe ids remain available to the interaction bucket."
+
+        testCase "DYN-T-620 cursor events merge marker and stripe sources without duplicate event ids" <| fun _ ->
+            let trace traceId kind label =
+                { TraceId = traceId
+                  Kind = kind
+                  DataRef = traceId
+                  Label = label
+                  Color = ""
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let target =
+                { Timestamp = "2026-09-24T01:00:00Z"
+                  Open = 10.0
+                  High = 12.0
+                  Low = 9.0
+                  Close = 11.0
+                  Volume = 10.0
+                  Temporal = None }
+            let marker =
+                { TraceId = "fills"
+                  TargetTraceId = "price"
+                  Position = 10.0
+                  SlotIndex = 7
+                  Lane = 0
+                  Target = target
+                  Marker =
+                    { MarkerId = "fill-1"
+                      EventTimeUtc = target.Timestamp
+                      Anchor = TaMarkerAnchor.AboveBar
+                      Shape = TaMarkerShape.TriangleDown
+                      Fill = TaMarkerFill.Solid
+                      Color = "#dc2626"
+                      Label = Some "SELL 11"
+                      Tooltip = [||] } }
+            let stripe traceId stripeId label layer =
+                { TraceId = traceId
+                  TargetTraceId = "price"
+                  CollisionGroup = "trade-events"
+                  LayerOrder = layer
+                  Position = 10.0
+                  SlotIndex = 7
+                  Stripe =
+                    { StripeId = stripeId
+                      EventTimeUtc = target.Timestamp
+                      Color = if traceId = "signals" then "#2563eb" else "#dc2626"
+                      StrokeWidthCssPixels = 1.0
+                      Label = Some label
+                      Tooltip = [||] } }
+            let events =
+                RendererModel.cursorEventItems
+                    7
+                    [| trace "signals" TaTraceKind.OverviewStripe "Signal"
+                       trace "fills" TaTraceKind.Marker "Fill"
+                       trace "fill-overview" TaTraceKind.OverviewStripe "Fill stripe" |]
+                    [| marker |]
+                    [| stripe "signals" "signal-1" "Signal A" 0
+                       stripe "fill-overview" "fill-1" "Fill stripe" 1 |]
+            Expect.equal events.Length 2 "A marker-backed event appears once while an independent stripe-only event remains visible."
+            Expect.sequenceEqual (events |> Array.map _.MarkerId |> Array.sort) [| "fill-1"; "signal-1" |] "Generic event id dedupe must not depend on TradeCore labels."
+            Expect.equal (events |> Array.find (fun item -> item.MarkerId = "fill-1") |> _.SourceKind) "marker" "Marker owns the richer duplicate event presentation."
+            Expect.equal (events |> Array.find (fun item -> item.MarkerId = "signal-1") |> _.SourceKind) "overview-stripe" "A stripe-only signal remains in the event band."
+            let denseMarkers =
+                Array.init 6 (fun index ->
+                    { marker with
+                        Lane = index
+                        Marker = { marker.Marker with MarkerId = $"fill-{index}"; Label = Some $"Fill {index}" } })
+            let fairEvents =
+                RendererModel.cursorEventItems
+                    7
+                    [| trace "signals" TaTraceKind.OverviewStripe "Signal"
+                       trace "fills" TaTraceKind.Marker "Fill" |]
+                    denseMarkers
+                    [| stripe "signals" "signal-1" "Signal A" 0 |]
+            Expect.sequenceEqual
+                (fairEvents |> Array.take 2 |> Array.map _.MarkerId)
+                [| "signal-1"; "fill-0" |]
+                "Dense events are round-robin ordered by authored trace so one source cannot consume the complete visible chip budget."
+
+        testCase "DYN-T-623 encoded overview stripes resolve onto the visible temporal axis" <| fun _ ->
+            let axisRef = "axis.overview.cursor"
+            let at minute = DateTimeOffset(2026, 9, 27, 1, minute, 0, TimeSpan.Zero)
+            let axisPoint position minute =
+                { Position = position
+                  SourceIntervalId = $"overview-{position}"
+                  ScaleKey = "1K"
+                  IntervalStartUtc = at minute
+                  IntervalEndUtc = (at minute).AddMinutes 1.0
+                  EventTimeUtc = Some((at minute).AddMinutes 1.0)
+                  ObservedThroughUtc = (at minute).AddMinutes 1.0
+                  AvailableAtUtc = Some((at minute).AddMinutes 1.0)
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "complete" }
+            let axis =
+                { AxisRef = axisRef
+                  Revision = 1L
+                  Points = [| axisPoint 10L 0; axisPoint 11L 1 |] }
+            let stripe =
+                { StripeId = "signal-10"
+                  EventTimeUtc = "2026-09-27T01:01:00Z"
+                  Color = "#2563eb"
+                  StrokeWidthCssPixels = 1.0
+                  Label = Some "Signal"
+                  Tooltip = [||] }
+            let trace =
+                { TraceId = "overview-signal"
+                  Kind = TaTraceKind.OverviewStripe
+                  DataRef = "series.overview.signal"
+                  Label = "Signal stripe"
+                  Color = "#2563eb"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = TaOverviewStripeTraceOptionsCodec.encode { TargetTraceId = "price"; CollisionGroup = "events"; LayerOrder = 0 } }
+            let data =
+                Map [ axisRef, TemporalAxisCodec.encode axis
+                      trace.DataRef,
+                      TemporalSeriesCodec.encode
+                          { AxisRef = axisRef
+                            AxisRevision = axis.Revision
+                            Points = [| { Position = 10L; Value = TaOverviewStripeCodec.encodeBucket [| stripe |] } |] } ]
+            let timeline = axis.Points |> Array.map (fun point -> point.EventTimeUtc.Value.ToString("O"))
+            let placements = RendererModel.overviewStripePlacementsPrepared trace (RendererModel.prepareData data) timeline
+            Expect.equal placements.Length 1 "The encoded stripe must resolve from its temporal-series position."
+            Expect.equal placements[0].SlotIndex 0 "The stripe event time maps to the first visible axis slot."
+            Expect.equal placements[0].Stripe.StripeId stripe.StripeId "The generic event id survives decode and placement."
+            Expect.equal
+                (RendererModel.overviewEventTimeSlot timeline "2026-09-27T01:01:30Z")
+                (Some 0)
+                "An event between overview anchors maps to the preceding anchor rather than the detail-series position."
+            Expect.equal
+                (RendererModel.overviewEventTimeSlot timeline "2026-09-27T01:02:00Z")
+                (Some 1)
+                "An event exactly on an overview anchor maps to that anchor."
+
+        testCase "DYN-T-576 row height policy is marker-independent and bounded" <| fun _ ->
+            let baseRow =
+                { RowId = "price"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = "price"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = [||] }
+            let candle =
+                { TraceId = "price"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = "price"
+                  Label = "Price"
+                  Color = "#334155"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let marker = { candle with TraceId = "markers"; Kind = TaTraceKind.Marker; DataRef = "markers" }
+            let candleBounds = RendererModel.rowHeightBounds baseRow [| candle |]
+            let markerBounds = RendererModel.rowHeightBounds baseRow [| candle; marker |]
+            let tallBounds = RendererModel.rowHeightBounds { baseRow with HeightWeight = 9.0 } [| candle; marker |]
+            let scalarBounds = RendererModel.rowHeightBounds baseRow [| { candle with Kind = TaTraceKind.Line } |]
+            let tallScalarBounds = RendererModel.rowHeightBounds { baseRow with HeightWeight = 9.0 } [| { candle with Kind = TaTraceKind.Line } |]
+            Expect.equal candleBounds.DefaultHeight 250 "Candle default follows HeightWeight."
+            Expect.equal markerBounds.DefaultHeight candleBounds.DefaultHeight "Markers do not inflate row height."
+            Expect.equal tallBounds.DefaultHeight 250 "Authored candle defaults cap at 250px."
+            Expect.equal tallBounds.Maximum 720 "Manual candle resizing remains available above the authored default cap."
+            Expect.equal scalarBounds.DefaultHeight 112 "Scalar rows use the compact baseline."
+            Expect.equal tallScalarBounds.DefaultHeight 250 "Authored scalar defaults cap at 250px."
+            Expect.equal tallScalarBounds.Maximum 480 "Manual scalar resizing remains available above the authored default cap."
+            Expect.equal (RendererModel.rowHeightStorageKey (CanvasInstanceId "canvas-a") "price") "canvas-a:price" "Local row height state is isolated by canvas and row."
+
+        testCase "DYN-T-564 timestamp presentation is locale-independent" <| fun _ ->
+            let value = "2026-09-24T13:14:15.1234567+00:00"
+            Expect.equal (RendererModel.timestampParts value) (Some("2026-09-24", "13:14:15")) "Cursor labels use fixed date and clock lines."
+            Expect.equal (RendererModel.fullTimestamp value) (Some "2026-09-24 13:14:15") "Data windows use a fixed-width timestamp prefix."
+            Expect.isNone (RendererModel.timestampParts "B1") "Non-canonical timestamps fail closed instead of using browser locale parsing."
+
+        testCase "DYN-T-541 DYN-T-551 marker placement uses candle position and aggregate lanes" <| fun _ ->
+            let axisRef = "axis.marker.renderer"
+            let time minute = DateTimeOffset(2026, 9, 21, 1, minute, 0, TimeSpan.Zero)
+            let axisPoint position minute =
+                { Position = position
+                  SourceIntervalId = $"marker-renderer-{position}"
+                  ScaleKey = "1K"
+                  IntervalStartUtc = time minute
+                  IntervalEndUtc = (time minute).AddMinutes 1.0
+                  EventTimeUtc = Some((time minute).AddMinutes 1.0)
+                  ObservedThroughUtc = (time minute).AddMinutes 1.0
+                  AvailableAtUtc = Some((time minute).AddMinutes 1.0)
+                  Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = Some "complete" }
+            let candleValue openValue =
+                SduiValue.Object(
+                    Map [ "o", SduiValue.Number openValue
+                          "h", SduiValue.Number(openValue + 3.0)
+                          "l", SduiValue.Number(openValue - 2.0)
+                          "c", SduiValue.Number(openValue + 1.0)
+                          "v", SduiValue.Number 100.0 ])
+            let candleTrace =
+                { TraceId = "price"
+                  Kind = TaTraceKind.Candlestick
+                  DataRef = "series.marker.price"
+                  Label = "Price"
+                  Color = "#334155"
+                  Width = 1.0
+                  Visible = true
+                  CandleDataRefs = None
+                  Options = Map.empty }
+            let markerTrace =
+                { candleTrace with
+                    TraceId = "signals"
+                    Kind = TaTraceKind.Marker
+                    DataRef = "series.marker.signals"
+                    Label = "Signals"
+                    Options = TaMarkerTraceOptionsCodec.encode { TargetTraceId = candleTrace.TraceId } }
+            let marker markerId anchor label =
+                { MarkerId = markerId
+                  EventTimeUtc = "2026-09-21T01:00:30Z"
+                  Anchor = anchor
+                  Shape = TaMarkerShape.TriangleDown
+                  Fill = TaMarkerFill.Solid
+                  Color = "#dc2626"
+                  Label = Some label
+                  Tooltip =
+                    [| { Key = "first"; Label = "第一"; Value = "A" }
+                       { Key = "second"; Label = "第二"; Value = "B" } |] }
+            let markers =
+                [| marker "above-1" TaMarkerAnchor.AboveBar "Above 1"
+                   marker "below-1" TaMarkerAnchor.BelowBar "Below 1"
+                   marker "above-2" TaMarkerAnchor.AboveBar "Above 2" |]
+            let axis =
+                { AxisRef = axisRef
+                  Revision = 3L
+                  Points = [| axisPoint 10L 0; axisPoint 11L 1 |] }
+            let data =
+                Map [ axisRef, TemporalAxisCodec.encode axis
+                      candleTrace.DataRef,
+                      TemporalSeriesCodec.encode
+                          { AxisRef = axisRef
+                            AxisRevision = axis.Revision
+                            Points =
+                                [| { Position = 10L; Value = candleValue 100.0 }
+                                   { Position = 11L; Value = candleValue 101.0 } |] }
+                      markerTrace.DataRef,
+                      TemporalSeriesCodec.encode
+                          { AxisRef = axisRef
+                            AxisRevision = axis.Revision
+                            Points =
+                                [| { Position = 10L; Value = TaMarkerCodec.encodeBucket markers }
+                                   { Position = 11L; Value = TaMarkerCodec.encodeBucket [||] } |] } ]
+            let prepared = RendererModel.prepareData data
+            let timeline = RendererModel.traceTimestampsPrepared candleTrace prepared
+            let placements =
+                RendererModel.markerPlacementsPrepared markerTrace candleTrace prepared timeline
+                |> RendererModel.assignAggregateMarkerLanes
+            let targetByTimestamp =
+                RendererModel.candleSeriesForTracePrepared candleTrace prepared
+                |> RendererModel.candlePointsByTimestamp
+            let duplicatedTimeline = Array.append [| timeline[0] |] timeline
+            let indexedPlacements =
+                RendererModel.markerPlacementsPreparedWithIndexes
+                    markerTrace
+                    candleTrace.TraceId
+                    targetByTimestamp
+                    prepared
+                    (RendererModel.referenceSlotsByTimestamp duplicatedTimeline)
+                |> RendererModel.assignAggregateMarkerLanes
+            Expect.equal placements.Length 3 "Every accepted marker receives one placement."
+            Expect.sequenceEqual indexedPlacements placements "The reusable indexed marker seam must preserve legacy placement and lane semantics."
+            Expect.sequenceEqual (placements |> Array.map _.SlotIndex) [| 0; 0; 0 |] "Position 10 maps to the first candle slot regardless of EventTime evidence."
+            Expect.sequenceEqual (indexedPlacements |> Array.map _.SlotIndex) [| 0; 0; 0 |] "Duplicate reference timestamps must retain the first visible slot."
+            Expect.sequenceEqual (placements |> Array.map _.Lane) [| 0; 0; 1 |] "Above and below anchors own deterministic independent lanes."
+            Expect.isTrue (placements |> Array.forall (fun placement -> placement.TargetTraceId = candleTrace.TraceId)) "Every placement retains its target trace identity."
+            Expect.isTrue (placements |> Array.forall (fun placement -> placement.Target.High = 103.0 && placement.Target.Low = 98.0)) "Marker anchors use the target candle at the same position."
+            Expect.equal
+                (RendererModel.markerTooltipText placements[0])
+                "Above 1\nEvent time: 2026-09-21T01:00:30Z\n第一: A\n第二: B"
+                "Tooltip fields preserve authored order."
+
+            let secondTracePlacement =
+                { placements[0] with
+                    TraceId = "signals-2"
+                    Lane = 0
+                    Marker = { placements[0].Marker with MarkerId = "above-3" } }
+            let aggregate =
+                Array.append placements [| secondTracePlacement |]
+                |> RendererModel.assignAggregateMarkerLanes
+            Expect.sequenceEqual
+                (aggregate |> Array.map _.Lane)
+                [| 0; 0; 1; 2 |]
+                "Document trace order followed by bucket order must allocate unique lanes across marker traces."
+
+            let markerRow =
+                { RowId = "marker-row"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = candleTrace.DataRef
+                  HeightWeight = 1.0
+                  Visible = true
+                  Options = Map.empty
+                  Traces = [| candleTrace; markerTrace |] }
+            let markerDocument =
+                { WorkspaceId = "marker-renderer"
+                  Title = "Marker renderer"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [| axisRef |]
+                  BaseRowId = Some markerRow.RowId
+                  Rows = [| markerRow |]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+            Expect.sequenceEqual (RendererModel.referenceTimelineForDocument markerDocument data) timeline "Marker data never becomes the reference timeline."
+            let cursor = RendererModel.cursorSnapshot markerDocument data { StartIndex = 0; Count = 2 } 0 |> Option.get
+            Expect.sequenceEqual (cursor.Values |> Array.map _.Label) [| "Price" |] "Marker is an overlay, not a numeric cursor value."
+
+        testCase "generic editor list operations retain stable paths and validation" <| fun _ ->
+            let schema =
+                { TemplateKey = "ta.sma"
+                  DisplayName = "SMA rows"
+                  SchemaRevision = 1L
+                  Fields =
+                    [| { Key = "scales"
+                         Label = "Scales"
+                         Kind = EditorValueKind.List(EditorValueKind.Scale [| "1k"; "5k"; "30k" |], Some 1, Some 3)
+                         Required = true
+                         DefaultValue = Some(SduiValue.Array [| SduiValue.Text "1k"; SduiValue.Text "5k" |]) }
+                       { Key = "period"
+                         Label = "Period"
+                         Kind = EditorValueKind.Integer(Some 1L, Some 500L)
+                         Required = true
+                         DefaultValue = Some(SduiValue.Number 13.0) } |] }
+
+            let initial = RendererModel.initialEditorInputs schema
+            Expect.sequenceEqual (RendererModel.listIndexes "scales" initial) [| 0; 1 |] "Two scale defaults should preserve their list positions."
+            Expect.isEmpty (RendererModel.validateEditorSubmission schema initial) "Initial editor values should validate."
+
+            let removed = RendererModel.removeListItem "scales" 0 initial
+            Expect.sequenceEqual (RendererModel.listIndexes "scales" removed) [| 0 |] "Remove should compact list indexes."
+            Expect.equal (RendererModel.tryEditorInput "scales[0]" removed) (Some(EditorScalarValue.Text "5k")) "The retained value should move with its compacted path."
+
+            let added = RendererModel.addListItem "scales" (EditorValueKind.Scale [| "1k"; "5k"; "30k" |]) removed
+            Expect.sequenceEqual (RendererModel.listIndexes "scales" added) [| 0; 1 |] "Add should append one stable list position."
+            let moved = RendererModel.moveListItem "scales" 1 0 added
+            Expect.equal (RendererModel.tryEditorInput "scales[1]" moved) (Some(EditorScalarValue.Text "5k")) "Move should swap complete list-item path groups."
+
+            let missingPeriod = moved |> Array.filter (fun value -> value.Path <> "period")
+            Expect.isNonEmpty (RendererModel.validateEditorSubmission schema missingPeriod) "Required scalar omission should fail before submit."
+
+        testCase "scheduled preparation preserves synchronous prepared data semantics" <| fun _ ->
+            let values =
+                [| for index in 0 .. 31 do
+                       yield candle $"2026-09-22T00:{index:D2}:00Z" 100.0 104.0 98.0 (100.0 + float index) 50.0 |]
+            let data = Map [ "series.price", SduiValue.Array values ]
+            let expected = RendererModel.prepareData data
+            let queue = Collections.Generic.Queue<unit -> unit>()
+            let mutable actual: TaPreparedRendererData option = None
+            RendererModel.prepareDataScheduled queue.Enqueue data (fun prepared -> actual <- Some prepared)
+            Expect.isNone actual "scheduled preparation must not complete synchronously"
+            while queue.Count > 0 do queue.Dequeue() ()
+            Expect.equal actual (Some expected) "scheduled preparation must preserve the pure prepared-data result"
+
+        testCase "DYN-T-741 earlier prepend anchors the released viewport when the original page tail is evicted" <| fun _ ->
+            let timeline first last = [| for index in first .. last -> $"T{index:D5}" |]
+            let oldTimeline = timeline 1500 5999
+            let shiftedResident = timeline 0 4499
+            Expect.equal
+                (RendererModel.tryReanchorWindow 1 1500 -3000 oldTimeline shiftedResident { StartIndex = 3000; Count = 80 })
+                (Some { StartIndex = 1500; Count = 80 })
+                "the released loaded-head timestamp stays at the join even though the pre-drag viewport timestamp was evicted"
+            Expect.equal
+                (RendererModel.tryReanchorWindow 1 1500 -1198 oldTimeline (timeline 0 5999) { StartIndex = 1198; Count = 80 })
+                (Some { StartIndex = 1500; Count = 80 })
+                "an expanding resident also keeps the same time join and visible width rather than jumping to new index zero"
+
+        testCase "DYN-T-743 event-range ACK cannot release queued actions before its prepared frame" <| fun _ ->
+            let source = IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let start = source.IndexOf("let committedCoverageReady () =", StringComparison.Ordinal)
+            let finish = source.IndexOf("let publishViewportDispatchDiagnostics", start, StringComparison.Ordinal)
+            let gate = source.Substring(start, finish - start)
+            Expect.stringContains gate "pendingEventRangeSettlement.IsNone" "matching old runtime/committed keys are not sufficient while an accepted event-range projection is still pending"
+
+        testCase "DYN-T-742 adjacent settlement waits for its prepared generation and rejects a missing join" <| fun _ ->
+            let projection generation : TaLoadedCoverageProjection =
+                { CoverageIdentity = "adjacent-join"
+                  CoverageRevision = 4L
+                  QueryGeneration = generation
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = None
+                  Segments = [||]
+                  OverviewAxisRef = "active"
+                  OverviewAnchors = [||]
+                  ActiveDetail = { StartObservationOrdinal = 0L; ObservationCount = 30; BaseAxisRef = "active" }
+                  GlobalOverview = None }
+            let oldTimeline = [| for i in 10 .. 29 -> string i |]
+            let newTimeline = [| for i in 0 .. 29 -> string i |]
+            let settle timeline generation actionPending =
+                RendererModel.navigatorAdjacentProjectionSettlement 1 1500 -5 oldTimeline timeline
+                    { StartIndex = 5; Count = 10 } 3L actionPending (projection generation)
+            Expect.equal (settle newTimeline 2L false) TaCoverageIntentProjectionSettlement.Await "ACK cannot settle an older prepared frame"
+            Expect.equal (settle newTimeline 3L true) (TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 10; Count = 10 }) "the matching prepared frame preserves the time join even before ACK"
+            Expect.equal (settle [| "unrelated" |] 3L true) TaCoverageIntentProjectionSettlement.Await "an in-flight partial result cannot reset the viewport"
+            Expect.equal (settle [| "unrelated" |] 3L false) TaCoverageIntentProjectionSettlement.Reject "a completed response without the time join cannot be accepted as a jump to zero"
+
+        testCase "DYN-T-744 queued event ranges preserve intent while refreshing same-scope dispatch authority" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity = "same-market-scope"; CoverageRevision = 6L; QueryGeneration = 5L
+                  Completeness = TaCoverageCompleteness.Complete; TotalObservationCount = None
+                  Segments = [||]; OverviewAxisRef = "active"; OverviewAnchors = [||]
+                  ActiveDetail = { StartObservationOrdinal = 100L; ObservationCount = 4500; BaseAxisRef = "active" }
+                  GlobalOverview = None }
+            let intent : TaCoverageWindowIntent =
+                { ExpectedCoverageRevision = Some 5L; QueryGeneration = 5L; StartObservationOrdinal = None
+                  ObservationCount = 849; Direction = None; RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds
+                  Purpose = TaCoverageWindowPurpose.NavigatorWindow }
+            let range : VisibleRangeChange =
+                { BaseRowId = "price-30k"; StartEventTimeUtc = "2026-01-23T07:30:00Z"
+                  EndEventTimeExclusiveUtc = "2026-02-24T05:30:00Z"; MaximumBasePoints = 1500
+                  CoverageIntent = Some intent }
+            let action change = SduiAction.VisibleRangeChanged(CanvasInstanceId "queued", change)
+            let refresh identity change = RendererModel.tryRefreshQueuedEventRangeAction identity (Some projection) (action change)
+            let expected = { range with CoverageIntent = Some { intent with ExpectedCoverageRevision = Some 6L; QueryGeneration = 6L } }
+            Expect.equal (refresh (Some "same-market-scope") range) (Some(action expected)) "only dispatch revision/generation change; exact time bounds, width, purpose and canvas remain the user's intent"
+            Expect.isNone (refresh (Some "different-market-scope") range) "an old query or scale cannot be replayed into a different coverage identity"
+            for label, unsupported in [ "ordinal", { intent with StartObservationOrdinal = Some 100L }
+                                        "directional", { intent with Direction = Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier }
+                                        "provider-open", { intent with RangeAuthority = TaCoverageRangeAuthority.ProviderOpenEarlier } ] do
+                Expect.isNone (refresh (Some "same-market-scope") { range with CoverageIntent = Some unsupported }) (label + " must retain its dedicated dispatch route")
+            let legacy = { range with CoverageIntent = None }
+            Expect.equal (RendererModel.tryRefreshQueuedEventRangeAction None None (action legacy)) (Some(action legacy)) "the legacy untyped path is unchanged"
+            Expect.isNone (RendererModel.tryRefreshQueuedEventRangeAction None None (action range)) "typed intent cannot lose its authority"
+
+        testCase "adaptive axes and coverage reanchor preserve event-time intent" <| fun _ ->
+            let hourly = [| for index in 0 .. 3999 -> DateTimeOffset(2025, 1, 1, 0, 0, 0, TimeSpan.Zero).AddHours(float index).ToString("O") |]
+            let fiveMinute = [| for index in 0 .. 299 -> DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero).AddMinutes(float index * 5.0).ToString("O") |]
+            let hourlyLabels = RendererModel.adaptiveTimeLabels 92.0 1552.0 hourly
+            let fiveMinuteLabels = RendererModel.adaptiveTimeLabels 92.0 1552.0 fiveMinute
+            Expect.isTrue (hourlyLabels.Length >= 12 && hourlyLabels.Length <= 16) "wide 60K coverage needs bounded day-readable ticks"
+            Expect.isTrue (hourlyLabels |> Array.map snd |> Array.distinctBy (fun value -> value.Substring(0, 10)) |> Array.length > 1) "60K labels must expose multiple dates"
+            Expect.isTrue (fiveMinuteLabels |> Array.map snd |> Array.exists (fun value -> value.Substring(11, 2) <> "00")) "5K labels must retain hour positions"
+
+            let oldTimeline = [| for index in 200 .. 4199 -> $"T{index:D4}" |]
+            let prependedTimeline = [| for index in 0 .. 4199 -> $"T{index:D4}" |]
+            let earlier =
+                RendererModel.tryReanchorWindow 12 4000 -100 oldTimeline prependedTimeline { StartIndex = 0; Count = 4000 }
+                |> Option.get
+            Expect.equal earlier { StartIndex = 100; Count = 4000 } "prepend merge must apply the pending leftward pan relative to the old event-time anchor"
+            Expect.isTrue (RendererModel.coverageExtended TaCoverageDirection.Earlier oldTimeline prependedTimeline) "prepend must be classified as earlier coverage"
+
+            let initialTimeline = [| for index in 0 .. 3999 -> $"T{index:D4}" |]
+            let appendedTimeline = [| for index in 0 .. 4199 -> $"T{index:D4}" |]
+            let later =
+                RendererModel.tryReanchorWindow 12 4000 100 initialTimeline appendedTimeline { StartIndex = 0; Count = 4000 }
+                |> Option.get
+            Expect.equal later { StartIndex = 100; Count = 4000 } "append merge must apply the pending rightward pan without exceeding the visible cap"
+            Expect.isTrue (RendererModel.coverageExtended TaCoverageDirection.Later initialTimeline appendedTimeline) "append must be classified as later coverage"
+            Expect.isFalse (RendererModel.coverageExtended TaCoverageDirection.Later oldTimeline prependedTimeline) "opposite-direction extension must not satisfy a later intent"
+
+        testCase "DYN-T-690 global calendar ticks use only real anchors without time labels or overlap" <| fun _ ->
+            let anchor ordinal eventTime =
+                { ObservationOrdinal = ordinal
+                  EventTimeUtc = eventTime
+                  Value = SduiValue.Number(float ordinal) }
+
+            let multiYear =
+                [| anchor 0L "2024-01-02T14:30:00Z"
+                   anchor 1L "2024-03-01T14:30:00Z"
+                   anchor 2L "2024-03-15T14:30:00Z"
+                   anchor 3L "2024-06-03T14:30:00Z"
+                   anchor 4L "2024-09-03T14:30:00Z"
+                   anchor 5L "2024-12-02T14:30:00Z"
+                   anchor 6L "2025-03-03T14:30:00Z"
+                   anchor 7L "2025-06-02T14:30:00Z"
+                   anchor 8L "2025-12-01T14:30:00Z" |]
+            let ticks = RendererModel.globalCalendarTicks 40.0 1200.0 multiYear
+
+            Expect.sequenceEqual
+                (ticks |> Array.map _.Label)
+                [| "2024"; "03"; "06"; "09"; "12"; "2025"; "03"; "06"; "12" |]
+                "Year and quarter lanes must retain both labels when they share one real anchor."
+            Expect.sequenceEqual
+                (ticks |> Array.map _.EventTimeUtc)
+                [| multiYear[0].EventTimeUtc
+                   multiYear[1].EventTimeUtc
+                   multiYear[3].EventTimeUtc
+                   multiYear[4].EventTimeUtc
+                   multiYear[5].EventTimeUtc
+                   multiYear[6].EventTimeUtc
+                   multiYear[6].EventTimeUtc
+                   multiYear[7].EventTimeUtc
+                   multiYear[8].EventTimeUtc |]
+                "Every calendar tick must retain an actual canonical anchor timestamp."
+            Expect.isTrue
+                (ticks |> Array.forall (fun tick -> not (tick.Label.Contains(":"))))
+                "GLOBAL calendar labels must never expose HH:mm."
+
+            let narrow =
+                [| anchor 10L "2026-02-27T14:30:00Z"
+                   anchor 11L "2026-03-02T14:30:00Z"
+                   anchor 12L "2026-03-09T14:30:00Z"
+                   anchor 13L "2026-06-01T14:30:00Z" |]
+            let narrowTicks = RendererModel.globalCalendarTicks 40.0 800.0 narrow
+            Expect.sequenceEqual (narrowTicks |> Array.map _.Label) [| "2026"; "03"; "06" |] "A narrow same-year domain must use only its real anchors."
+            Expect.sequenceEqual (narrowTicks |> Array.map _.AnchorIndex) [| 0; 1; 3 |] "Repeated anchors in one quarter month must deduplicate at the first real anchor."
+
+            let completeYears =
+                [| for year in 2018 .. 2026 do
+                       for month in [| 1; 3; 6; 9; 12 |] do
+                           yield anchor (int64 ((year - 2018) * 5 + month)) $"{year:D4}-{month:D2}-03T14:30:00Z" |]
+            let completeTicks = RendererModel.globalCalendarTicks 24.0 900.0 completeYears
+            Expect.equal completeTicks.Length 45 "A 900px viewport must retain every mandatory year and quarter tick."
+            for year in 2019 .. 2025 do
+                let labels =
+                    completeTicks
+                    |> Array.filter (fun tick -> tick.EventTimeUtc.StartsWith(string year, StringComparison.Ordinal))
+                    |> Array.map _.Label
+                Expect.sequenceEqual labels [| string year; "03"; "06"; "09"; "12" |] "Every complete interior year must retain all four quarter labels."
+
+            let sameAnchor = ticks |> Array.filter (fun tick -> tick.AnchorIndex = 6)
+            Expect.sequenceEqual (sameAnchor |> Array.map _.Label) [| "2025"; "03" |] "Separate lanes must allow a year and March label at the same canonical anchor."
+            Expect.sequenceEqual (sameAnchor |> Array.map _.IsYearBoundary) [| true; false |] "Same-anchor labels must identify distinct year and quarter lanes."
+            Expect.equal (sameAnchor |> Array.map _.Lane |> Array.distinct |> Array.length) 2 "Same-anchor year and quarter labels must occupy distinct dynamic lanes."
+
+            completeTicks
+            |> Array.groupBy _.Lane
+            |> Array.iter (fun (_, lane) ->
+                lane
+                |> Array.map (fun tick -> float tick.AnchorIndex / float (completeYears.Length - 1) * 900.0)
+                |> Array.pairwise
+                |> Array.iter (fun (left, right) -> Expect.isGreaterThanOrEqual (right - left) 24.0 "Each 900px GLOBAL calendar lane must keep the requested horizontal spacing."))
+
+            let compact = RendererModel.globalCalendarTicks 24.0 80.0 multiYear
+            Expect.equal compact.Length ticks.Length "A compact viewport must add lanes instead of dropping mandatory calendar ticks."
+            compact
+            |> Array.groupBy _.Lane
+            |> Array.iter (fun (_, lane) ->
+                lane
+                |> Array.map (fun tick -> float tick.AnchorIndex / float (multiYear.Length - 1) * 80.0)
+                |> Array.pairwise
+                |> Array.iter (fun (left, right) -> Expect.isGreaterThanOrEqual (right - left) 24.0 "Each GLOBAL calendar lane must keep the requested horizontal spacing."))
+
+        testCase "DYN-T-696 bootstrap accepts only a bounded actual global overview" <| fun _ ->
+            let anchor ordinal eventTime =
+                { ObservationOrdinal = ordinal
+                  EventTimeUtc = eventTime
+                  Value = SduiValue.Number(float ordinal) }
+            let valid =
+                { TotalObservationCount = 3001148L
+                  AxisRef = "research:es:1m"
+                  Anchors =
+                    [| anchor 0L "2018-01-02T14:30:00Z"
+                       anchor 1500000L "2022-01-03T14:30:00Z"
+                       anchor 3001147L "2026-10-23T20:59:00Z" |]
+                  ResidentStartObservationOrdinal = 2999648L
+                  ResidentObservationCount = 1500 }
+
+            Expect.equal
+                (RendererModel.tryGlobalOverviewBootstrap valid)
+                (Ok valid)
+                "A current-run whole-series overview must pass without creating a runtime frame."
+
+            let invalidResident =
+                { valid with
+                    ResidentStartObservationOrdinal = 3000000L
+                    ResidentObservationCount = 1500 }
+            Expect.contains
+                (RendererModel.globalOverviewBootstrapValidationErrors invalidResident)
+                "resident-window-exceeds-total"
+                "The bootstrap cannot advertise a resident interval outside the actual total."
+
+            let invalidOrder =
+                { valid with
+                    Anchors =
+                        [| anchor 10L "2026-01-02T14:30:00Z"
+                           anchor 9L "2025-01-02T14:30:00Z" |] }
+            let orderErrors = RendererModel.globalOverviewBootstrapValidationErrors invalidOrder
+            Expect.contains orderErrors "anchor-ordinal-must-increase-1" "Anchor ordinals remain canonical."
+            Expect.contains orderErrors "anchor-time-must-increase-1" "Anchor event times remain canonical."
+
+        testCase "authoritative GLOBAL bootstrap replacement waits for resolved overview authority" <| fun _ ->
+            let identity =
+                { DocumentId = DocumentId "global-lifecycle"
+                  CanvasInstanceId = CanvasInstanceId "global-lifecycle-canvas" }
+            let overview =
+                { TotalObservationCount = 2_996_994L
+                  AxisRef = "research:es:1k"
+                  Anchors =
+                    [| { ObservationOrdinal = 0L
+                         EventTimeUtc = "2018-01-02T14:30:00Z"
+                         Value = SduiValue.Number 100.0 }
+                       { ObservationOrdinal = 2_996_993L
+                         EventTimeUtc = "2026-10-23T20:59:00Z"
+                         Value = SduiValue.Number 200.0 } |]
+                  ResidentStartObservationOrdinal = 2_989_574L
+                  ResidentObservationCount = 7420 }
+            let projection globalOverview =
+                { CoverageIdentity = "global-lifecycle"
+                  CoverageRevision = 1L
+                  QueryGeneration = 0L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 601_102L
+                  Segments = [||]
+                  OverviewAxisRef = "research:es:1k"
+                  OverviewAnchors = overview.Anchors
+                  ActiveDetail =
+                    { StartObservationOrdinal = 597_918L
+                      ObservationCount = 1484
+                      BaseAxisRef = "research:es:5k" }
+                  GlobalOverview = globalOverview }
+            let document loadedCoverage =
+                { WorkspaceId = "global-lifecycle"
+                  Title = "GLOBAL lifecycle"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = None
+                  Rows = [||]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = TaLoadedCoverageCodec.apply loadedCoverage Map.empty }
+            let state loadedCoverage =
+                { RuntimeReducer.initial identity with
+                    Document = Some(document loadedCoverage) }
+
+            Expect.isTrue
+                (RendererModel.authoritativeGlobalOverviewReady false (state (projection None)))
+                "without a bootstrap loader the first authoritative document may mount"
+            Expect.isFalse
+                (RendererModel.authoritativeGlobalOverviewReady true (state (projection None)))
+                "a document without resolved GLOBAL authority cannot unmount the actual bootstrap"
+            Expect.isTrue
+                (RendererModel.authoritativeGlobalOverviewReady true (state (projection (Some overview))))
+                "the validated authoritative GLOBAL projection replaces the bootstrap"
+
+        testCase "resident axis uses daily and hourly real observation boundaries in two lanes" <| fun _ ->
+            let hourly, minuteTicks = RendererModel.residentCalendarTicks SduiDisplayTimeZone.Utc
+                                        [| "2026-01-02T09:55:00Z"; "2026-01-02T10:00:00Z"; "2026-01-02T10:05:00Z"; "2026-01-03T09:00:00Z" |]
+            Expect.isTrue hourly "5K has hourly markers"
+            Expect.equal minuteTicks [| (0,"0102","09",true); (1,"0102","10",false); (3,"0103","09",true) |] "one marker per real hour, date label on each new date"
+            let hourly, halfHourTicks = RendererModel.residentCalendarTicks SduiDisplayTimeZone.Utc
+                                          [| "2026-01-02T23:00:00.0000000"; "2026-01-02T23:30:00.0000000"; "2026-01-03T00:00:00.0000000"; "2026-01-03T00:30:00.0000000" |]
+            Expect.isFalse hourly "30K has daily markers"
+            Expect.equal halfHourTicks [| (0,"20260102","23",true); (2,"20260103","00",true) |] "durable UTC timestamps without suffix retain their dates and hours"
+            Expect.equal (RendererModel.residentCalendarTicks SduiDisplayTimeZone.Utc Array.empty) (false,Array.empty) "empty timeline has no synthetic ticks"
+
+        testCase "DYN-T-691 GLOBAL and RESIDENT use their separate calendar axes" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let authoritativeStart = source.IndexOf("let renderWithProjectionCommitAndDisplayTimeZone", StringComparison.Ordinal)
+            let globalStart = source.IndexOf("Attr.Create \"data-testid\" \"ta-global-overview-with-axis\"", authoritativeStart, StringComparison.Ordinal)
+            let globalEnd = source.IndexOf("Attr.Create \"data-testid\" \"ta-resident-overview-shell\"", globalStart, StringComparison.Ordinal)
+            Expect.isGreaterThan globalStart -1 "The GLOBAL overview source block must remain explicit."
+            Expect.isGreaterThan globalEnd globalStart "The GLOBAL overview source block must remain bounded before RESIDENT."
+            let globalBody = source.Substring(globalStart, globalEnd - globalStart)
+            Expect.stringContains globalBody "globalCalendarAxisWithPalette" "GLOBAL must use its calendar-only axis renderer."
+            Expect.stringContains globalBody "globalOverview.Anchors" "GLOBAL tick positions must come from authoritative real anchors."
+            Expect.stringContains source "data-global-calendar-tick-lane" "GLOBAL calendar ticks must expose dynamic lane assignments."
+            Expect.stringContains source "data-global-calendar-lane-count" "GLOBAL calendar axis must expose its dynamic lane count."
+            Expect.stringContains source "laneCount * 15 + 7" "GLOBAL calendar axis reserves room for five-pixel ticks and both text lanes."
+            Expect.isFalse (globalBody.Contains("timeAxisWithPalette", StringComparison.Ordinal)) "GLOBAL must not fall back to the generic MM-dd HH:mm axis."
+
+            let residentStart = source.IndexOf("let residentOverview =", StringComparison.Ordinal)
+            let residentEnd = source.IndexOf("match currentCoverageProjection", residentStart, StringComparison.Ordinal)
+            let residentBody = source.Substring(residentStart, residentEnd - residentStart)
+            Expect.stringContains residentBody "residentTimeAxisForTradingDatesWithPalette" "RESIDENT must use authoritative trading dates for day boundaries."
+            Expect.stringContains residentBody "referenceTradingDatesForDocumentPrepared currentDocument currentPreparedData" "Session identity must come from the same complete atomic frame as the navigator."
+            Expect.stringContains residentBody "RendererModel.residentCalendarScale currentReferenceTimeline" "Scale must come from the full bar timeline, not downsampled overview anchors."
+            Expect.stringContains globalBody "settleGlobalResidentProjection renderedState" "GLOBAL preview settles against the newly mounted atomic frame."
+            let globalSvgStart = source.IndexOf("let globalOverviewSvgWithPalette", StringComparison.Ordinal)
+            let globalSvgBody = source.Substring(globalSvgStart, source.IndexOf("on.mouseMove", globalSvgStart, StringComparison.Ordinal) - globalSvgStart)
+            Expect.stringContains globalSvgBody "on.afterRender (fun element ->" "GLOBAL must invoke readiness only after the replacement SVG mounts."
+            Expect.stringContains globalSvgBody "onReady element" "The mounted GLOBAL callback must perform settlement."
+
+        testCase "DYN-T-697 bootstrap renders actual GLOBAL read-only before authoritative state" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let bootstrapStateStart = source.IndexOf("let renderGlobalOverviewBootstrapStateWithDisplayTimeZone", StringComparison.Ordinal)
+            let loaderStart = source.IndexOf("let renderGlobalOverviewBootstrapWithDisplayTimeZone", bootstrapStateStart, StringComparison.Ordinal)
+            let authoritativeStart = source.IndexOf("let renderWithProjectionCommitAndDisplayTimeZone", loaderStart, StringComparison.Ordinal)
+            Expect.isGreaterThan bootstrapStateStart -1 "The standalone bootstrap renderer must be explicit."
+            Expect.isGreaterThan loaderStart bootstrapStateStart "The typed loader must be separate from the presentation state."
+            Expect.isGreaterThan authoritativeStart loaderStart "The bootstrap must remain separate from authoritative RuntimeState rendering."
+            let bootstrapBody = source.Substring(bootstrapStateStart, loaderStart - bootstrapStateStart)
+            for required in
+                [ "\"ta-global-overview-bootstrap\""
+                  "\"ta-global-overview-with-axis\""
+                  "\"phase-1-actual\""
+                  "\"data-bootstrap-authoritative\" \"false\""
+                  "RendererModel.globalResidentSelectionRatios"
+                  "RendererModel.overviewPointsForAnchors"
+                  "globalCalendarAxisWithPalette" ] do
+                Expect.stringContains bootstrapBody required ("missing actual bootstrap contract: " + required)
+            Expect.stringContains bootstrapBody "pointer-events:none" "Bootstrap GLOBAL must be read-only."
+            Expect.isFalse (bootstrapBody.Contains("SubmitAction", StringComparison.Ordinal)) "Bootstrap cannot publish actions."
+            Expect.isFalse (bootstrapBody.Contains("RuntimeState", StringComparison.Ordinal)) "Bootstrap cannot create a fake runtime authority."
+
+            let loaderBody = source.Substring(loaderStart, authoritativeStart - loaderStart)
+            Expect.stringContains loaderBody "(loader: unit -> Async<TaGlobalCoverageOverview option>)" "The consumer-owned loader is the only bootstrap input shape."
+            Expect.stringContains loaderBody "let! candidate = loader ()" "The owner package must invoke the typed loader once."
+            Expect.stringContains loaderBody "Option.map RendererModel.tryGlobalOverviewBootstrap" "Loader output must pass the owner validation gate."
+            Expect.stringContains loaderBody "Async.StartImmediate" "The actual GLOBAL load begins before Doc.RunById."
+            for forbidden in [ "CustomEvent"; "AddEventListener"; "fetch("; "IndexedDB" ] do
+                Expect.isFalse (loaderBody.Contains(forbidden, StringComparison.Ordinal)) ("Bootstrap cannot own transport or cache: " + forbidden)
+
+            let replacementStart = source.IndexOf("let renderWithProjectionCommitAndDisplayTimeZoneAndGlobalOverviewBootstrap", authoritativeStart, StringComparison.Ordinal)
+            let replacementEnd = source.IndexOf("let renderWithProjectionCommit", replacementStart + 10, StringComparison.Ordinal)
+            Expect.isGreaterThan replacementStart authoritativeStart "The additive authoritative replacement overload must exist."
+            Expect.isGreaterThan replacementEnd replacementStart "The replacement overload must have a bounded source range."
+            let replacementBody = source.Substring(replacementStart, replacementEnd - replacementStart)
+            Expect.stringContains replacementBody "RendererModel.authoritativeGlobalOverviewReady true state" "Only a resolved authoritative GLOBAL projection owns replacement."
+            Expect.stringContains replacementBody "authoritativeReady.Value <- true" "Replacement must be monotonic."
+            Expect.stringContains replacementBody "if ready then authoritativeDoc else bootstrapDoc" "The actual GLOBAL bootstrap must be replaced in place."
+
+        testCase "adjacent coverage uses explicit document authority boundaries" <| fun _ ->
+            let start0 = "2026-09-22T01:00:00Z"
+            let end0 = "2026-09-22T01:01:00Z"
+            let end1 = "2026-09-22T01:02:00Z"
+            let price =
+                SduiValue.Array
+                    [| temporalPoint "p0" "1K" start0 end0 end0 None PointFinality.Final TemporalProjection.CandleSpan None (Some(candle start0 100.0 102.0 99.0 101.0 10.0))
+                       temporalPoint "p1" "1K" end0 end1 end1 None PointFinality.Final TemporalProjection.CandleSpan None (Some(candle end0 101.0 103.0 100.0 102.0 11.0)) |]
+            let row =
+                { RowId = "price"
+                  Kind = TaRowKind.Candlestick
+                  DataRef = "series.price"
+                  HeightWeight = 1.0
+                  Visible = true
+                  Traces = [||]
+                  Options = Map.empty }
+            let document =
+                { WorkspaceId = "coverage"
+                  Title = "Coverage"
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = Some row.RowId
+                  Rows = [| row |]
+                  EditorSchemas = [||]
+                  AllowedActions = [| "visible-range-changed" |]
+                  DefaultView =
+                    Map [
+                        "query.fromUtc", SduiValue.Text "2026-09-01T00:00:00Z"
+                        "query.toUtcExclusive", SduiValue.Text "2026-10-01T00:00:00Z"
+                    ] }
+            let prepared = RendererModel.prepareData (Map [ row.DataRef, price ])
+            let earlier = RendererModel.tryAdjacentCoverageRange TaCoverageDirection.Earlier 4000 document prepared |> Option.get
+            let later = RendererModel.tryAdjacentCoverageRange TaCoverageDirection.Later 4000 document prepared |> Option.get
+            Expect.equal earlier.StartEventTimeUtc "2026-09-01T00:00:00Z" "earlier request must use the explicit authorized query boundary"
+            Expect.equal (DateTimeOffset.Parse earlier.EndEventTimeExclusiveUtc) (DateTimeOffset.Parse start0) "earlier request must stop at the first loaded event time"
+            Expect.equal (DateTimeOffset.Parse later.StartEventTimeUtc) (DateTimeOffset.Parse end1) "later request must begin at the actual final interval end"
+            Expect.equal later.EndEventTimeExclusiveUtc "2026-10-01T00:00:00Z" "later request must use the explicit authorized query boundary"
+            Expect.equal later.MaximumBasePoints 4000 "coverage request must preserve the visible cap"
+
+            let openLeftDocument =
+                { document with
+                    DefaultView = Map [ "query.toUtcExclusive", SduiValue.Text "2026-10-01T00:00:00Z" ] }
+            let openEarlier =
+                RendererModel.tryAdjacentCoverageRange TaCoverageDirection.Earlier 4000 openLeftDocument prepared
+                |> Option.get
+            Expect.equal
+                openEarlier.StartEventTimeUtc
+                openEarlier.EndEventTimeExclusiveUtc
+                "An unknown earliest boundary must be represented by the loaded-head anchor, not UnixEpoch."
+            Expect.equal
+                (openEarlier.CoverageIntent |> Option.map _.RangeAuthority)
+                (Some TaCoverageRangeAuthority.ProviderOpenEarlier)
+                "An open-left request must explicitly delegate the earlier boundary to the provider."
+
+            let providerHistoricalDocument =
+                { document with
+                    DefaultView =
+                        Map [
+                            "query.fromUtc", SduiValue.Text "1970-01-01T00:00:00.0000000+00:00"
+                            "query.toUtcExclusive", SduiValue.Text "2026-10-01T00:00:00.0000000+00:00"
+                        ] }
+            let providerHistoricalEarlier =
+                RendererModel.tryAdjacentCoverageRange
+                    TaCoverageDirection.Earlier
+                    4000
+                    providerHistoricalDocument
+                    prepared
+                |> Option.get
+            Expect.equal
+                providerHistoricalEarlier.StartEventTimeUtc
+                providerHistoricalEarlier.EndEventTimeExclusiveUtc
+                "DYN-T-738 provider historical Unix epoch is an internal open boundary and must use the loaded-head anchor."
+            Expect.equal
+                (providerHistoricalEarlier.CoverageIntent |> Option.map _.RangeAuthority)
+                (Some TaCoverageRangeAuthority.ProviderOpenEarlier)
+                "DYN-T-738 provider historical Unix epoch must retain provider-open authority."
+
+        testCase "prepared row gate requires the current generation row count" <| fun _ ->
+            Expect.isFalse (RendererModel.arePreparedRowsReady 3 0) "No row from the new generation is not ready."
+            Expect.isFalse (RendererModel.arePreparedRowsReady 3 2) "A partially mounted row set is not ready."
+            Expect.isTrue (RendererModel.arePreparedRowsReady 3 3) "All current generation rows are ready."
+            Expect.isFalse (RendererModel.arePreparedRowsReady 3 4) "A stale or mismatched generation cannot report ready."
+
+        testCase "renderer package remains host neutral" <| fun _ ->
+            let assembly = typeof<TaRendererOptions>.Assembly
+            let dependencies = assembly.GetReferencedAssemblies() |> Array.map _.Name |> Set.ofArray
+            for forbidden in [ "PulseTrade.Comm.Spa"; "FAkka.FCell2"; "PulseTrade.MarketData"; "Microsoft.Data.SqlClient" ] do
+                Expect.isFalse (Set.contains forbidden dependencies) ("forbidden renderer dependency: " + forbidden)
+
+        testCase "renderer source contains no JavaScript escape hatch" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+
+            for forbidden in [ "JS.Inline"; "JavaScriptExport"; "<script"; "eval(" ] do
+                Expect.isFalse (source.Contains(forbidden, StringComparison.Ordinal)) ("forbidden source escape hatch: " + forbidden)
+
+        testCase "DYN-T-689 renderer publishes the separate browser-local point activation contract" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+
+            for required in
+                [ "Attr.Create TaPointActivation.SurfaceAttribute \"true\""
+                  "Attr.Create TaPointActivation.TraceAttribute trace.TraceId"
+                  "RendererModel.tryNearestPointHitForTrace preferredTraceId pointX pointY"
+                  "TaPointActivation.tryCreateV2 projectionCommitGate.LastCommitted state baseRowId hit candidates"
+                  "activationEvent.InitCustomEvent(TaPointActivation.EventNameV2, true, false, box receipt)"
+                  "TaPointActivation.tryCreate projectionCommitGate.LastCommitted state baseRowId hit"
+                  "activationEvent.InitCustomEvent(TaPointActivation.EventName, true, false, box receipt)"
+                  "startMainPlotDrag"
+                  "mainPlotInteractionMode"
+                  "Attr.Handler \"contextmenu\""
+                  "data-main-plot-interaction-mode"
+                  "mainPlotAnchoredPanDelta"
+                  "mainPlotPanDelta"
+                  "mainPlotInteractionDrag"
+                  "previewWindowBounds"
+                  "let setWindowFromPrepared"
+                  "RendererModel.visibleEventRangePrepared"
+                  "let commitMainPlotPan delta document prepared committed projection"
+                  "RendererModel.tryMainPlotPanWindow"
+                  "RendererModel.tryMainPlotEventRangeIntent projection next"
+                  "pointerPreparedData"
+                  "pointerProjection"
+                  "setWindowFromPrepared document latestPreparedData None"
+                  "commitMainPlotPan latestDelta"
+                  "setWindow followLatest next"
+                  "data-ta-row-horizontal-cursor"
+                  "touch-action:none; user-select:none; cursor:"
+                  "consumeMainPlotClickSuppression"
+                  "target.DispatchEvent(As<Event> activationEvent)" ] do
+                Expect.stringContains source required ("missing point activation renderer contract: " + required)
+
+            let cursorCommit = source.IndexOf("commitMainPlotPan latestDelta", StringComparison.Ordinal)
+            Expect.isGreaterThan cursorCommit -1 "CURSOR release must route through the captured formal-base range commit."
+            let resizeCommit = source.IndexOf("let total = referenceLength ()", cursorCommit, StringComparison.Ordinal)
+            Expect.isGreaterThan resizeCommit cursorCommit "Resize release must have a separate local-window branch."
+            let resizeSetWindow = source.IndexOf("setWindow followLatest next", resizeCommit, StringComparison.Ordinal)
+            Expect.isGreaterThan resizeSetWindow resizeCommit "Resize release must commit only the local visible window."
+
+            let mainCommitStart = source.IndexOf("let commitMainPlotPan delta document prepared committed projection", StringComparison.Ordinal)
+            let mainCommitEnd = source.IndexOf("let consumeMainPlotClickSuppression", mainCommitStart, StringComparison.Ordinal)
+            Expect.isGreaterThan mainCommitStart -1 "The main-plot exact event-range commit must exist."
+            Expect.isGreaterThan mainCommitEnd mainCommitStart "The main-plot commit must have a bounded source range."
+            let mainCommitBody = source.Substring(mainCommitStart, mainCommitEnd - mainCommitStart)
+            Expect.stringContains mainCommitBody "setWindowFromPrepared document prepared (Some intent)" "One drop must dispatch a typed captured event-range intent."
+            Expect.isFalse (mainCommitBody.Contains("ResidentCoverageChanged", StringComparison.Ordinal)) "Main-plot CURSOR pan must not dispatch a GLOBAL resident relocation."
+            Expect.isFalse (source.Contains("tryGlobalObservationOrdinalAtEventTime", StringComparison.Ordinal)) "Renderer must not map main-plot event time through sampled GLOBAL anchors."
+
+            let activationStart = source.IndexOf("let publishPointActivation", StringComparison.Ordinal)
+            let editorStart = source.IndexOf("let selectedEditorSchema", activationStart, StringComparison.Ordinal)
+            Expect.isGreaterThan activationStart -1 "The browser-local activation publisher must exist."
+            Expect.isGreaterThan editorStart activationStart "The activation publisher must have a bounded source range."
+            let activationBody = source.Substring(activationStart, editorStart - activationStart)
+            Expect.isFalse
+                (activationBody.Contains("SharedCursorChanged", StringComparison.Ordinal))
+                "Tagging activation must not reuse the shared cursor server action."
+
+        testCase "navigator semantic hit targets survive reactive SVG replacement" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+
+            for required in
+                [ "Attr.Create \"data-window-drag-mode\" TaWindowDrag.ResizeLeft"
+                  "Attr.Create \"data-window-drag-mode\" TaWindowDrag.ResizeRight"
+                  "Attr.Create \"data-window-drag-mode\" TaWindowDrag.Move"
+                  "Attr.Dynamic \"x\" selectionX; svgAttr \"y\" \"0\"; Attr.Dynamic \"width\" selectionWidth"
+                  "let residentNavigatorAuthority = Var.Create<TaResidentNavigatorAuthority option> None"
+                  "RendererModel.coverageNavigatorWindowWithAuthority"
+                  "RendererModel.navigatorSelectionRatiosForRenderWithAuthority"
+                  "if finishNavigatorDrag.IsSome then"
+                  "JS.Document.AddEventListener(\"pointermove\", moveHandler)"
+                  "JS.Document.AddEventListener(\"pointerup\", upHandler)"
+                  "JS.Document.AddEventListener(\"pointercancel\", cancelHandler)" ] do
+                Expect.stringContains source required ("missing navigator lifetime contract: " + required)
+
+            let moveHitIndex = source.IndexOf("Attr.Create \"data-testid\" \"ta-overview-move-hit\"", StringComparison.Ordinal)
+            let leftHandleIndex = source.IndexOf("Attr.Create \"data-testid\" \"ta-overview-left-handle\"", StringComparison.Ordinal)
+            let rightHandleIndex = source.IndexOf("Attr.Create \"data-testid\" \"ta-overview-right-handle\"", StringComparison.Ordinal)
+            Expect.isGreaterThan moveHitIndex -1 "The move hit target must exist."
+            Expect.isLessThan moveHitIndex leftHandleIndex "The left handle must win SVG hit-test z-order."
+            Expect.isLessThan moveHitIndex rightHandleIndex "The right handle must win SVG hit-test z-order."
+
+            Expect.isFalse
+                (source.Contains("navigatorRoot.AddEventListener(\"pointermove\", moveHandler)", StringComparison.Ordinal))
+                "An active gesture must not depend on the replaceable SVG root."
+
+        testCase "DYN-T-684 renderer wires a separate move-only global resident strip" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+
+            for required in
+                [ "\"ta-global-overview-with-axis\""
+                  "\"ta-global-overview-navigator\""
+                  "\"ta-global-overview-selection\""
+                  "startGlobalResidentDrag"
+                  "RendererModel.previewGlobalResidentWindow"
+                  "RendererModel.tryGlobalResidentRelocationIntent"
+                  "SduiAction.ResidentCoverageChanged" ] do
+                Expect.isTrue
+                    (source.Contains(required, StringComparison.Ordinal))
+                    ("missing global resident renderer contract: " + required)
+
+            Expect.isFalse
+                (source.Contains("\"ta-global-overview-left-handle\"", StringComparison.Ordinal))
+                "The fixed-width resident strip must not expose a resize handle."
+            Expect.isFalse
+                (source.Contains("\"ta-global-overview-right-handle\"", StringComparison.Ordinal))
+                "The fixed-width resident strip must not expose a resize handle."
+
+            for required in
+                [ "\"ta-global-overview-label\""
+                  "\"ta-resident-overview-label\""
+                  "\"data-total-observation-count\""
+                  "\"data-resident-observation-count\""
+                  "\"data-visible-observation-count\""
+                  "text \"GLOBAL\""
+                  "text \"RESIDENT\""
+                  "TaDisplayTimeFormatter.fullOrOriginal zone globalTimeline[0]"
+                  "TaDisplayTimeFormatter.fullOrOriginal zone globalTimeline[globalTimeline.Length - 1]" ] do
+                Expect.isTrue
+                    (source.Contains(required, StringComparison.Ordinal))
+                    ("missing explicit overview domain label contract: " + required)
+
+        testCase "resident drop retains its preview while the requested payload is pending" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let startIndex = source.IndexOf("setDragDiagnostic \"data-drag-outcome\" \"commit-resident\"", StringComparison.Ordinal)
+            let dispatchIndex = source.IndexOf("sendOrQueueCoverageWindowAction", startIndex, StringComparison.Ordinal)
+            Expect.isGreaterThan startIndex -1 "The resident drop path must be present."
+            Expect.isGreaterThan dispatchIndex startIndex "The drop dispatch must follow its receipt."
+            let beforeDispatch = source.Substring(startIndex, dispatchIndex - startIndex)
+            Expect.isFalse
+                (beforeDispatch.Contains("draftWindow.Value <- None", StringComparison.Ordinal))
+                "A remote drop cannot reveal the old viewport before the matching accepted frame."
+            Expect.stringContains source "settleCommittedViewportDraft ()" "A matching rendered projection must settle the draft, even when the response arrived first."
+            Expect.stringContains source "pendingBoundaryPan.IsNone && committedCoverageReady ()" "The queue cannot dispatch from an uncommitted coverage snapshot."
+            Expect.stringContains source "RendererModel.residentGestureScopeMatches projection" "An accepted earlier gesture must not invalidate a later same-resident gesture."
+            Expect.stringContains source "draftWindow.Value <- publishedNavigatorDraft" "Cancelling a new gesture restores the previous outstanding drop."
+            Expect.isFalse (source.Contains("TaQueuedViewportIntent.ResidentGesture", StringComparison.Ordinal)) "A queued gesture must not be replayed from a new resident origin."
+            Expect.isFalse (source.Contains("dispatchResidentGesture", StringComparison.Ordinal)) "A queued gesture must preserve its pointer-up target rather than rebase its displacement."
+            Expect.stringContains source "TaQueuedViewportIntent.CoverageWindow(targetStart, targetCount, successText)" "The queue stores an absolute observation target captured at pointer-up."
+            Expect.stringContains source "sendOrQueueCoverageWindowAction targetStart intent.ObservationCount" "A resident boundary drop queues the captured absolute target."
+            Expect.stringContains source "RendererModel.resolveNavigatorGestureDomain" "The navigator must preserve whether its ordinals are resident or active-local."
+            Expect.stringContains source "RendererModel.tryNavigatorGestureCoverageIntent" "Only a typed resident domain may dispatch a GLOBAL ordinal coverage intent."
+            Expect.stringContains source "rejectNavigatorDraft" "A queued gesture rejected by the latest projection must not leave a permanent Preview."
+            Expect.stringContains source "publishViewportDispatchDiagnostics node" "A replacement chart stack must receive the current queue diagnostics."
+
+        testCase "P0 preparation and resident drag preserve the committed local frame" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+
+            let preparationStart = source.IndexOf("let rec scheduleFullPreparation", StringComparison.Ordinal)
+            let preparationEnd = source.IndexOf("let scheduleIncrementalPreparation", StringComparison.Ordinal)
+            Expect.isGreaterThan preparationStart -1 "The full preparation path must be explicit."
+            Expect.isGreaterThan preparationEnd preparationStart "The full preparation path must have a bounded source range."
+            let preparationBody = source.Substring(preparationStart, preparationEnd - preparationStart)
+
+            Expect.isFalse
+                (preparationBody.Contains("preparedDataReady <- false", StringComparison.Ordinal))
+                "A pending candidate must not clear the committed-frame readiness gate."
+            Expect.isFalse
+                (preparationBody.Contains("chartRuntimeState.Value <- candidate", StringComparison.Ordinal))
+                "A pending candidate must not publish an empty runtime shell before its prepared data is ready."
+            Expect.stringContains preparationBody "preparationPending.Value <- true" "Preparation must expose a pending overlay state."
+            Expect.stringContains preparationBody "initialGlobalPhase.Value" "Fresh mounting must retain an explicit GLOBAL-first phase."
+            Expect.stringContains preparationBody "not staleCoverageCandidate" "A stale coverage candidate must not replace the committed frame."
+            Expect.stringContains preparationBody "ProjectionCommitGate.sameProjectionState candidate current" "Atomic publication must match document/data/coverage/query generation while tolerating heartbeat-only transport advances."
+            Expect.stringContains source "data-global-phase\" \"phase-1" "Phase one must expose a stable GLOBAL loading marker."
+            Expect.stringContains source "if isInitialGlobalPhase then" "Resident/detail publication must be gated by the GLOBAL-first phase."
+            Expect.stringContains source "data-renderer-body-to-pending-ms" "Renderer telemetry must measure receive-to-pending latency."
+
+            Expect.stringContains source "RendererModel.resolveNavigatorGestureDomain" "Resident drag math must freeze one typed resident or active-local domain."
+            Expect.stringContains source "RendererModel.tryNavigatorGestureCoverageIntent" "Only a typed resident-local drop may map back through a GLOBAL coverage intent."
+            Expect.stringContains source "let gestureDomain =" "Pointer math must snapshot one consistent domain and committed window."
+            Expect.stringContains source "dragCoverageProjection" "Pointerdown coverage must use the projection decoded for the exact rendered navigator prepared data."
+            Expect.isFalse (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragPreparedData.RawData", StringComparison.Ordinal)) "Pointerdown must not re-decode the projection with a second document authority."
+            Expect.isFalse (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragState.Data", StringComparison.Ordinal)) "An unresolved runtime envelope must not erase the rendered navigator projection."
+            Expect.stringContains source "not gestureDomain.UsesResidentAuthority && followLatest <> uiState.Value.FollowLatest" "A zero-delta active-local drop must not become an action through mismatched follow-latest domains."
+            Expect.stringContains source "min timeline.Length projection.ActiveDetail.ObservationCount" "Active-detail locality must obey contract count even when a wider timeline is cached."
+
+            let rowPreparationStart = source.IndexOf("let prepareRows ()", StringComparison.Ordinal)
+            let rowPreparationEnd =
+                source.IndexOf("                            prepareRows ()", rowPreparationStart + 1, StringComparison.Ordinal)
+            Expect.isGreaterThan rowPreparationStart -1 "A candidate frame must prepare all row Docs before publication."
+            Expect.isGreaterThan rowPreparationEnd rowPreparationStart "The synchronous row preparation range must be bounded."
+            let rowPreparationBody = source.Substring(rowPreparationStart, rowPreparationEnd - rowPreparationStart)
+            Expect.isFalse
+                (rowPreparationBody.Contains("JS.SetTimeout", StringComparison.Ordinal))
+                "A candidate frame must not expose one asynchronously mounted row per browser frame."
+            Expect.stringContains rowPreparationBody "synchronizeReaders ()" "Readers become authoritative only after every row Doc is ready."
+            Expect.stringContains rowPreparationBody "preparedRowsReady.Value <-" "The ready gate is published after the complete row set is staged."
+
+        testCase "DYN-T-726 navigator pointerdown freezes the exact rendered shell frame" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.isTrue (source.Contains("let shellPreparedFrame = Var.Create(runtimeState.Value, initialPreparedData)", StringComparison.Ordinal)) "The navigator shell must publish runtime and prepared data as one atomic frame."
+            Expect.isTrue (source.Contains("let navigatorGestureFrame =", StringComparison.Ordinal)) "The renderer instance must retain one stable gesture authority across persistent DOM listener reuse."
+            Expect.isTrue (source.Contains("navigatorGestureFrame.Value", StringComparison.Ordinal)) "Pointerdown must freeze the current renderer-owned gesture frame at event invocation."
+            Expect.isFalse (source.Contains("let dragState, dragPreparedData = chartCommittedFrame.Value", StringComparison.Ordinal)) "Pointerdown must not replace the rendered shell frame with a separately advancing chart frame."
+
+        testCase "DYN-T-727 navigator pointerdown uses the document and projection that rendered the shell" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            let startIndex = source.IndexOf("        let startNavigatorDrag", StringComparison.Ordinal)
+            let endIndex = source.IndexOf("        let finishNavigatorDragFromElement", startIndex, StringComparison.Ordinal)
+            Expect.isGreaterThanOrEqual startIndex 0 "The production navigator handler must exist."
+            Expect.isGreaterThan endIndex startIndex "The production navigator handler body must be bounded."
+            let handlerBody = source.Substring(startIndex, endIndex - startIndex)
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "navigatorGestureFrame\\.Value <-\\s+Some\\(renderedState, currentDocument, currentPreparedData, currentCoverageProjection\\)"))
+                "The rendered frame must atomically carry the exact document and decoded projection used by the navigator."
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "startNavigatorDrag\\s+dragState\\s+dragDocument\\s+dragPreparedData\\s+dragCoverageProjection\\s+navigatorRoot\\s+rawEvent"))
+                "Pointerdown must pass the document and projection frozen from current gesture authority."
+            Expect.isFalse
+                (handlerBody.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragPreparedData.RawData", StringComparison.Ordinal))
+                "The handler must not re-decode a second document/projection authority after render."
+
+        testCase "DYN-T-728 persistent navigator listener reads the latest rendered gesture authority" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "let navigatorGestureFrame =\\s+Var\\.Create<Option<RuntimeState \\* TaWorkspaceDocument \\* TaPreparedRendererData \\* TaLoadedCoverageProjection option>> None"))
+                "A persistent DOM listener needs one renderer-instance Var whose value can advance without replacing the listener."
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "navigatorGestureFrame\\.Value <-\\s+Some\\(renderedState, currentDocument, currentPreparedData, currentCoverageProjection\\)"))
+                "The same mapper that produces the navigator DOM must publish its complete frame to persistent gesture authority."
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "match navigatorGestureFrame\\.Value with\\s+\\| Some\\(dragState, dragDocument, dragPreparedData, dragCoverageProjection\\) ->[\\s\\S]*?startNavigatorDrag\\s+dragState\\s+dragDocument\\s+dragPreparedData\\s+dragCoverageProjection"))
+                "Pointerdown must dereference current gesture authority at invocation time instead of retaining render-time closure values."
+
+        testCase "DYN-T-729 retained navigator mapper publishes the atomic frame document" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.isTrue
+                (source.Contains("let currentDocument = navigatorDocumentForRenderedFrame document renderedState", StringComparison.Ordinal))
+                "A retained mapper must resolve its document from the current atomic shell frame, not its lexical cached shell."
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "tryLoadedCoverageResolved currentDocument\\.DefaultView currentPreparedData\\.RawData"))
+                "Coverage projection must pair the current frame document with that frame's prepared RawData."
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.IsMatch(source, "Some\\(renderedState, currentDocument, currentPreparedData, currentCoverageProjection\\)"))
+                "The gesture publication must carry the current frame document that actually decoded the projection."
+            Expect.isFalse
+                (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView currentPreparedData.RawData", StringComparison.Ordinal))
+                "No retained navigator mapper may decode latest prepared data through its lexical cached document."
+
+        testCase "DYN-T-730 navigator gesture telemetry identifies the runtime publication consumed by pointerdown" <| fun _ ->
+            let source =
+                IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
+            Expect.isTrue
+                (source.Contains("data-renderer-navigator-frame-trace", StringComparison.Ordinal))
+                "The real browser gate needs one bounded cross-publication trace on the document root."
+            Expect.isTrue
+                (source.Contains("navigatorCoverageTelemetryStatus document.DefaultView state.Data", StringComparison.Ordinal))
+                "Every publication must report whether the runtime frame can resolve loaded coverage."
+            Expect.isTrue
+                (source.Contains("navigatorCoverageTelemetryStatus document.DefaultView prepared.RawData", StringComparison.Ordinal))
+                "Every publication must independently report whether prepared RawData can resolve the same loaded coverage."
+            Expect.isTrue
+                (Text.RegularExpressions.Regex.Matches(source, "publishNavigatorGestureTelemetry\\s+\"").Count >= 2)
+                "Publication and pointerdown must both write telemetry through the same bounded runtime seam."
+
+        testCase "DYN-T-730B navigator coverage telemetry distinguishes state and prepared authorities" <| fun _ ->
+            let projection =
+                { CoverageIdentity = "telemetry-coverage"
+                  CoverageRevision = 7L
+                  QueryGeneration = 8L
+                  Completeness = TaCoverageCompleteness.Complete
+                  TotalObservationCount = Some 3000L
+                  Segments = [||]
+                  OverviewAxisRef = "telemetry-axis"
+                  OverviewAnchors = [||]
+                  ActiveDetail =
+                    { StartObservationOrdinal = 1201L
+                      ObservationCount = 79
+                      BaseAxisRef = "telemetry-axis" }
+                  GlobalOverview = None }
+            let dataRef = "telemetry-loaded-coverage"
+            let defaultView = Map.empty |> TaLoadedCoverageCodec.applyDataRef dataRef
+            let data = Map.empty |> Map.add dataRef (TaLoadedCoverageCodec.encode projection)
+
+            Expect.equal
+                (TaWorkspaceRenderer.navigatorCoverageTelemetryStatus Map.empty Map.empty)
+                "inline/none"
+                "An absent inline projection must be explicit rather than conflated with a missing dataRef."
+            Expect.equal
+                (TaWorkspaceRenderer.navigatorCoverageTelemetryStatus defaultView Map.empty)
+                $"ref-missing/error:missing-loaded-coverage-data-ref:{dataRef}"
+                "A missing prepared dataRef must expose the exact decode failure used by the real runtime gate."
+            Expect.equal
+                (TaWorkspaceRenderer.navigatorCoverageTelemetryStatus defaultView data)
+                "ref-present/some:7:8:1201:79"
+                "A resolvable projection must expose revision, generation, active start, and active count."
+            Expect.equal
+                (TaWorkspaceRenderer.appendBoundedNavigatorTrace 3 "a|b|c" "d")
+                "b|c|d"
+                "The shared document-root trace must retain only the most recent bounded publication and pointer events."
+
+        testCase "DYN-T-755 day lines follow TradingDate, not midnight or a closed weekend" <| fun _ ->
+            let times =
+                [| "2026-05-27T22:00:00Z"; "2026-05-28T00:00:00Z"; "2026-05-28T20:30:00Z"
+                   "2026-05-28T22:00:00Z"; "2026-05-29T00:00:00Z"; "2026-05-29T20:30:00Z"
+                   "2026-05-31T22:00:00Z"; "2026-06-01T00:00:00Z" |]
+            let days = [| "20260528"; "20260528"; "20260528"; "20260529"; "20260529"; "20260529"; "20260601"; "20260601" |] |> Array.map Some
+            let ticks = RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.Utc times days
+            let major = ticks |> Array.filter _.IsMajor
+            Expect.equal (major |> Array.map _.Label) [| "20260528"; "20260529"; "20260601" |] "No May 30/31 trading day may be invented"
+            Expect.equal (major |> Array.map _.CanonicalUtc) [| times[0]; times[3]; times[6] |] "The first real K of each session owns the line"
+            Expect.floatClose Accuracy.high major[1].Position (3.5 / 8.0) "Use the complete candle slot axis, not sampled timestamp interpolation"
+
+        testCase "DYN-T-756 display zone changes hours but not TradingDate boundaries" <| fun _ ->
+            let times = [| "2026-05-28T22:00:00Z"; "2026-05-29T00:00:00Z"; "2026-05-29T04:00:00Z" |]
+            let days = Array.create times.Length (Some "20260529")
+            let utc = RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.Utc times days
+            let plus8 = RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.FixedUtcPlus8 times days
+            Expect.equal (utc |> Array.filter _.IsMajor) (plus8 |> Array.filter _.IsMajor) "Session date and position are independent of display zone"
+            Expect.equal (utc |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "22" |] "30K overview only marks the actual ET session opening hour."
+            Expect.equal (plus8 |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "06" |] "The summer opening is 06 in UTC+8, not an eight-hour grid."
+
+        testCase "DYN-T-757 monthly and Monday-week ticks follow traded dates" <| fun _ ->
+            let times = [| "2026-04-30T22:00:00Z"; "2026-05-03T22:00:00Z"; "2026-05-10T22:00:00Z"; "2026-05-31T22:00:00Z" |]
+            let days = [| "20260501"; "20260504"; "20260511"; "20260601" |] |> Array.map Some
+            for scale in [ 930.0; 1380.0 ] do
+                let ticks = RendererModel.residentTradingCalendarGrid scale SduiDisplayTimeZone.Utc times days
+                Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| "20260501"; "20260601" |] "930K and daily monthly boundaries belong to the first traded date"
+                Expect.equal (ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "w1"; "w2"; "w3"; "w1" |] "Partial month week counts as w1 and Monday advances the week"
+
+        testCase "DYN-T-758 missing trading-day metadata never falls back to UTC date" <| fun _ ->
+            let times = [| "2026-05-28T22:00:00Z"; "2026-05-29T00:00:00Z" |]
+            let ticks = RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.Utc times [| None; Some "invalid" |]
+            Expect.isEmpty (ticks |> Array.filter _.IsMajor) "No fabricated session identity"
+            Expect.isEmpty (RendererModel.residentTradingCalendarGrid 30.0 SduiDisplayTimeZone.Utc [||] [||]) "Empty input is safe"
+
+        testCase "DYN-T-759 trading dates survive component candles and line-only base rows" <| fun _ ->
+            let refs = { OpenRef="o"; HighRef="h"; LowRef="l"; CloseRef="c"; VolumeRef="v" }
+            let trace: TaTraceSpec =
+                { TraceId="price"; Kind=TaTraceKind.Candlestick; DataRef="price"; Label="price"
+                  Color=""; Width=1.0; Visible=true; CandleDataRefs=Some refs; Options=Map.empty }
+            let row: TaRowSpec =
+                { RowId="base"; Kind=TaRowKind.Candlestick; DataRef="price"; HeightWeight=1.0
+                  Visible=true; Options=Map.empty; Traces=[|trace|] }
+            let document: TaWorkspaceDocument =
+                { WorkspaceId="trading-date-fixture"; Title="fixture"; RowsRef="rows"; StatusRef="status"
+                  SharedTimeAxis=true; TemporalAxisRefs=[||]; BaseRowId=Some "base"; Rows=[|row|]
+                  EditorSchemas=[||]; AllowedActions=[||]; DefaultView=Map.empty }
+            let points =
+                [| "2026-05-28T22:00:00Z"; "2026-05-29T00:00:00Z" |]
+                |> Array.map (fun time -> SduiValue.Object(Map [ "t",SduiValue.Text time; "v",SduiValue.Number 100.0; "tradingDate",SduiValue.Number 20260529.0 ]))
+                |> SduiValue.Array
+            let prepared = [ "o"; "h"; "l"; "c"; "v"; "line" ] |> List.map (fun key -> key,points) |> Map.ofList |> RendererModel.prepareData
+            Expect.equal (RendererModel.referenceTradingDatesForDocumentPrepared document prepared) [| Some "20260529"; Some "20260529" |] "A component candle has no duplicate price series to read"
+            let lineTrace = { trace with Kind=TaTraceKind.Line; DataRef="line"; CandleDataRefs=None }
+            let lineDocument = { document with Rows=[| { row with Kind=TaRowKind.Sma; DataRef="line"; Traces=[|lineTrace|] } |] }
+            Expect.equal (RendererModel.referenceTradingDatesForDocumentPrepared lineDocument prepared) [| Some "20260529"; Some "20260529" |] "A line-only chart also retains the authoritative date"
+            Expect.equal (RendererModel.lineSeriesPrepared "line" prepared |> Array.map _.Value) [|100.0;100.0|] "Metadata must not change numeric parsing"
+
+        testCase "DYN-T-760 authored initial right edge uses active-axis coverage rather than resident tail" <| fun _ ->
+            // Metadata-only reproduction of the real 4401-bar 930K history.
+            let projection count start visible : TaLoadedCoverageProjection =
+                { CoverageIdentity="initial-date-fixture"; CoverageRevision=2L; QueryGeneration=0L
+                  Completeness=TaCoverageCompleteness.Partial; TotalObservationCount=None
+                  Segments=[|{SegmentId="resident";StartEventTimeUtc="2020-01-01T00:00:00Z";EndEventTimeExclusiveUtc="2026-07-11T00:00:00Z"
+                              StartObservationOrdinal=8000L;ObservationCount=int64 count}|]
+                  OverviewAxisRef="axis.930k-overview"; OverviewAnchors=[||]
+                  ActiveDetail={StartObservationOrdinal=8000L+int64 start;ObservationCount=visible;BaseAxisRef="axis.930k"}
+                  GlobalOverview=Some {TotalObservationCount=3000000L;AxisRef="axis.1k";Anchors=[||]
+                                       ResidentStartObservationOrdinal=100L;ResidentObservationCount=2999900} }
+            let authored = Map ["visibleBars",SduiValue.Number 1500.0;"initialVisibleEnd",SduiValue.Text "202606011200"]
+            let current = projection 4401 2842 1500
+            let resolve view coverage = RendererModel.initialViewportWindowForCoverage 12 48 1500 4401 view coverage
+            Expect.equal (resolve authored (Some current)) {StartIndex=2842;Count=1500} "The final 59 resident bars are not part of the authored initial viewport"
+            Expect.equal (resolve (Map.remove "initialVisibleEnd" authored) (Some current)) {StartIndex=2901;Count=1500} "Legacy default remains follow-latest"
+            Expect.equal (resolve authored None) {StartIndex=2901;Count=1500} "Absent coverage does not invent an ordinal"
+            Expect.equal (resolve authored (Some(projection 4401 0 1))) {StartIndex=0;Count=1} "An early single real bar must not expand past the requested right edge"
+            Expect.equal (resolve authored (Some(projection 4000 2842 1500))) {StartIndex=2901;Count=1500} "A different resident axis cannot supply local ordinals"
+            let previous = {projection 32 0 32 with CoverageRevision=1L}
+            let expand follow window next = RendererModel.tryBootstrapCoverageExpansionWindow 1 1500 32 4401 follow window previous next
+            Expect.equal (expand true {StartIndex=0;Count=32} current) (Some {StartIndex=2842;Count=1500}) "Same-scope provisional replacement also preserves the active right edge"
+            Expect.isNone (expand false {StartIndex=0;Count=32} current) "Do not overwrite a user's manual viewport"
+            Expect.isNone (expand true {StartIndex=0;Count=8} current) "A resized provisional viewport is not an untouched bootstrap"
+            Expect.isNone (expand true {StartIndex=0;Count=32} {current with QueryGeneration=1L}) "A different query is not a bootstrap expansion"
+
+        testCase "DYN-T-761 resolved bootstrap viewport cannot be undone by follow-latest on the next render" <| fun _ ->
+            let before: TaRendererUiState =
+                { Window={StartIndex=0;Count=32};FollowLatest=true
+                  HiddenRows=Set.singleton "hidden";HiddenTraces=Set.singleton("row","trace")
+                  RemovedTraces=Set.empty;AddRowOpen=true;CursorIndex=Some 12
+                  PendingActionId=Some "pending";Feedback="unchanged" }
+            for total, start in [4401,2842;2203,674] do
+                let selected = {StartIndex=start;Count=1500}
+                let after = TaWorkspaceRenderer.applyResolvedViewportWindow total selected before
+                Expect.equal after {before with Window=selected;FollowLatest=false;CursorIndex=None} "Applying the active range also commits its follow mode and preserves unrelated UI state"
+                Expect.equal (RendererModel.resolveWindow 1 1500 total after.FollowLatest after.Window) selected "The next render must keep June 1, not snap to the July resident tail"
+                let tail = {StartIndex=total-1500;Count=1500}
+                let atTail = TaWorkspaceRenderer.applyResolvedViewportWindow total tail before
+                Expect.isTrue atTail.FollowLatest "Only a viewport actually ending at the resident tail follows latest"
+                Expect.equal (RendererModel.resolveWindow 1 1500 (total+1) atTail.FollowLatest atTail.Window) {tail with StartIndex=tail.StartIndex+1} "Legacy follow-latest still advances with a new bar"
+
+        testCase "DYN-T-729B atomic frame document supersedes the cached shell document" <| fun _ ->
+            let document title =
+                { WorkspaceId = "navigator-frame-document"
+                  Title = title
+                  RowsRef = "rows"
+                  StatusRef = "status"
+                  SharedTimeAxis = true
+                  TemporalAxisRefs = [||]
+                  BaseRowId = None
+                  Rows = [||]
+                  EditorSchemas = [||]
+                  AllowedActions = [||]
+                  DefaultView = Map.empty }
+            let cachedDocument = document "cached-shell"
+            let currentDocument = document "atomic-frame"
+            let identity =
+                { DocumentId = DocumentId "navigator-frame-document"
+                  CanvasInstanceId = CanvasInstanceId "navigator-frame-canvas" }
+            let renderedState =
+                { RuntimeReducer.initial identity with
+                    Document = Some currentDocument }
+
+            Expect.equal
+                (TaWorkspaceRenderer.navigatorDocumentForRenderedFrame cachedDocument renderedState)
+                currentDocument
+                "Every retained mapper must converge on the document carried by the latest atomic shell frame."
+            Expect.equal
+                (TaWorkspaceRenderer.navigatorDocumentForRenderedFrame cachedDocument (RuntimeReducer.initial identity))
+                cachedDocument
+                "A cached shell document is only the explicit fallback while no frame document exists."
+    ]
+
+[<EntryPoint>]
+let main args = runTestsWithCLIArgs [] args tests
