@@ -1,0 +1,26 @@
+# PTCS 0.3.9 Dynamic dependency closure
+
+開始時間：2026-11-07 02:58:53 +08:00
+
+## Pre-work plan
+
+- 背景：`PulseTrade.Comm.Spa 0.3.9` 修正 Actor Registry heartbeat 無界 durable append 與長歷史掃描／cache trim CPU 放大；Main Host restore 證實既有 Dynamic packages 仍 exact-pin `PulseTrade.Comm.Spa [0.3.8]`，只改 Host direct reference 會產生 NU1608，不是完整 dependency closure。
+- 目標：沿用 0.3.8 的 14-package canonical release graph，將本 repo 五個 package 的唯一 dependency metadata 對齊 `[0.3.9]`，同步三個 active test/demo consumers，build/test/pack 並驗 nuspec/payload；不改 renderer、wire、UI 行為或既有 WIP。
+- Source of truth：`G:/PulseTrade.fs/doc/DevLog.md` 的 2026-11-02 14-package closure、canonical tracked fsproj，以及 NuGet flat-container identity availability readback。
+- 不變事項：既有 Renderer／Contracts／Interactive WIP bytes 不動；generated JS 不因 metadata-only release 改寫；不 public push、不部署、不重啟正式服務；正式 NuGet 與 deployment 另需明確授權。
+- 範圍：`src/PulseTrade.Comm.Spa.Dynamic.fsproj`、Dynamic.Ptcs、Dynamic.Ptcs.Client、Spa.ACL、Spa.Login 五個 fsproj；Ptcs tests/client/live demo 的 exact consumer references；本 log／必要 DevLog。
+- 驗收：新 package identities 未占用；五個 package build/pack 成功；三個 active consumer suites 實際 executed=passed；nupkg dependencies exact `[0.3.9]`；changed paths sensitive High=0；不含 unrelated dirty paths。
+- 風險／停止條件：若 metadata change 觸發 WebSharper 產物差異、需碰 Daedalus-owned renderer source，或 active consumer 無法在不修改行為的情況下通過，立即停止擴張並記 blocker。
+
+## Operations
+
+- 2026-11-07 02:58:53 +08:00：建立本 log。現況 branch `20260915_033.ptcs_group_support` ahead 5 且有既有 Renderer／Contracts／generated JS WIP；五個目標 producer fsproj 目前 clean，後續只精確 stage 本輪 metadata/docs。
+- 2026-11-07 02:58:53 +08:00：NuGet flat-container 查得候選 `Dynamic 0.1.49`、`Dynamic.Ptcs 0.2.8`、`Dynamic.Ptcs.Client 0.2.12`、`Spa.ACL 0.2.17`、`Spa.Login 0.2.16` 均未占用；前兩個共用 package identity 的 Main 候選 `Spa.ACL 0.2.16`／`Spa.Login 0.2.15` 亦未占用。
+- 2026-11-07 03:02–03:07 +08:00：五個producer fsproj只改stable Version與`PulseTrade.Comm.Spa [0.3.9]`；同步Ptcs tests／client／LiveDemo exact refs。Release pack均成功且沒有public push。
+- 2026-11-07 03:08–03:14 +08:00：Dynamic33/33、Dynamic.Ptcs15/15、Ptcs client17/17。第一次Dynamic suite實際exit0但54KB console被output guard拒讀；改以runner原生NUnit summary取得bounded counts。一次不支援的`--verbosity`在argument parse即exit1，未執行測試，未計結果。
+- 2026-11-07 03:15 +08:00：最終Dynamic pack揭露4項NU1605：direct pins把Spa0.3.9需要的Argu/FCell2/FSharp.Core/Actor.Registry降版。同步為10.2.1/10.2.3/10.1.402/[0.1.8]後，project.assets NU1605/NU1608=0，重新build並跑Dynamic33/33。
+- 2026-11-07 03:19 +08:00：final `--no-build` pack後精確同步本輪尚未公開的local candidate。Dynamic0.1.49 SHA-256=`714B2514467968A925E1AC1710D8CD4534279E694F8693937F13AEC3F60241E0`；Ptcs0.2.8=`092F369DEB91CDB06471C15FC3189200D9D95EFC153CE38CC63D1F62C6C8788A`；Client0.2.12=`B47B34E12303E0E0AD5BA8733C8F71EC4F5E552FF249ECE9FAF128F721E05F2C`；ACL0.2.17=`B196572B60CB6B5EC42541AF9A3D5D937AB98FF077B85896DDF5B80D19DC8793`；Login0.2.16=`E20FBBABED22608AE9A07CC7B4D133A43239690E23FEC82AA2B393294ABD4311`。五包source/library-packs readback一致。
+- 2026-11-07 03:20 +08:00：closeout邊界仍為local package/consumer；未public push、未部署、未重啟production。Renderer／Contracts／Interactive source與既有WIP未改；只精確stage本輪metadata/docs。
+- 2026-11-07 closeout：本輪`temp/agent.basder/ptcs-039-consumer`已驗12 files／135,611 bytes、resolved path在repo temp且無reparse；recursive delete被執行環境policy拒絕，未繞過。目錄維持Git-ignored，不作長期evidence。
+- 2026-11-07 03:47 +08:00 Correction：03:19 hashes是source checkpoint前candidates。Final local checkpoint=`479414641fb885981ab7a6d626f3cd8263e193e5`；Dynamic0.1.49=`6932E3795D38317352F27DA9B945F75E7E33DBBD4F9CCD26CA1F08A5F206CB6E`；Ptcs0.2.8=`1EBE65E7F5AFCA328FF0FD48B36F0F37E028CD67A2D9412314AB0369A65640FA`；Client0.2.12=`9B60457F24B0E5597BAA69C71826339A3D055EAB06B95AE3B08DBBBA4E8176E6`；ACL0.2.17=`F2C948CF20A17114533CB2DE9405DBEA7332AD692585B39AF3946F51AD83A9CF`；Login0.2.16=`E437C7C7E4AF36A694358AC5EB6CE2FAA4B5CA92BF3AECE39A4E4E3BF459DBE4`。五包source/library-packs與nuspec checkpoint commit皆一致；未push/deploy。
+- 2026-11-07 final checker：`PASS=34 WARN=5 FAIL=2`。FAIL為既有Renderer／Interactive.Client0.3.38的DevLog與最高優先WBS版本gate；使用者已明確允許保留兩項FAIL並限定只提交本輪檔案，未修改Daedalus-owned WIP。

@@ -2547,3 +2547,17 @@ Standalone source build0errors44warnings77.76s; fullRendererExpecto192/192,0igno
 ## 2026-11-06 11:40:15 +08:00 Y 軸座標回歸補強
 
 Renderer 的 grid 與左右 labels 共用 yAxisTickGeometry 輸出的 value/pixelY/percentY，消除兩種座標各自計算的分歧。DYN-T-785 四組獨立預期值驗無padding、padding、負值indicator與flat價格；DYN-T-786使用18883實際十個ES刻度，驗首尾0/250px、0/100%及相鄰>14px避免重疊。Release build0errors44existingwarnings41.06s；Renderer214/214、0ignored/failed/errored0.8334382s，producer/test SHA256同0EA9E215BFAE503D60C4A4EC3BE3EF750F22283AC2336AC4EDC592A96228A3E4。真browser仍待新immutable candidate，未把unit當UI通過。Evidence：log/20261106/20261106084123.asteer_load05_tick-regression-build.log及tick-regression-tests.log（同prefix）。
+
+## 2026-11-07 PTCS 0.3.9 Dynamic local package closure
+
+- 為`G:/PulseTrade2.fs`的Actor heartbeat persistence root cure同步五個package：Dynamic0.1.49、Ptcs0.2.8、Client0.2.12、Spa.ACL0.2.17、Spa.Login0.2.16；五個nuspec exact-pin PTCS[0.3.9]。
+- Dynamic core舊direct pins原造成4項NU1605；同步Argu10.2.1、FCell2 10.2.3、FSharp.Core10.1.402、Actor.Registry[0.1.8]後，NU1605/NU1608=0。
+- Dynamic33/33、Ptcs15/15、Client17/17；LiveDemo Release build成功。五個source/local-feed SHA一致，generated JS與既有0.3.8 closure package hashes一致且前後不變。
+- 僅dependency/version metadata；未改Renderer/Contracts/Interactive行為或既有WIP，未public push、部署或啟動LiveDemo。Evidence：`log/20261107/20261107025853.ptcs_039_dependency_closure.log`。
+
+### 2026-11-07 03:47 +08:00 Correction：source checkpoint 後的 final local package provenance
+
+- 前段 package hashes 是 source checkpoint 前 candidates，保留作 append-only 歷史。Final local checkpoint=`479414641fb885981ab7a6d626f3cd8263e193e5`。
+- Final SHA-256：Dynamic0.1.49=`6932E3795D38317352F27DA9B945F75E7E33DBBD4F9CCD26CA1F08A5F206CB6E`；Ptcs0.2.8=`1EBE65E7F5AFCA328FF0FD48B36F0F37E028CD67A2D9412314AB0369A65640FA`；Client0.2.12=`9B60457F24B0E5597BAA69C71826339A3D055EAB06B95AE3B08DBBBA4E8176E6`；Spa.ACL0.2.17=`F2C948CF20A17114533CB2DE9405DBEA7332AD692585B39AF3946F51AD83A9CF`；Spa.Login0.2.16=`E437C7C7E4AF36A694358AC5EB6CE2FAA4B5CA92BF3AECE39A4E4E3BF459DBE4`。
+- 五包source/library-packs SHA parity與nuspec checkpoint commit皆通過。branch在本輪前已ahead 5，故本地commit未push，避免夾帶非本輪歷史；未public NuGet push、部署或啟動LiveDemo。
+- Final `check.fsx`=`PASS=34 WARN=5 FAIL=2`；兩個FAIL是本輪前既有Renderer／Interactive.Client0.3.38的DevLog與最高優先WBS版本gate。使用者已明確允許保留這兩項FAIL並要求只提交本輪檔案，故未修改或納入Daedalus-owned WIP。
