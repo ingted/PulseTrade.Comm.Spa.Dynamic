@@ -2547,3 +2547,11 @@ Standalone source build0errors44warnings77.76s; fullRendererExpecto192/192,0igno
 ## 2026-11-06 11:40:15 +08:00 Y 軸座標回歸補強
 
 Renderer 的 grid 與左右 labels 共用 yAxisTickGeometry 輸出的 value/pixelY/percentY，消除兩種座標各自計算的分歧。DYN-T-785 四組獨立預期值驗無padding、padding、負值indicator與flat價格；DYN-T-786使用18883實際十個ES刻度，驗首尾0/250px、0/100%及相鄰>14px避免重疊。Release build0errors44existingwarnings41.06s；Renderer214/214、0ignored/failed/errored0.8334382s，producer/test SHA256同0EA9E215BFAE503D60C4A4EC3BE3EF750F22283AC2336AC4EDC592A96228A3E4。真browser仍待新immutable candidate，未把unit當UI通過。Evidence：log/20261106/20261106084123.asteer_load05_tick-regression-build.log及tick-regression-tests.log（同prefix）。
+
+## 2026-11-06 12:03:32 +08:00 獨立 overview 時軸與 Move/Resize 接線 checkpoint
+
+Renderer 在 OverviewAxisRef 與 active axis 不同時，以OverviewAnchors決定mask與gesture domain，沿原same-axis/resident路徑作fallback。overview draft不寫入active draftWindow；Move傳NavigatorMove保留active count，Resize傳NavigatorWindow由server決定span。新frame用既有query/viewport generation及ActiveDetail結算；MainPlotPan仍使用原exact start/count。邊界續載保留active loaded edge，禁止把overview索引當active delta。獨立縮圖axis用自己的explicit UTC時間；drop interval end讀prepared overview axis metadata，不用下一交易日或active interval假造。
+
+Scoped bumpVersion同步Renderer→Contracts[0.1.43]，nupkgSHA19AB70AB10B919CE8A85389D531DD7FB69C4610A8D647AB715A99D883CFFD13F；未升Renderer版本、FSharp.Core維持10.1.402。Renderer測試專案無direct Contracts pin，已以UseRendererSource=true實際restore/build/tests。Release0errors44existingwarnings64.13s，223/223、0ignored/failed/errored0.9619424s；producer/test同7CDBC1F1C712810BD6431A4D30DE854F7429E0C5AAC7F41027604589B3F13845。DYN787-792涵蓋獨立軸／gap／2000overview對1500active／metadata缺失／typed dispatch／count/generation拒絕／active boundary。首輪217/218抓到UTC比較key無suffix誤用wire，已保留原始explicitUTC；原failurelog保留。
+
+此checkpoint由owner fd1a721c要求先包Renderer/Interactive.35供Research mapper編譯。後端mapper、drag即時時間標示、此新路徑真browser與實際Frame仍未完成；不等於UI或整體完成。Evidence：log/20261106/20261106084123.asteer_load04_overview-domain-{build,tests}.log與asteer_load04_wiring-{build,tests}.log（同prefix）；scope/因果見RFC0036、SA/SD與hypothesis。

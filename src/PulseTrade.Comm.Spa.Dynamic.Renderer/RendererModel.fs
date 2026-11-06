@@ -3530,7 +3530,7 @@ module RendererModel =
                 let index = upperTimestampBound timeline target - 1
                 if index < 0 then None else Some(min (timeline.Length - 1) index)
 
-    let overviewSelectionRatios projection (activeReferenceTimeline: string array) activeWindow =
+    let tryOverviewNavigatorWindow projection (activeReferenceTimeline: string array) activeWindow =
         if projection.OverviewAxisRef = projection.ActiveDetail.BaseAxisRef then
             None
         else
@@ -3549,9 +3549,22 @@ module RendererModel =
                         match eventTimeSlot overviewTimeline first, eventTimeSlot overviewTimeline last with
                         | Some firstSlot, Some lastSlot ->
                             let lastExclusive = min overviewTimeline.Length (max (firstSlot + 1) (lastSlot + 1))
-                            Some(float firstSlot / float overviewTimeline.Length, float lastExclusive / float overviewTimeline.Length)
+                            Some { StartIndex = firstSlot; Count = lastExclusive - firstSlot }
                         | _ -> None
                     | _ -> None
+
+    let tryOverviewNavigatorGestureDomain projection activeReferenceTimeline activeWindow =
+        tryOverviewNavigatorWindow projection activeReferenceTimeline activeWindow
+        |> Option.map (fun window ->
+            { DomainCount = projection.OverviewAnchors.Length
+              CommittedWindow = window
+              UsesResidentAuthority = false })
+
+    let overviewSelectionRatios projection activeReferenceTimeline activeWindow =
+        tryOverviewNavigatorWindow projection activeReferenceTimeline activeWindow
+        |> Option.map (fun window ->
+            float window.StartIndex / float projection.OverviewAnchors.Length,
+            float (window.StartIndex + window.Count) / float projection.OverviewAnchors.Length)
 
     let overviewSelectionRatiosForGlobalWindow projection (activeReferenceTimeline: string array) globalWindow =
         tryLocalWindowForLoadedCoverage activeReferenceTimeline.Length projection globalWindow
@@ -3578,15 +3591,18 @@ module RendererModel =
         | None ->
             match projection with
             | Some current ->
-                match coverageNavigatorWindowWithAuthority activeReferenceTimeline.Length activeWindow authority current with
-                | Some(_, total, committed) ->
-                    localDraft
-                    |> Option.defaultValue committed
-                    |> selectionRatios total
+                match overviewSelectionRatios current activeReferenceTimeline (localDraft |> Option.defaultValue activeWindow) with
+                | Some ratios -> ratios
                 | None ->
-                    localDraft
-                    |> Option.defaultValue activeWindow
-                    |> selectionRatios activeReferenceTimeline.Length
+                    match coverageNavigatorWindowWithAuthority activeReferenceTimeline.Length activeWindow authority current with
+                    | Some(_, total, committed) ->
+                        localDraft
+                        |> Option.defaultValue committed
+                        |> selectionRatios total
+                    | None ->
+                        localDraft
+                        |> Option.defaultValue activeWindow
+                        |> selectionRatios activeReferenceTimeline.Length
             | _ ->
                 localDraft
                 |> Option.defaultValue activeWindow
@@ -3808,6 +3824,12 @@ module RendererModel =
     let tryNavigatorEventRangeIntent projection targetWindow =
         tryEventRangeIntent TaCoverageWindowPurpose.NavigatorWindow projection targetWindow
 
+    let tryNavigatorGestureEventRangeIntent drag activeCount maximumCount projection targetWindow =
+        let moving = drag = TaWindowDrag.Move
+        let count = if moving then activeCount else targetWindow.Count
+        let purpose = if moving then TaCoverageWindowPurpose.NavigatorMove else TaCoverageWindowPurpose.NavigatorWindow
+        tryEventRangeIntent purpose projection { targetWindow with Count = max 1 (min maximumCount count) }
+
     let tryRefreshQueuedEventRangeAction capturedIdentity (projection: TaLoadedCoverageProjection option) action =
         if capturedIdentity <> (projection |> Option.map _.CoverageIdentity) then
             None
@@ -3852,6 +3874,11 @@ module RendererModel =
             min DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints (max 1 maximumVisibleBars)
         let viewportObservationCount = max 1 (min requestObservationCount observationCount)
         requestObservationCount, viewportObservationCount
+
+    let navigatorActiveEdgeDelta direction referenceLength window =
+        let bounded = clampWindow 1 Int32.MaxValue referenceLength window
+        let target = if direction = TaCoverageDirection.Earlier then 0 else max 0 (referenceLength - bounded.Count)
+        target - bounded.StartIndex
 
     let requiresCrossAxisNavigatorEventRangeMaterialization projection =
         projection.GlobalOverview
@@ -3899,6 +3926,23 @@ module RendererModel =
                 TaCoverageIntentProjectionSettlement.Reanchor
                     { StartIndex = startIndex
                       Count = observationCount }
+            | _ when actionPending -> TaCoverageIntentProjectionSettlement.Await
+            | _ -> TaCoverageIntentProjectionSettlement.Reject
+
+    let navigatorEventRangeProjectionSettlement
+        maximumVisibleBars
+        referenceLength
+        purpose
+        observationCount
+        pendingQueryGeneration
+        actionPending
+        (projection: TaLoadedCoverageProjection) =
+        if projection.QueryGeneration < pendingQueryGeneration then TaCoverageIntentProjectionSettlement.Await
+        else
+            match tryCoverageActiveLocalWindow referenceLength projection with
+            | Some window when window.Count <= maximumVisibleBars
+                               && (purpose = TaCoverageWindowPurpose.NavigatorWindow || window.Count = observationCount) ->
+                TaCoverageIntentProjectionSettlement.Reanchor window
             | _ when actionPending -> TaCoverageIntentProjectionSettlement.Await
             | _ -> TaCoverageIntentProjectionSettlement.Reject
 
@@ -3976,6 +4020,30 @@ module RendererModel =
             let activeTimeline = rowTimelinePrepared baseRow prepared
             let timeline = navigatorEventTimeline activeTimeline projection
             visibleEventRangePreparedOnTimeline document prepared timeline window
+
+    let overviewVisibleEventRangePrepared
+        (document: TaWorkspaceDocument)
+        prepared
+        (projection: TaLoadedCoverageProjection)
+        window =
+        match tryBaseRow document, tryOverviewTimeline projection with
+        | Some(baseRowId, _), Some timeline when timeline.Length > 0 && window.Count > 0 ->
+            let selected = clampWindow 1 Int32.MaxValue timeline.Length window
+            let startKey = timeline[selected.StartIndex]
+            let startTime = projection.OverviewAnchors[selected.StartIndex].EventTimeUtc
+            let last = selected.StartIndex + selected.Count - 1
+            let anchor = projection.OverviewAnchors[last]
+            prepared.ResolvedAxes
+            |> Map.tryFind projection.OverviewAxisRef
+            |> Option.bind (fun axis -> Map.tryFind (float anchor.ObservationOrdinal) axis.Points)
+            |> Option.filter (fun point -> tryUtcTimestamp (presentationTimestamp point) = tryUtcTimestamp anchor.EventTimeUtc)
+            |> Option.bind (fun point ->
+                tryUtcTimestamp point.IntervalEndUtc
+                |> Option.filter (fun endKey -> compare endKey timeline[last] > 0 && compare endKey startKey > 0)
+                |> Option.map (fun _ -> point.IntervalEndUtc))
+            |> Option.map (fun endTime ->
+                { BaseRowId = baseRowId; StartEventTimeUtc = startTime; EndEventTimeExclusiveUtc = endTime })
+        | _ -> None
 
     let paddedRange fallbackLow fallbackHigh values =
         let mutable found = false

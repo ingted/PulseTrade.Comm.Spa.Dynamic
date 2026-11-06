@@ -29,8 +29,90 @@ let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc avai
           Quality = quality
           Value = value }
 
+let independentOverviewFixture (times: string array) : TaLoadedCoverageProjection =
+    { CoverageIdentity="independent-overview"; CoverageRevision=7L; QueryGeneration=3L
+      Completeness=TaCoverageCompleteness.Partial; TotalObservationCount=None; Segments=[||]
+      OverviewAxisRef="overview.60k"
+      OverviewAnchors=times |> Array.mapi (fun i t -> {ObservationOrdinal=100L+int64 i;EventTimeUtc=t;Value=SduiValue.Number(float i)})
+      ActiveDetail={BaseAxisRef="active.1k";StartObservationOrdinal=700L;ObservationCount=1500}
+      GlobalOverview=None }
+
 let tests =
     testList "TA renderer model" [
+        for drag, expectedPurpose, expectedCount in
+            [TaWindowDrag.Move,TaCoverageWindowPurpose.NavigatorMove,600
+             TaWindowDrag.ResizeLeft,TaCoverageWindowPurpose.NavigatorWindow,1500
+             TaWindowDrag.ResizeRight,TaCoverageWindowPurpose.NavigatorWindow,1500] do
+            testCase ("DYN-T-790 navigator gesture dispatch has explicit semantics " + drag) <| fun _ ->
+                let intent=RendererModel.tryNavigatorGestureEventRangeIntent drag 600 1500 (independentOverviewFixture [||]) {StartIndex=500;Count=4000} |> Option.get
+                Expect.equal intent.Purpose expectedPurpose "Move and Resize must not be inferred from equal widths"
+                Expect.equal intent.ObservationCount expectedCount "Move preserves active count; Resize supplies only a bounded hint and server derives the span"
+                Expect.isNone intent.StartObservationOrdinal "overview slots never leak into active/global ordinal authority"
+                Expect.isNone intent.Direction "an in-bounds drop does not become an adjacent refill"
+
+        testCase "DYN-T-791 navigator settlement uses the accepted active window and generation" <| fun _ ->
+            let projection={independentOverviewFixture [||] with
+                                Segments=[|{SegmentId="resident";StartEventTimeUtc="2026-11-01T00:00:00Z";EndEventTimeExclusiveUtc="2026-11-06T00:00:00Z";StartObservationOrdinal=100L;ObservationCount=4500L}|]
+                                ActiveDetail={BaseAxisRef="active.1k";StartObservationOrdinal=700L;ObservationCount=600}}
+            let settle purpose count pending frame=RendererModel.navigatorEventRangeProjectionSettlement 1500 4500 purpose count 3L pending frame
+            Expect.equal (settle TaCoverageWindowPurpose.NavigatorMove 600 false projection)
+                (TaCoverageIntentProjectionSettlement.Reanchor {StartIndex=600;Count=600}) "accepted active ordinals provide the exact local offset even when overview time was not an active start"
+            Expect.equal (settle TaCoverageWindowPurpose.NavigatorWindow 25 false projection)
+                (TaCoverageIntentProjectionSettlement.Reanchor {StartIndex=600;Count=600}) "25 overview slots do not replace the server-derived 600 active bars"
+            Expect.equal (settle TaCoverageWindowPurpose.NavigatorMove 600 false {projection with QueryGeneration=2L}) TaCoverageIntentProjectionSettlement.Await "old frame cannot settle a new gesture"
+            Expect.equal (settle TaCoverageWindowPurpose.NavigatorMove 601 true projection) TaCoverageIntentProjectionSettlement.Await "wait while matching result may still arrive"
+            Expect.equal (settle TaCoverageWindowPurpose.NavigatorMove 601 false projection) TaCoverageIntentProjectionSettlement.Reject "an accepted Move cannot silently change width"
+            Expect.equal (settle TaCoverageWindowPurpose.NavigatorWindow 25 false {projection with ActiveDetail={projection.ActiveDetail with ObservationCount=1501}})
+                TaCoverageIntentProjectionSettlement.Reject "authoritative count still obeys the active 1500 limit"
+
+        testCase "DYN-T-792 independent overview boundary uses an active-axis edge delta" <| fun _ ->
+            let active={StartIndex=1198;Count=80}
+            Expect.equal (RendererModel.navigatorActiveEdgeDelta TaCoverageDirection.Earlier 4500 active) -1198 "anchor to the known loaded head before requesting Earlier1500"
+            Expect.equal (RendererModel.navigatorActiveEdgeDelta TaCoverageDirection.Later 4500 active) 3222 "anchor to the known active tail without converting a calendar gap to bars"
+
+        for label, overviewTimes, activeStart, expectedSlot in
+            [ "different scale",[|"2026-11-06T09:00:00Z";"2026-11-06T10:00:00Z";"2026-11-06T11:00:00Z";"2026-11-06T12:00:00Z"|],"2026-11-06T10:05:00Z",1
+              "weekend gap",[|"2026-11-06T09:00:00Z";"2026-11-06T10:00:00Z";"2026-11-09T09:00:00Z";"2026-11-09T10:00:00Z"|],"2026-11-09T09:05:00Z",2 ] do
+            testCase ("DYN-T-787 overview selection and gesture share their own timeline " + label) <| fun _ ->
+                let projection=independentOverviewFixture overviewTimes
+                let active=[|for minute in 0..9 -> DateTimeOffset.Parse(activeStart).AddMinutes(float minute).ToString("O")|]
+                let visible={StartIndex=0;Count=10}
+                let domain=RendererModel.tryOverviewNavigatorGestureDomain projection active visible |> Option.get
+                Expect.equal domain.DomainCount 4 "four overview anchors are not ten active bars or global ordinals"
+                Expect.equal domain.CommittedWindow {StartIndex=expectedSlot;Count=1} "the ten active minutes occupy one real overview candle"
+                Expect.isFalse domain.UsesResidentAuthority "overview slot numbers must never become resident ordinals"
+                Expect.equal (RendererModel.navigatorSelectionRatiosForRenderWithAuthority None (Some projection) active visible None None)
+                    (float expectedSlot/4.0,float(expectedSlot+1)/4.0) "the visual mask and captured gesture have identical units"
+
+        testCase "DYN-T-788 overview domain keeps its native count and rejects malformed anchors" <| fun _ ->
+            let time m=DateTimeOffset(2026,1,1,0,0,0,TimeSpan.Zero).AddMinutes(float m).ToString("O")
+            let projection=independentOverviewFixture [|for hour in 0..1999 -> time(hour*60)|]
+            let active=[|for minute in 0..1499 -> time minute|]
+            let domain=RendererModel.tryOverviewNavigatorGestureDomain projection active {StartIndex=0;Count=1500} |> Option.get
+            Expect.equal domain.DomainCount 2000 "overview axis length is independent of the active 1500-bar limit"
+            Expect.equal domain.CommittedWindow {StartIndex=0;Count=25} "1500 active minutes cover 25 hourly slots, not 1500 slots"
+            for anchors in [ [||]; [|projection.OverviewAnchors[1];projection.OverviewAnchors[0]|]; [|{projection.OverviewAnchors[0] with EventTimeUtc="invalid"}|] ] do
+                Expect.isNone (RendererModel.tryOverviewNavigatorGestureDomain {projection with OverviewAnchors=anchors} active {StartIndex=0;Count=100})
+                    "unavailable, unordered, or malformed anchors preserve the existing fallback"
+            Expect.isNone (RendererModel.tryOverviewNavigatorGestureDomain {projection with OverviewAxisRef=projection.ActiveDetail.BaseAxisRef} active {StartIndex=0;Count=100})
+                "the existing same-axis resident route keeps its ordinal authority"
+
+        testCase "DYN-T-789 overview ranges use their actual interval end across a gap and at the last candle" <| fun _ ->
+            let projection=independentOverviewFixture [|"2026-11-06T10:00:00Z";"2026-11-09T09:00:00Z"|]
+            let row={RowId="price";Kind=TaRowKind.Candlestick;DataRef="price";HeightWeight=1.0;Visible=true;Traces=[||];Options=Map.empty}
+            let document={WorkspaceId="overview-range";Title="overview";RowsRef="rows";StatusRef="status";SharedTimeAxis=true;TemporalAxisRefs=[||];BaseRowId=Some "price";Rows=[|row|];EditorSchemas=[||];AllowedActions=[||];DefaultView=Map.empty}
+            let points=projection.OverviewAnchors |> Array.map (fun anchor ->
+                let until=DateTimeOffset.Parse(anchor.EventTimeUtc).AddHours(1.0).ToString("O")
+                float anchor.ObservationOrdinal,
+                {SourceIntervalId="overview";ScaleKey="60K";IntervalStartUtc=anchor.EventTimeUtc;IntervalEndUtc=until;EventTimeUtc=Some anchor.EventTimeUtc;ObservedThroughUtc=until;AvailableAtUtc=Some until;Finality="final";Projection="candle";Quality=None}) |> Map.ofArray
+            let prepared={RawData=Map.empty;ResolvedSeries=Map.empty;ResolvedAxes=Map[projection.OverviewAxisRef,{Revision=1.0;RawPoints=[||];Points=points}]}
+            for index, expectedEnd in [0,"2026-11-06T11:00:00Z";1,"2026-11-09T10:00:00Z"] do
+                let range=RendererModel.overviewVisibleEventRangePrepared document prepared projection {StartIndex=index;Count=1} |> Option.get
+                Expect.equal (DateTimeOffset.Parse range.EndEventTimeExclusiveUtc) (DateTimeOffset.Parse expectedEnd)
+                    "an overview candle ends at its own interval end, not next session or the active 1K interval"
+            Expect.isNone (RendererModel.overviewVisibleEventRangePrepared document {prepared with ResolvedAxes=Map.empty} projection {StartIndex=1;Count=1})
+                "missing interval authority must not fabricate a final-candle end"
+
         for label, low, high, top, plotHeight, chartHeight, ticks, expected in
             [ "full price plot",90.0,100.0,0.0,250.0,250.0,[|100.0;95.0;90.0|],[|(100.0,0.0,0.0);(95.0,125.0,50.0);(90.0,250.0,100.0)|]
               "padded plot",90.0,100.0,10.0,200.0,250.0,[|100.0;95.0;90.0|],[|(100.0,10.0,4.0);(95.0,110.0,44.0);(90.0,210.0,84.0)|]
@@ -1129,7 +1211,7 @@ let tests =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
             Expect.stringContains
                 source
-                "RendererModel.tryNavigatorEventRangeIntent"
+                "RendererModel.tryNavigatorGestureEventRangeIntent"
                 "the local navigator commit must retain typed navigator origin after axis settlement"
 
         testCase "DYN-T-721 cross-axis exact active fallback still requests event-time materialization" <| fun _ ->

@@ -47,6 +47,7 @@ type TaPendingEventRangeSettlement =
       StartEventTimeUtc: string
       EndEventTimeExclusiveUtc: string
       ObservationCount: int
+      Purpose: TaCoverageWindowPurpose
       QueryGeneration: int64
       ViewportIntentGeneration: int }
 
@@ -3272,6 +3273,8 @@ module TaWorkspaceRenderer =
                     RendererModel.optimisticViewportAfterActionSettlement
                         queuedViewportIntent.IsSome
                         draftWindow.Value
+                if queuedViewportIntent.IsNone && pendingEventRangeSettlement.IsNone then
+                    navigatorSelectionRatiosOverride.Value <- None
         settleCommittedViewportDraft <- fun () ->
             if uiState.Value.PendingActionId.IsNone then
                 settleVisibleRangeDraft ()
@@ -3312,6 +3315,7 @@ module TaWorkspaceRenderer =
                           StartEventTimeUtc = change.StartEventTimeUtc
                           EndEventTimeExclusiveUtc = change.EndEventTimeExclusiveUtc
                           ObservationCount = intent.ObservationCount
+                          Purpose = intent.Purpose
                           QueryGeneration = intent.QueryGeneration
                           ViewportIntentGeneration = viewportIntentGeneration }
                 | _ -> None
@@ -3471,18 +3475,30 @@ module TaWorkspaceRenderer =
                 | Some projection ->
                     let timeline = RendererModel.referenceTimelineForDocumentPrepared document nextPreparedData
                     let completed, window, rejected =
-                        RendererModel.mainPlotEventRangeProjectionSettlement
-                            options.MinimumVisibleBars
-                            (maximumVisibleBarsFor document)
-                            timeline
-                            pending.StartEventTimeUtc
-                            pending.ObservationCount
-                            pending.QueryGeneration
-                            uiState.Value.PendingActionId.IsSome
-                            projection
+                        (if pending.Purpose = TaCoverageWindowPurpose.MainPlotPan then
+                            RendererModel.mainPlotEventRangeProjectionSettlement
+                                options.MinimumVisibleBars
+                                (maximumVisibleBarsFor document)
+                                timeline
+                                pending.StartEventTimeUtc
+                                pending.ObservationCount
+                                pending.QueryGeneration
+                                uiState.Value.PendingActionId.IsSome
+                                projection
+                         else
+                            RendererModel.navigatorEventRangeProjectionSettlement
+                                (maximumVisibleBarsFor document)
+                                timeline.Length
+                                pending.Purpose
+                                pending.ObservationCount
+                                pending.QueryGeneration
+                                uiState.Value.PendingActionId.IsSome
+                                projection)
                         |> RendererModel.eventRangeSettlementEffects pending.ViewportIntentGeneration viewportIntentGeneration
                     if completed then
                         pendingEventRangeSettlement <- None
+                        if pending.ViewportIntentGeneration = viewportIntentGeneration && finishNavigatorDrag.IsNone && queuedViewportIntent.IsNone then
+                            navigatorSelectionRatiosOverride.Value <- None
                     window |> Option.iter (fun window ->
                         let followLatest = window.StartIndex = RendererModel.viewportMaximumStart timeline.Length window
                         setUiState
@@ -4127,10 +4143,12 @@ module TaWorkspaceRenderer =
             (expectedDocument: TaWorkspaceDocument)
             prepared
             projection
+            drag
+            activeCount
             followLatest
             window =
             let coverageIntent =
-                RendererModel.tryNavigatorEventRangeIntent projection window
+                RendererModel.tryNavigatorGestureEventRangeIntent drag activeCount (maximumVisibleBarsFor expectedDocument) projection window
             setWindowFromPreparedRange
                 expectedDocument
                 prepared
@@ -4143,6 +4161,19 @@ module TaWorkspaceRenderer =
                         currentPrepared
                         projection
                         currentWindow)
+
+        let setOverviewWindowFromPrepared document prepared projection drag activeCount window =
+            let maximumCount = maximumVisibleBarsFor document
+            match RendererModel.overviewVisibleEventRangePrepared document prepared projection window,
+                  RendererModel.tryNavigatorGestureEventRangeIntent drag activeCount maximumCount projection window with
+            | Some range, Some intent ->
+                viewportIntentGeneration <- viewportIntentGeneration + 1
+                sendOrQueueVisibleRangeAction
+                    (SduiAction.VisibleRangeChanged(currentCanvasId (),
+                        { BaseRowId=range.BaseRowId; StartEventTimeUtc=range.StartEventTimeUtc
+                          EndEventTimeExclusiveUtc=range.EndEventTimeExclusiveUtc
+                          MaximumBasePoints=maximumCount; CoverageIntent=Some intent }))
+            | _ -> rejectNavigatorDraft "Overview interval metadata is unavailable."
 
         let setWindow followLatest window =
             match runtimeState.Value.Document with
@@ -4696,6 +4727,7 @@ module TaWorkspaceRenderer =
                     let localCommitted =
                         RendererModel.resolveWindow options.MinimumVisibleBars (maximumVisibleBarsNow ()) localTotal uiState.Value.FollowLatest uiState.Value.Window
                     let publishedNavigatorDraft = draftWindow.Value
+                    let publishedNavigatorRatios = navigatorSelectionRatiosOverride.Value
                     let loadedCoverageSnapshot =
                         dragCoverageProjection
                         |> Option.map (fun projection ->
@@ -4708,28 +4740,36 @@ module TaWorkspaceRenderer =
                         snapshotKey.Identity = runtimeState.Value.Identity
                         && (coverageProjection runtimeState.Value
                             |> Option.exists (RendererModel.residentGestureScopeMatches projection))
-                    let gestureDomain =
+                    let overviewDomain =
                         loadedCoverageSnapshot
                         |> Option.bind (fun (_, _, timeline, projection, _) ->
-                            RendererModel.resolveNavigatorGestureDomain
-                                options.MinimumVisibleBars
-                                (maximumVisibleBarsNow ())
-                                timeline.Length
-                                localCommitted
-                                residentNavigatorAuthority.Value
-                                projection
-                            |> Some)
+                            RendererModel.tryOverviewNavigatorGestureDomain projection timeline localCommitted)
+                    let usesOverviewTimeline = overviewDomain.IsSome
+                    let gestureDomain =
+                        overviewDomain
+                        |> Option.orElseWith (fun () ->
+                            loadedCoverageSnapshot
+                            |> Option.map (fun (_, _, timeline, projection, _) ->
+                                RendererModel.resolveNavigatorGestureDomain
+                                    options.MinimumVisibleBars
+                                    (maximumVisibleBarsNow ())
+                                    timeline.Length
+                                    localCommitted
+                                    residentNavigatorAuthority.Value
+                                    projection))
                         |> Option.defaultValue
                             { DomainCount = localTotal
                               CommittedWindow = localCommitted
                               UsesResidentAuthority = false }
                     let total = gestureDomain.DomainCount
+                    let gestureMinimum = if usesOverviewTimeline then 1 else options.MinimumVisibleBars
+                    let gestureMaximum = if usesOverviewTimeline then total else maximumVisibleBarsNow ()
                     let authoritativeCommitted = gestureDomain.CommittedWindow
-                    let committed =
+                    let priorCommitted =
                         RendererModel.navigatorGestureBaseline
                             authoritativeCommitted
-                            renderedNavigatorDraft
-                            publishedNavigatorDraft
+                            (if usesOverviewTimeline then None else renderedNavigatorDraft)
+                            (if usesOverviewTimeline then None else publishedNavigatorDraft)
                     let pointerX = float event.ClientX - trackLeft
                     let renderedSelectionRatios =
                         match
@@ -4741,7 +4781,13 @@ module TaWorkspaceRenderer =
                     let ratios =
                         renderedSelectionRatios
                         |> Option.orElse navigatorSelectionRatiosOverride.Value
-                        |> Option.defaultValue (RendererModel.selectionRatios total committed)
+                        |> Option.defaultValue (RendererModel.selectionRatios total priorCommitted)
+                    let committed =
+                        if usesOverviewTimeline then
+                            RendererModel.clampWindow 1 total total
+                                { StartIndex=int(Math.Round(fst ratios * float total))
+                                  Count=int(Math.Round((snd ratios-fst ratios) * float total)) }
+                        else priorCommitted
                     let eventTarget: Element = JS.Get "target" rawEvent
                     let semanticDrag =
                         if isNull eventTarget then None
@@ -4776,7 +4822,7 @@ module TaWorkspaceRenderer =
                         (if renderedNavigatorDraft.IsSome then "rendered-draft"
                          elif publishedNavigatorDraft.IsSome then "published-draft"
                          else "authoritative")
-                    setDragDiagnostic "data-drag-domain" "resident-local"
+                    setDragDiagnostic "data-drag-domain" (if usesOverviewTimeline then "overview-event-time" else "resident-local")
                     setDragDiagnostic "data-drag-domain-count" (string total)
 
                     match resolvedDrag with
@@ -4835,7 +4881,7 @@ module TaWorkspaceRenderer =
                                 match pendingDraft with
                                 | Some draft ->
                                     navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft draft)
-                                    draftWindow.Value <- Some draft
+                                    if not usesOverviewTimeline then draftWindow.Value <- Some draft
                                 | None -> ()
 
                         let scheduleDraft draft =
@@ -4855,7 +4901,7 @@ module TaWorkspaceRenderer =
                                         ((float mouse.ClientX - startClientX) / trackWidth)
                             latestRawDelta <- delta
                             let draft =
-                                RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta
+                                RendererModel.previewWindowBounds gestureMinimum gestureMaximum total committed drag delta
                             match frozenMoveSelectionBounds with
                             | Some(selectionLeft, selectionWidth) ->
                                 RendererModel.snapNavigatorMoveDraftToPhysicalEdges
@@ -4907,11 +4953,11 @@ module TaWorkspaceRenderer =
                                     RendererModel.releaseNavigatorDraft
                                         committed
                                         preferPendingBoundary
-                                        renderedNavigatorDraft
-                                        draftWindow.Value
+                                        (if usesOverviewTimeline then None else renderedNavigatorDraft)
+                                        (if usesOverviewTimeline then None else draftWindow.Value)
                                         pendingDraft
                                 navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft draft)
-                                draftWindow.Value <- Some draft
+                                if not usesOverviewTimeline then draftWindow.Value <- Some draft
                                 let requestedStart = committed.StartIndex + latestRawDelta
                                 setDragDiagnostic "data-drag-last-delta" (string latestRawDelta)
                                 setDragDiagnostic "data-drag-committed-start" (string committed.StartIndex)
@@ -4919,12 +4965,17 @@ module TaWorkspaceRenderer =
                                 setDragDiagnostic "data-drag-requested-start" (string requestedStart)
                                 let commitLocalDraft () =
                                     let followLatest, next =
-                                        RendererModel.commitWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total draft
+                                        RendererModel.commitWindowBounds gestureMinimum gestureMaximum total draft
                                     let changed =
                                         next <> committed
                                         || (not gestureDomain.UsesResidentAuthority && followLatest <> uiState.Value.FollowLatest)
                                     if changed then
                                         match loadedCoverageSnapshot with
+                                        | Some(document, preparedData, _, projection, snapshotKey) when usesOverviewTimeline ->
+                                            if residentSnapshotCurrent snapshotKey projection && actionAllowed "visible-range-changed" then
+                                                setDragDiagnostic "data-drag-outcome" "commit-overview-event-time"
+                                                setOverviewWindowFromPrepared document preparedData projection drag localCommitted.Count next
+                                            else rejectNavigatorDraft "The overview changed before this drag completed."
                                         | Some(_, _, timeline, projection, snapshotKey) when gestureDomain.UsesResidentAuthority ->
                                             if not (residentSnapshotCurrent snapshotKey projection) then
                                                 setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
@@ -4961,7 +5012,7 @@ module TaWorkspaceRenderer =
                                         | Some(document, preparedData, _, projection, _) ->
                                             setDragDiagnostic "data-drag-outcome" "commit-local"
                                             navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
-                                            setNavigatorWindowFromPrepared document preparedData projection followLatest next
+                                            setNavigatorWindowFromPrepared document preparedData projection drag localCommitted.Count followLatest next
                                         | None ->
                                             setDragDiagnostic "data-drag-outcome" "commit-local"
                                             navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
@@ -4998,11 +5049,11 @@ module TaWorkspaceRenderer =
                                     setDragDiagnostic
                                         "data-drag-outcome"
                                         (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "request-earlier" else "request-later")
-                                    draftWindow.Value <- Some draft
+                                    if not usesOverviewTimeline then draftWindow.Value <- Some draft
                                     sendOrQueueNavigatorAdjacentCoverage
                                         direction
-                                        latestRawDelta
-                                        committed.Count
+                                        (if usesOverviewTimeline then RendererModel.navigatorActiveEdgeDelta direction localTotal localCommitted else latestRawDelta)
+                                        (if usesOverviewTimeline then localCommitted.Count else committed.Count)
                                         "Loaded coverage requested."
                                 | Some _, Some(_, _, _, projection, snapshotKey)
                                     when projection.GlobalOverview.IsSome
@@ -5012,7 +5063,8 @@ module TaWorkspaceRenderer =
                                     setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
                                     draftWindow.Value <- None
                                 | _ -> commitLocalDraft ()
-                                if draftWindow.Value.IsNone then
+                                if draftWindow.Value.IsNone
+                                   && not (usesOverviewTimeline && (pendingEventRangeSettlement.IsSome || queuedViewportIntent.IsSome || uiState.Value.PendingActionId.IsSome)) then
                                     navigatorSelectionRatiosOverride.Value <- None
                                 cleanup ()
 
@@ -5029,8 +5081,8 @@ module TaWorkspaceRenderer =
                                     finishNavigatorDrag <- None
                                     activeNavigatorDragMode <- None
                                     activeNavigatorCursor <- None
-                                    draftWindow.Value <- publishedNavigatorDraft
-                                    navigatorSelectionRatiosOverride.Value <- publishedNavigatorDraft |> Option.map (fun _ -> ratios)
+                                    if not usesOverviewTimeline then draftWindow.Value <- publishedNavigatorDraft
+                                    navigatorSelectionRatiosOverride.Value <- publishedNavigatorRatios
                                     setDragDiagnostic "data-drag-outcome" "cancelled"
                                     cleanup ())
 
@@ -6574,7 +6626,16 @@ module TaWorkspaceRenderer =
                                             let overviewReferenceTimeline =
                                                 currentCoverageProjection
                                                 |> Option.bind RendererModel.tryOverviewTimeline
+                                                |> Option.filter (Array.isEmpty >> not)
                                                 |> Option.defaultValue currentReferenceTimeline
+                                            let independentOverviewTimeline =
+                                                currentCoverageProjection
+                                                |> Option.bind (fun projection ->
+                                                    if projection.OverviewAxisRef = projection.ActiveDetail.BaseAxisRef then None
+                                                    else
+                                                        RendererModel.tryOverviewTimeline projection
+                                                        |> Option.filter (Array.isEmpty >> not)
+                                                        |> Option.map (fun _ -> projection.OverviewAnchors |> Array.map _.EventTimeUtc))
                                             let overviewPoints =
                                                 let projected =
                                                     currentCoverageProjection
@@ -6664,12 +6725,15 @@ module TaWorkspaceRenderer =
                                                                     rawEvent
                                                             | None -> ())
                                                         finishNavigatorDragFromElement
-                                                    residentTimeAxisForTradingDatesWithPalette
-                                                        currentPlotPalette
-                                                        displayTime
-                                                        (RendererModel.residentCalendarScale currentReferenceTimeline)
-                                                        currentReferenceTimeline
-                                                        (RendererModel.referenceTradingDatesForDocumentPrepared currentDocument currentPreparedData)
+                                                    match independentOverviewTimeline with
+                                                    | Some timeline -> residentTimeAxisWithPalette currentPlotPalette displayTime timeline
+                                                    | None ->
+                                                        residentTimeAxisForTradingDatesWithPalette
+                                                            currentPlotPalette
+                                                            displayTime
+                                                            (RendererModel.residentCalendarScale currentReferenceTimeline)
+                                                            currentReferenceTimeline
+                                                            (RendererModel.referenceTradingDatesForDocumentPrepared currentDocument currentPreparedData)
                                                 ]
                                             let residentOverview =
                                                 div [

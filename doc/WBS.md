@@ -240,3 +240,5 @@ RF20-Form61：Done100%，開始202610071912，已耗56分；source33、最終WS/
 
 - NavigatorMove：contract source59/59；Renderer dispatch、Research mapper、時間端點與真跨尺度拖曳待完成。RFC-0036 amendment／SA／SD／Verification同鏈，package版本由daedilus管理。
 - 18883 Renderer/Interactive0.3.34＋Research0.1.62真ES：反向恢復1500、sticky pin/unpin、930→60保留右端點通過本輪操作。Y刻度數值正確但座標塌到底部；一行tickY修正source209/209，仍待下版真browser確認。輔助線仍未部署驗收。整體未完成。
+
+2026-11-06 04更新：nativeoverview/typedMove Renderer source223/223已過，依owner fd1a721c先交source以建立.35相依鏈；Researchmapper與即時時間標示／真UI仍open。Evidence與精確hash見Verification最新checkpoint。
