@@ -1,0 +1,9 @@
+E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Contracts\EditorAction.fs(816,20,816,22): error FS0010: Unexpected keyword 'if' in expression. Expected incomplete structured construct at or before this point or other token. [E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Contracts\PulseTrade.Comm.Spa.Dynamic.Contracts.fsproj]
+
+Build FAILED.
+
+E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Contracts\EditorAction.fs(816,20,816,22): error FS0010: Unexpected keyword 'if' in expression. Expected incomplete structured construct at or before this point or other token. [E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Contracts\PulseTrade.Comm.Spa.Dynamic.Contracts.fsproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:04.08

@@ -492,3 +492,7 @@ Pseudo code:
 - During render, initializing=true; construct defaults/previews; initializing=false. On user input refresh preview then setValue(current raw command) without submit. Mode rebuild therefore sees current draft. If nonempty draft cannot resolve, show error and Plain control, retain draft bytes, no fallback overwrite/dispatch.
 - Tests: quote/Unicode/newline/whitespace/empty/null, unchanged actor/template/input array; actual browser Form->Plain->Form, editedPlain->Form, invalidPlain recovery, real echo, resize/focus and narrow Send.
 Core61 supersedes unpublished-to-host60; reuse per-project outputs, new immutable versions and exact20consumer closure. Retain60 package/browser failure evidence. Source estimate20-30min, integration/browser30-45min; RF20 final ETA202610072025. Original20:10 integration ETA may shift within measured adjacent repair, not a new task clock.
+
+## Current：2026-11-06 overview Move/Resize 語意（RFC-0036 amendment）
+
+不同 overview/active 尺度的根數沒有相同座標單位。現有 NavigatorWindow 同時表示移動與縮放，consumer 無法可靠知道是否保留 count；依 count 相等推論會把等寬 Resize 誤判。新增明確 NavigatorMove，舊用途保持。來源為 canonical Research Questions.md 03/04 與 owner msg-fsi-d797b3aeb2e44366bfdfced3db1eb14c。contract 可驗，gesture/mapper/真Frame驗收仍未完成。

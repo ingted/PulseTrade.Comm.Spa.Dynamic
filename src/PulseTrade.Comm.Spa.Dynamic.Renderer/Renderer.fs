@@ -1717,7 +1717,7 @@ module TaWorkspaceRenderer =
                     | Some tickSize -> RendererModel.priceYAxisTickValues tickSize low high
                     | None -> RendererModel.yAxisTickValues 5 low high
                 ticks, low, high)
-        let tickY low high value = RendererModel.normalize low high (top + plotHeight) top value
+        let tickY low high value = RendererModel.normalize low high top plotHeight value
         let readerStates =
             Array.map3
                 (fun cursorReader legendReader latestLegend -> ref (cursorReader, legendReader, latestLegend))

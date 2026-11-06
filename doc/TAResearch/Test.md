@@ -221,3 +221,7 @@ WBS: `doc/TAResearch/WBS.md`
 | DYN-TA-T-128 | REQ-093/094 | Renderer／F# Playwright | pending action與row remount期間loaded-range pan／preset保持可用；View All依loaded total而非active detail，必要時送ordinal intent；overview date/time axis可見。 | OWNER PASS：3022/724 fixture由789-1512切至1-3022，generation 2、selection滿寬；正式phase無>100ms task。 |
 | DYN-TA-T-129 | REQ-092..095 | Package／real SPAA | exact five-package graph、official readback、真SPAA drag／pan／loaded All／axis及產品延遲。 | PASS：official `0.1.35/0.1.121/0.1.113/0.1.56/0.1.121` readback與兩次max4000 persistent SPAA完整run全綠。 |
 | DYN-TA-T-130 | REQ-095 | Interactive cache unit／F# Playwright | 遠端empty不得短路domain內adjacent ordinal；真正boundary empty保留KnownEmpty；IndexedDB reload後同樣Miss。 | OWNER PASS：舊`.112` RED；`.113` unit `15/15`與persistent browser gate PASS。 |
+
+## 2026-11-06 NavigatorMove contract 與18883驗收
+
+DYN-T-782：MainPlotPan／NavigatorWindow／NavigatorMove三用途typed codec roundtrip。DYN-T-783：新用途拒絕ordinal、direction、open-ended混用。DYN-T-784：request cap1500之0/1/1500/1501邊界及禁止作resident relocation。Contracts52→59全過；Renderer209既有案例全過，含tick/reverse/sticky/guides。真資料結果與未驗項見doc/Verification.md；不以unit等同UI通過。

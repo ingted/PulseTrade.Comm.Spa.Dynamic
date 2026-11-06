@@ -667,3 +667,10 @@ Standalone source build0errors44warnings77.76s; fullRendererExpecto192/192,0igno
 本次209案例全數執行並通過，沒有 ignored/failed/errored；DYN-T-778~781 新增工具切換、跨 row 垂直／本 row 水平、y 值邊界及RUN/scale清除與resident保留的驗證。保留舊reverse、tick、sticky與budgeted-render案例。producer/test DLL SHA256：6B5CF510149059C53985FB4AA55E50BDDD244D33EA2680ED07A9AB7F0CE5463F。
 
 真候選 browser gate 尚未執行：每row的 ta-guide-vertical/horizontal/cross/clear-<rowId>，SVG data-ta-guide-tool、ta-guide-layer-<rowId> 及 data-ta-guide-orientation/time/value；必驗畫線不啟動Tagging或拖曳、Esc回到原模式、全清不退出畫線、pan保留與RUN/scale清除。不能用模型案例代替以上UI驗收。
+## 2026-11-06 typed NavigatorMove／18883實測
+
+Contracts：tests/PulseTrade.Comm.Spa.Dynamic.Contracts.Tests.fsproj Release source build0errors0warnings7.88s；Expecto59/59、0ignored/failed/errored5.0478442s。producer/test SHA256同3287CA4AE299AB966F9B3804C8C8F6330BE2B2F702ED4DEB15AAFD330E52CEA8。Renderer沿用UseRendererSource=true／WebSharperStandalone=True，build0errors44既有warnings47.51s；209/209、0ignored/failed/errored0.8258283s，producer/test同8AF2F3CC6A5DD6E1DBFE32CCE5E3F0757C761C6E87C88ABFFD96A0A6578F905D。
+
+真瀏覽器僅用18883既有公開default ES 30K/60K腳本，execution161；Research0.1.62、Renderer/Interactive0.3.34由owner確認。bundle SHA256 f4f901b30cdeb6b81256b6ef439738470e5cd764b7d31400cf3a51c5e7da1346。reverse3375/601→2925/1500且13秒後保持；sticky原slot離頂後overview top60=toolbar bottom60，返回原位置解除；930末根202607101330→60末根202607102000、13秒後相同，未重現舊20250314錯跳。此資料位於頁面末段，chart底部推出視窗路徑沒有足夠下捲空間，不能宣稱此次真UI驗過該邊界。
+
+ES Y labels皆0.25倍數，卻全部top100%且grid y250，畫面FAIL。root cause為tickY把(bottom,top)傳入normalize(top,height)，source一行改回與candles相同的top/plotHeight；尚未部署／browser複驗。guide工具不在.34，仍待下一版。四份JSON程式檢核reverse/count、scale endpoint、sticky幾何、quarter tick；截圖人工檢視刻度重疊。Evidence prefix：log/20261106/20261106084123.asteer_18883_{reverse,sticky,sticky-scroll,scale}.json與reverse/sticky/scale.png。瀏覽器已交還owner msg-fsi-99f4a00974904dd9bc1974798bad4e1d；沒有重建／重啟18883、未動18882/18884。

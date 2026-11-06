@@ -2537,3 +2537,9 @@ Standalone source build0errors44warnings77.76s; fullRendererExpecto192/192,0igno
 - Release source build：0 errors、44 warnings。Renderer.Tests：209/209 passed，0 ignored/failed/errored，0.7459706s。producer 與 test DLL SHA256 相同：6B5CF510149059C53985FB4AA55E50BDDD244D33EA2680ED07A9AB7F0CE5463F。FSharp.Core 保持10.1.402。
 - 這是 source/model test 交付。新 candidate 的畫線、Tagging 互斥、Esc、全清、pan 保留、scale/RUN 清除及 geometry 尚待真瀏覽器驗證；不宣稱 UI 已通過。拖曳時間標示與04 overview domain 仍未完成。
 - Evidence：log/20261106/20261106084123.asteer_load03_guides-build-r3.log、asteer_load03_guides-tests-r3.log（同 prefix）；pre-work 於20261106084123.asteer_load05.log。原 FS0072 失敗與R2結果均保留。
+## 2026-11-06 NavigatorMove contract 與真候選 geometry correction
+
+- 以新增DU用途區分Move保留count及Resize事件span，保持舊codec／用途；59/59 contracts PASS、build0errors0warnings。Renderer/consumer接線與版本尚未變更，package由daedilus管理。
+- 18883真default ES execution161：reverse1500、sticky pin/unpin、930→60右端點均通過本輪操作；Y刻度重疊FAIL，不以正確數值冒充畫面通過。修正tickY傳錯normalize參數的一行呼叫，Renderer209/209 PASS、build0errors44既有warnings；下一candidate須真browser複驗。guides/04仍未實測完成。
+- RFC-0036 amendment、SA/SD/WBS/Test/Verification同鏈更新。Source checkpoint不是整體完成；既有whole-repo check問題不因focused green被洗掉，本次未擴大重跑。
+- Evidence：log/20261106/20261106084123.asteer_load04_contract-{baseline-build,baseline-tests,build,build-r2,tests,build-r3,tests-r3}.log、asteer_load05_tick-geometry-{build,tests}.log、asteer_18883 JSON/PNG（同prefix），以及20261106091700_issue_navigation.hypothesis.md。所有正式結果／hash與未驗界線見Verification。
