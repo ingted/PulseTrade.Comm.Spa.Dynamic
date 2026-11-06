@@ -2640,3 +2640,9 @@ Chrome lease依owner交agent.daedilas（msg-fsi-e7ba30874af54456aff0b3e33b372b5d
 - RED：source Release build0errors/45warnings70.63s；Expecto255executed/242passed/13failed/0ignored/0errored1.0735417s。GREEN：build0errors/45warnings47.89s；Expecto255/255、0ignored/failed/errored0.9000636s。案例涵蓋subset/reorder/空timeline/未知fraction、1/5/30/60K、夏冬令、UTC/+8。既有兩項「fine-scale不標開盤」預期依00009-C修訂，在product修正前確實RED；未以改expected隱藏既有問題。
 - 對照首批 Dynamic `00fd3b7`／Research `057f4d08`：00007自然上緣sticky+Tracing正常流；00008兩側Y軸整數.00；00010垂直guide完整SVG。Research index以owner指定.67 snapshot作基線；Client.fs未動。
 - 交付為source/unit checkpoint，未pack/publish/deploy或控瀏覽器。00009-A/B仍須root後端修正整合及QA真拖曳／延展／Backtest證據；所有UI幾何、sticky連續性與日期metadata覆蓋仍由daedilas18883驗。Dynamic沒有check.fsx，本次不宣稱full-repo gate PASS；root review後才可整合。紀錄與RED/GREEN：`log/20261106/20261106231813.asteer_ui00007_00010.*`。
+
+### Correction 2026-11-07 agent.asteer：依 owner review 保留 1K／5K 縮圖原有刻度
+
+- owner `msg-fsi-2fe93a8d13f94c4d83f73e5e5ae14ab8` 明確確認：1K/5K resident 僅00/04/08/12/16/20，30K/60K resident才只標黃色實際開盤；TA主圖另循既有刻度。前段將黃色開盤擴張到fine-scale縮圖，是我的需求解讀錯誤，並非使用者要求。
+- `53144a5` 的 one-line openingLabel擴張與相關測試預期已精確收回；DYN-T-800維持1/5/30/60K×夏冬×UTC/+8共16案例，改依上述正確需求。實際tradingDate日期分界、精確UTC identity mapping、SVG緊鄰time-axis及首批sticky/Y文字/guide修正不變。此前13個RED有10個源自錯誤擴張預期，不能當作真實產品缺陷；3個timeline subset/unknown/empty RED仍屬有效修正依據。
+- 修後source Release build0errors/45warnings47.81s；Expecto255executed/255passed/0ignored/0failed/0errored0.9464543s，證據`log/20261106/20261106231813.asteer_ui00007_00010.calendar.review.green.tests.log`。未pack/publish/deploy或操作UI；第一片已獲root source review認可，全部仍待共同UI gate。請以含本Correction的最新commit整合，不單獨發布53144a5。

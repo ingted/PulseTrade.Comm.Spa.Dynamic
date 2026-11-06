@@ -227,13 +227,13 @@ let tests =
                   "2026-01-05T23:00:00Z","2026-01-06T00:00:00Z","20260106","23","07" ] do
                 for zone, openingHour, midnightHour in
                     [ SduiDisplayTimeZone.Utc,utcHour,"00"; SduiDisplayTimeZone.FixedUtcPlus8,plus8Hour,"08" ] do
-                    testCase (sprintf "DYN-T-800 resident opening remains distinct from midnight %gK %s %s" scale day (SduiDisplayTimeZone.id zone)) <| fun _ ->
+                    testCase (sprintf "DYN-T-800 resident trading date and scale-specific hour density %gK %s %s" scale day (SduiDisplayTimeZone.id zone)) <| fun _ ->
                         let ticks = RendererModel.tradingSessionAxisGrid false scale zone [|opening;midnight|] [|Some day;Some day|]
                         let expectedHours =
-                            if scale <= 5.0 then [|openingHour,true;midnightHour,false|]
+                            if scale <= 5.0 then [|midnightHour,false|]
                             else [|openingHour,true|]
                         Expect.equal (ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map (fun tick -> tick.Label,tick.IsSessionStart)) expectedHours
-                            "30K/60K only label the actual opening; 1K/5K retain ordinary four-hour marks separately."
+                            "30K/60K only label the actual opening; 1K/5K only label ordinary four-hour marks."
                         Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map (fun tick -> tick.CanonicalUtc,tick.Label)) [|opening,day|]
                             "The calendar boundary belongs to the real trading date and is never moved to UTC midnight."
 
@@ -360,7 +360,7 @@ let tests =
                 let _, main, _ = RendererModel.mainTradingTimeAxisGrid 1200.0 (float scale) SduiDisplayTimeZone.Utc times dates
                 Expect.equal (main |> Array.filter (fun tick -> not tick.IsMajor) |> Array.length) (1500 * scale / 60) "Every observed full hour still has a fine-scale tick."
                 let resident = RendererModel.tradingSessionAxisGrid false (float scale) SduiDisplayTimeZone.Utc times dates
-                Expect.isTrue (resident |> Array.filter (fun tick -> not tick.IsMajor && not tick.IsSessionStart) |> Array.forall (fun tick -> int tick.Label % 4 = 0)) "Fine-scale overview does not inherit adaptive hours."
+                Expect.isTrue (resident |> Array.filter (fun tick -> not tick.IsMajor) |> Array.forall (fun tick -> int tick.Label % 4 = 0)) "Fine-scale overview does not inherit adaptive hours."
             let times = [| for hour in 0..23 -> sprintf "2026-10-19T%02d:00:00Z" hour |]
             let resident = RendererModel.tradingSessionAxisGrid false 30.0 SduiDisplayTimeZone.Utc times (Array.create 24 (Some "20261020"))
             Expect.equal (resident |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "22" |] "30K overview still labels only the opening hour."
@@ -448,8 +448,8 @@ let tests =
                 for zone in [ SduiDisplayTimeZone.Utc; SduiDisplayTimeZone.FixedUtcPlus8 ] do
                     let ticks = RendererModel.residentTradingCalendarGrid scale zone times days
                     let hours = ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label
-                    let expected = Array.append expected [| if zone = SduiDisplayTimeZone.Utc then "22" else "06" |] |> Array.sort
-                    Expect.equal (Array.sort hours) expected "Fine-scale overviews retain four-hour multiples plus the opening; 30K/60K only mark the opening."
+                    let expected = if scale <= 5.0 then expected elif zone = SduiDisplayTimeZone.Utc then [| "22" |] else [| "06" |]
+                    Expect.equal (Array.sort hours) expected "Fine-scale overviews mark four-hour multiples; 30K/60K only mark the session opening."
                     Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map _.Label) [| "20261029" |] "Hourly density never changes the authoritative trading-day line."
                 Expect.isEmpty (RendererModel.residentTradingCalendarGrid scale SduiDisplayTimeZone.Utc [||] [||]) "Empty trading-date input is safe."
 
@@ -485,8 +485,8 @@ let tests =
                 Expect.equal (main |> Array.filter (fun tick -> tick.Label <> "") |> Array.map (fun tick -> tick.Label, tick.IsSessionStart))
                     [| "06", true; "08", false; "12", false; "16", false; "20", false; "00", false; "04", false |] "Unlabelled hourly marks do not add unwanted hour text."
                 let overview = minor false
-                Expect.equal (overview |> Array.map _.Label) [| "06"; "08"; "12"; "16"; "20"; "00"; "04" |] "The overview keeps its opening distinct from ordinary four-hour labels."
-                Expect.equal (overview |> Array.filter _.IsSessionStart |> Array.map _.Label) [| "06" |] "Only the actual opening uses the session color."
+                Expect.equal (overview |> Array.map _.Label) [| "08"; "12"; "16"; "20"; "00"; "04" |] "The overview does not get every-hour ticks or an extra session-hour label."
+                Expect.isFalse (overview |> Array.exists _.IsSessionStart) "The fine-scale overview uses ordinary hour marks only."
 
         testCase "DYN-T-763 clipped windows and unavailable metadata never invent session openings" <| fun _ ->
             let times = [| "2026-06-18T00:00:00Z"; "2026-06-18T08:00:00Z" |]

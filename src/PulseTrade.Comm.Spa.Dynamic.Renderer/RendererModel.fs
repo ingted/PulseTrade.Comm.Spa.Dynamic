@@ -4334,7 +4334,7 @@ module RendererModel =
                     let clock = local.ClockText.Substring(0, 8)
                     match Int32.TryParse(clock.Substring(0, 2)), Int32.TryParse(clock.Substring(3, 2)) with
                     | (true, hour), (true, 0) when clock.Substring(6, 2) = "00" ->
-                        let openingLabel = sessionStart
+                        let openingLabel = sessionStart && (isMainPlot || not fineScale)
                         let regularLabel = hour % (max 1 hourStep) = 0 && (isMainPlot || fineScale)
                         let shortTick = openingLabel || regularLabel || (isMainPlot && fineScale)
                         if shortTick then
