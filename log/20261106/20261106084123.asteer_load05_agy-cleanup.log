@@ -1,0 +1,8 @@
+- **該檔是否已不存在**：**否，目前仍存在**。
+- **採用方法（調查與驗證）**：
+  1. 透過 Native API `NtOpenFile` 探測，確認該檔案處於 NTFS **`STATUS_DELETE_PENDING`**（`0xC0000056`，Win32 映射為 `ERROR_ACCESS_DENIED` / 代碼 5）。
+  2. 透過 `NtQuerySystemInformation` 檢索關聯編譯行程之 Handle 表，精確定位到持有該檔案開啟 Handle 的行程。
+- **不能刪除之精確原因**：
+  - 該檔案正被常駐編譯服務 **`wsfscservice.exe`**（**PID 48740**）的 Handle **`0x240C`** 持續佔用。
+  - 先前刪除操作（如 coreutils `rm`）已成功置入刪除標記（Delete Pending），但 Windows NTFS 機制規範：只要仍有行程持有該檔案的開啟 Handle，目錄項目就不會真正移除，且任何新的開啟或刪除嘗試均會直接回傳 `ERROR_ACCESS_DENIED`。
+  - 受限於指令要求「**不要更改服務或程序**」，未終止 PID 48740 或強制關閉其 Handle。一旦該背景服務釋放該 Handle 或結束執行，NTFS 即會自動清除該檔案項目。

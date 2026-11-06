@@ -31,6 +31,41 @@ let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc avai
 
 let tests =
     testList "TA renderer model" [
+        testCase "DYN-T-773 ES price ticks use quarter increments with eight to ten readable levels" <| fun _ ->
+            for low, high in [7500.0,7520.0; 7520.0,7500.0; 7439.13,7508.87; -7.12,3.41; 0.0,2.5; 0.0,3.75] do
+                let ticks = RendererModel.priceYAxisTickValues 0.25 low high
+                Expect.isTrue (ticks.Length >= 8 && ticks.Length <= 10) "Use eight to ten levels when the price range contains enough quarters."
+                let spacings = ticks |> Array.pairwise |> Array.map (fun (a,b) -> a-b)
+                Expect.isTrue (spacings |> Array.forall (fun value -> value = spacings[0] && value > 0.0)) "Levels descend with equal positive spacing."
+                for tick in ticks do
+                    Expect.equal (tick * 4.0) (Math.Round(tick * 4.0)) "Every price is an exact quarter."
+                    Expect.isTrue (tick >= min low high && tick <= max low high) "No tick invents a price outside the displayed bounds."
+                    let formatted = tick.ToString(Globalization.CultureInfo.InvariantCulture)
+                    let parts = formatted.Split('.')
+                    Expect.isTrue (parts.Length=1 || parts[1].Length<=2) "Quarter labels need at most two decimals."
+            Expect.sequenceEqual (RendererModel.priceYAxisTickValues 0.25 7500.0 7520.0)
+                [|7520.0;7517.5;7515.0;7512.5;7510.0;7507.5;7505.0;7502.5;7500.0|]
+                "The independent 20-point example has nine 2.5-point levels."
+
+        testCase "DYN-T-774 narrow and invalid price ranges do not manufacture levels" <| fun _ ->
+            Expect.sequenceEqual (RendererModel.priceYAxisTickValues 0.25 7500.01 7500.74) [|7500.5;7500.25|] "Only two valid quarter prices exist."
+            Expect.sequenceEqual (RendererModel.priceYAxisTickValues 0.25 7500.25 7500.25) [|7500.25|] "A single price remains one level."
+            Expect.isEmpty (RendererModel.priceYAxisTickValues 0.25 7500.01 7500.24) "No legal quarter exists inside this interval."
+            for step,low,high in [0.0,0.0,1.0; -0.25,0.0,1.0; Double.NaN,0.0,1.0; 0.25,Double.NaN,1.0; 0.25,0.0,Double.PositiveInfinity] do
+                Expect.isEmpty (RendererModel.priceYAxisTickValues step low high) "Invalid input never reaches division or unbounded allocation."
+
+        testCase "DYN-T-775 price tick policy preserves fixed bounds DMI and other instruments" <| fun _ ->
+            let row = { RowId="price"; Kind=TaRowKind.Candlestick; DataRef="bars"; HeightWeight=1.0; Visible=true; Options=Map.empty; Traces=[||] }
+            let candles = RendererModel.effectiveTraces row
+            Expect.equal (RendererModel.priceYAxisTickSize "ES" (None,None) candles) (Some 0.25) "Explicit ES identity enables the price grid."
+            for instrument in ["NQ";"BTC";"";"ES-other"] do
+                Expect.isNone (RendererModel.priceYAxisTickSize instrument (None,None) candles) "Do not guess an instrument from a title or prefix."
+            for bounds in [(Some 0.1,None);(None,Some 3.2);(Some 0.0,Some 100.0)] do
+                Expect.isNone (RendererModel.priceYAxisTickSize "ES" bounds candles) "Explicit bounds retain their existing policy."
+            let dmi = RendererModel.effectiveTraces { row with Kind=TaRowKind.Dmi }
+            Expect.isNone (RendererModel.priceYAxisTickSize "ES" (None,None) dmi) "DMI values are not prices."
+            Expect.sequenceEqual (RendererModel.yAxisTickValues 5 0.0 100.0) [|100.0;75.0;50.0;25.0;0.0|] "Legacy non-price ticks are unchanged."
+
         testCase "DYN-T-765 main zoom reveals four-hour labels instead of keeping only eight-hour candidates" <| fun _ ->
             let start = DateTime(2026,10,19,0,0,0,DateTimeKind.Utc)
             let times = Array.init 375 (fun index -> start.AddMinutes(float (index * 30)).ToString("yyyy-MM-ddTHH:mm:ssZ"))
@@ -286,8 +321,9 @@ let tests =
 
         for label, trackWidth, startX, currentX, expected in
             [ "forward 25 to 65", 1000.0, 250.0, 650.0, Some { StartIndex = 3375; Count = 600 }
-              "reverse same bounds", 1000.0, 650.0, 250.0, Some { StartIndex = 3375; Count = 600 }
-              "reverse 85 to 15", 1000.0, 850.0, 150.0, Some { StartIndex = 3225; Count = 1050 }
+              // Load03 Q03 supersedes the old reverse min/max-span assertions.
+              "reverse restores full window at resident end", 1000.0, 650.0, 250.0, Some { StartIndex = 3000; Count = 1500 }
+              "reverse near resident end", 1000.0, 850.0, 150.0, Some { StartIndex = 3000; Count = 1500 }
               "clipped full window", 1000.0, -40.0, 1040.0, Some { StartIndex = 3000; Count = 1500 }
               "minimum stays inside captured window", 1000.0, 999.0, 1000.0, Some { StartIndex = 4488; Count = 12 }
               "stationary is not a range", 1000.0, 500.0, 500.0, None
@@ -300,14 +336,26 @@ let tests =
                     (RendererModel.tryMainPlotRangeWindow 12 1500 4500
                         { StartIndex = 3000; Count = 1500 } trackWidth startX currentX)
                     expected
-                    "the normalized pointer span owns both edges within the captured viewport"
+                    "forward selects the captured span; reverse restores a centered full window within resident bounds"
+
+        for label, residentCount, captured, pressedX, releasedX, expected in
+            [ "midpoint of narrow capture", 4500, { StartIndex = 1500; Count = 600 }, 500.0, 100.0, { StartIndex = 1050; Count = 1500 }
+              "different release keeps pressed center", 4500, { StartIndex = 1500; Count = 600 }, 500.0, 400.0, { StartIndex = 1050; Count = 1500 }
+              "off-center press", 4500, { StartIndex = 1500; Count = 600 }, 850.0, 150.0, { StartIndex = 1260; Count = 1500 }
+              "near resident start", 4500, { StartIndex = 0; Count = 600 }, 100.0, 0.0, { StartIndex = 0; Count = 1500 }
+              "short resident", 800, { StartIndex = 200; Count = 100 }, 500.0, 100.0, { StartIndex = 0; Count = 800 } ] do
+            testCase ("DYN-T-776 reverse range reset " + label) <| fun _ ->
+                Expect.equal
+                    (RendererModel.tryMainPlotRangeWindow 12 1500 residentCount captured 1000.0 pressedX releasedX)
+                    (Some expected)
+                    "mouse-down identifies the center independently of release distance; resident edges limit the restored window"
 
         testCase "DYN-T-746 range after a prior selection and empty capture" <| fun _ ->
             Expect.equal
                 (RendererModel.tryMainPlotRangeWindow 12 1500 4500
                     { StartIndex = 3375; Count = 600 } 1000.0 850.0 150.0)
-                (Some { StartIndex = 3465; Count = 420 })
-                "the reverse selection uses the new visible window, not the whole resident domain"
+                (Some { StartIndex = 3000; Count = 1500 })
+                "reverse expands beyond the narrow capture and clamps only at the resident edge"
             Expect.isNone
                 (RendererModel.tryMainPlotRangeWindow 12 1500 0
                     { StartIndex = 0; Count = 0 } 1000.0 250.0 650.0)

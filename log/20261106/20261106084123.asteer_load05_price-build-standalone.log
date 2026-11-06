@@ -1,0 +1,9 @@
+C:\Users\Administrator\.nuget\packages\websharper.fsharp\10.1.7.680\build\WebSharper.FSharp.targets(64,5): error MSB6006: "wsfsc.exe" exited with code -532462766. [E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Renderer\PulseTrade.Comm.Spa.Dynamic.Renderer.fsproj]
+
+Build FAILED.
+
+C:\Users\Administrator\.nuget\packages\websharper.fsharp\10.1.7.680\build\WebSharper.FSharp.targets(64,5): error MSB6006: "wsfsc.exe" exited with code -532462766. [E:\deletable\asteer-load05\src\PulseTrade.Comm.Spa.Dynamic.Renderer\PulseTrade.Comm.Spa.Dynamic.Renderer.fsproj]
+    0 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:01.27

@@ -1323,7 +1323,7 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvgReactivePreparedLiveWithYAxis yBounds palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh (mainPlotInteractionMode: View<TaMainPlotInteractionMode>) currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
+    let compositeSvgReactivePreparedLiveWithYAxisTicks priceTickSize yBounds palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh (mainPlotInteractionMode: View<TaMainPlotInteractionMode>) currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
@@ -1626,6 +1626,15 @@ module TaWorkspaceRenderer =
         let mutable latestPointGeometry = initialGeometry
         let _, initialCandleSeries, initialLinePoints, initialMarkerPlacements, initialOverviewStripePlacements, initialCursorReaders, initialLegendReaders, initialLatestLegendValues, initialLow, initialHigh = initialGeometry
         let markerVisualState = Var.Create(initialMarkerPlacements, initialOverviewStripePlacements, initialLow, initialHigh)
+        let yAxisTicks =
+            markerVisualState.View
+            |> View.Map (fun (_, _, low, high) ->
+                let ticks =
+                    match priceTickSize with
+                    | Some tickSize -> RendererModel.priceYAxisTickValues tickSize low high
+                    | None -> RendererModel.yAxisTickValues 5 low high
+                ticks, low, high)
+        let tickY low high value = RendererModel.normalize low high (top + plotHeight) top value
         let readerStates =
             Array.map3
                 (fun cursorReader legendReader latestLegend -> ref (cursorReader, legendReader, latestLegend))
@@ -2132,9 +2141,15 @@ module TaWorkspaceRenderer =
                         |> RendererModel.tryNearestPointHitForTrace preferredTraceId pointX pointY
                         |> Option.iter (fun hit -> onPointActivated element hit candidates))
         ] [
-            for gridIndex in 0 .. 4 do
-                let y = top + plotHeight * float gridIndex / 4.0
-                yield svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" (fixedText y); svgAttr "y2" (fixedText y); svgAttr "stroke" palette.Grid; svgAttr "stroke-width" "1" ] []
+            yield
+                yAxisTicks
+                |> View.Map (fun (ticks, low, high) ->
+                    ticks
+                    |> Array.map (fun value ->
+                        let y = fixedText (tickY low high value)
+                        svgElement "line" [ svgAttr "x1" "0"; svgAttr "x2" "1000"; svgAttr "y1" y; svgAttr "y2" y; svgAttr "stroke" palette.Grid; svgAttr "stroke-width" "1" ] [])
+                    |> Doc.Concat)
+                |> Doc.EmbedView
 
             for traceIndex, trace, pathStates in candlePathStates do
                 let traceTestId = "ta-candle-" + rowId + "-" + trace.TraceId
@@ -2263,7 +2278,8 @@ module TaWorkspaceRenderer =
                 Attr.Create "data-testid" ("ta-y-axis-" + rowId + "-" + side)
                 Attr.Create "data-ta-y-axis-side" side
                 Attr.Create "data-ta-y-axis-row-id" rowId
-                Attr.Create "data-ta-y-axis-tick-count" "5"
+                Attr.Dynamic "data-ta-y-axis-tick-count" (yAxisTicks |> View.Map (fun (ticks, _, _) -> string ticks.Length))
+                Attr.Create "data-ta-y-axis-price-tick-size" (priceTickSize |> Option.map fixedText |> Option.defaultValue "")
                 Attr.Dynamic "style" (
                     chartPixelHeight.View
                     |> View.Map (fun value ->
@@ -2296,33 +2312,31 @@ module TaWorkspaceRenderer =
                             if side = "left" then leftYAxisCursorElement <- node |> As<Element>
                             else rightYAxisCursorElement <- node |> As<Element>)
                     ] [ text "" ]
-                for index in 0 .. 4 do
-                    let tickValue =
-                        markerVisualState.View
-                        |> View.Map (fun (_, _, low, high) ->
-                            RendererModel.yAxisTickValues 5 low high
-                            |> Array.tryItem index
-                            |> Option.map fixedText
-                            |> Option.defaultValue "")
-                    let y = (top + plotHeight * float index / 4.0) * 100.0 / height
-                    let translate =
-                        if index = 0 then "translateY(0)"
-                        elif index = 4 then "translateY(-100%)"
-                        else "translateY(-50%)"
-                    yield
-                        span [
-                            Attr.Create "data-ta-y-axis-tick-index" (string index)
-                            Attr.Dynamic "data-ta-y-axis-value" tickValue
-                            attr.style (
-                                "box-sizing:border-box; position:absolute; top:"
-                                + fixedText y
-                                + "%; left:0; width:100%; height:14px; line-height:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:"
-                                + textAlign
-                                + "; transform:"
-                                + translate
-                                + "; "
-                                + padding)
-                        ] [ textView tickValue ]
+                yield
+                    yAxisTicks
+                    |> View.Map (fun (ticks, low, high) ->
+                        ticks
+                        |> Array.mapi (fun index value ->
+                            let y = tickY low high value * 100.0 / height
+                            let translate =
+                                if index = 0 then "translateY(0)"
+                                elif index = ticks.Length - 1 then "translateY(-100%)"
+                                else "translateY(-50%)"
+                            span [
+                                Attr.Create "data-ta-y-axis-tick-index" (string index)
+                                Attr.Create "data-ta-y-axis-value" (fixedText value)
+                                attr.style (
+                                    "box-sizing:border-box; position:absolute; top:"
+                                    + fixedText y
+                                    + "%; left:0; width:100%; height:14px; line-height:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:"
+                                    + textAlign
+                                    + "; transform:"
+                                    + translate
+                                    + "; "
+                                    + padding)
+                            ] [ text (fixedText value) ])
+                        |> Doc.Concat)
+                    |> Doc.EmbedView
             ]
 
         let chart =
@@ -2367,6 +2381,9 @@ module TaWorkspaceRenderer =
                 placements
                 stripes)
 
+    let compositeSvgReactivePreparedLiveWithYAxis yBounds palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
+        compositeSvgReactivePreparedLiveWithYAxisTicks None yBounds palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
+
     let compositeSvgReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
         compositeSvgReactivePreparedLiveWithYAxis (None, None) palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
 
@@ -2408,7 +2425,10 @@ module TaWorkspaceRenderer =
         let hasCursorEventCapability =
             traces
             |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Marker || trace.Kind = TaTraceKind.OverviewStripe)
-        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithYAxis (RendererModel.rowYAxisBounds row) palette displayTime row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
+        let yBounds = RendererModel.rowYAxisBounds row
+        let instrument = state.Document |> Option.map (fun document -> (RendererModel.queryDraft document.DefaultView).Instrument) |> Option.defaultValue ""
+        let priceTickSize = RendererModel.priceYAxisTickSize instrument yBounds traces
+        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithYAxisTicks priceTickSize yBounds palette displayTime row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
         let title = rowTitle row traces
         let heightBounds = RendererModel.rowHeightBounds row traces
         let cursorTag =

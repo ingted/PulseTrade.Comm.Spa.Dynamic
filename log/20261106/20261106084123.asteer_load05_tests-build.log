@@ -1,0 +1,16 @@
+E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs(479,63): warning FS0046: The identifier 'component' is reserved for future use by F# [E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj]
+E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs(485,31): warning FS0046: The identifier 'component' is reserved for future use by F# [E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj]
+E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs(513,45): warning FS0046: The identifier 'component' is reserved for future use by F# [E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj]
+E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs(519,31): warning FS0046: The identifier 'component' is reserved for future use by F# [E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj]
+  PulseTrade.Comm.Spa.Dynamic.Renderer.Tests -> E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\bin\Release\net10.0\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.dll
+
+Build succeeded.
+
+E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs(479,63): warning FS0046: The identifier 'component' is reserved for future use by F# [E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj]
+E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs(485,31): warning FS0046: The identifier 'component' is reserved for future use by F# [E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj]
+E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs(513,45): warning FS0046: The identifier 'component' is reserved for future use by F# [E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj]
+E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\TAResearchRendererTests.fs(519,31): warning FS0046: The identifier 'component' is reserved for future use by F# [E:\deletable\asteer-load05\tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests\PulseTrade.Comm.Spa.Dynamic.Renderer.Tests.fsproj]
+    4 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:12.75

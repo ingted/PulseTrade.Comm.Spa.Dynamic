@@ -543,6 +543,41 @@ module RendererModel =
             let denominator = float (tickCount - 1)
             Array.init tickCount (fun index -> upper - (upper - lower) * float index / denominator)
 
+    let priceYAxisTickValues tickSize low high =
+        let finite value = not (Double.IsNaN value || Double.IsInfinity value)
+        if not (finite tickSize && tickSize > 0.0 && finite low && finite high) then [||]
+        else
+            let firstUnit = Math.Ceiling(min low high / tickSize)
+            let lastUnit = Math.Floor(max low high / tickSize)
+            let span = lastUnit - firstUnit
+            if not (finite firstUnit && finite lastUnit && finite span) || span < 0.0 then [||]
+            else
+                let minimumCount = int (min 8.0 (span + 1.0))
+                let candidates =
+                    [| yield 1.0
+                       for count in [| 8; 9; 10 |] do
+                           let step = span / float (count - 1)
+                           yield max 1.0 (Math.Floor step)
+                           yield max 1.0 (Math.Ceiling step) |]
+                    |> Array.distinct
+                    |> Array.map (fun step ->
+                        let count = int (min 10.0 (Math.Floor(span / step) + 1.0))
+                        step, count)
+                let step, count =
+                    candidates
+                    |> Array.minBy (fun (step, count) ->
+                        count < minimumCount, -(float (count - 1) * step), abs(count - 9), step)
+                let start = firstUnit + Math.Floor((span - float (count - 1) * step) / 2.0)
+                Array.init count (fun index -> (start + float (count - 1 - index) * step) * tickSize)
+
+    let priceYAxisTickSize instrument yBounds (traces: TaTraceSpec array) =
+        if not (String.IsNullOrWhiteSpace instrument)
+           && instrument.Trim().ToUpper() = "ES"
+           && yBounds = (None, None)
+           && (traces |> Array.exists (fun trace -> trace.Visible && trace.Kind = TaTraceKind.Candlestick))
+        then Some 0.25
+        else None
+
     let tryYAxisCursorValue top plotHeight low high pointerY =
         let finite value = not (Double.IsNaN value || Double.IsInfinity value)
         if
@@ -3686,6 +3721,13 @@ module RendererModel =
         let captured = clampWindow minimumCount maximumCount referenceLength activeWindow
         if referenceLength <= 0 || activeWindow.Count <= 0 || captured.Count <= 0 || width <= 0.0 then
             None
+        elif currentX < startX then
+            let pressedSlot = cursorIndexFromRatio captured.Count (startX / trackWidth) |> Option.defaultValue 0
+            let restoredCount = min referenceLength maximumCount
+            clampWindow minimumCount maximumCount referenceLength
+                { StartIndex = captured.StartIndex + pressedSlot - restoredCount / 2
+                  Count = restoredCount }
+            |> Some
         else
             let startSlot = int (Math.Floor(left / trackWidth * float captured.Count))
             let endExclusive = int (Math.Ceiling((left + width) / trackWidth * float captured.Count))

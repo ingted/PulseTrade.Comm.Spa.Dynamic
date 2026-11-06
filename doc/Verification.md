@@ -642,3 +642,14 @@ Dynamic0.1.47、Ptcs0.2.6、Ptcs.Client0.2.10、ACL0.2.13、Login0.2.12：五包
 ## 2026-11-02 PTCS 0.3.8 consumer regression
 
 Dynamic33 / Ptcs15 / TaClient17 均 0 ignored/failed/error，實際 restore/build/run；source metadata only，不是 Research / Renderer / Interactive UI 驗收。完整 scope / package / deployment evidence 回鏈 G:/PulseTrade.fs/log/20261102/20261102035400.ptc_cpu_security_audit.log。
+
+Checkpoint recorded 2026-11-06 09:27:29 +08:00
+### 2026-11-06 asteer Load03-A / Load05 price source checkpoint — INCOMPLETE
+
+- 依03 Questions反向框選語意：mouse-down candle作中心，恢復至1500根，resident邊界不足時平移整窗；正向範圍與invalid拒絕保留。舊reverse min/max測試由明確新需求取代，新增5組獨立案例。
+- ES自動candlestick Y軸使用0.25倍數、範圍允許時8–10個等距ticks；固定Y/DMI/其他商品維持原邏輯，OHLC資料不變。既有WithYAxis API留相容wrapper。
+- Renderer source build成功：0 errors/44 warnings；UseRendererSource=true完整Expecto183/183，0ignored/failed/errored。producer與test-copy DLL SHA256同為87C45657FB38176B8783CC97FEAD7C1791A2244F9F3D4CD442A6B20C8064DD29。
+- 修前RED：標準Expecto1failed（1560/240 vs1050/1500）；真18882原始ES30K/60K頁面反向601→241，JSON/PNG保存。此候選尚未整合host／發package／取得修後UI證據，不表示03/04/05整體完成。
+- 編譯曾因共用wsfscservice持有generatedlog而crash；持有者faedilus確認無activebuild後僅停止舊daemon。官方standalone compiler重跑已無crash；新碼兩個不支援的String overload已改用proxy列明的ToUpper。未改ACL或package依賴。
+- Evidence：log/20261106/20261106084123.asteer_load05.log；同prefix_source-build-r4.log、_source-tests-r4.log；log/20261106/20261106084123.asteer_load03_reverse-baseline.json/.png；log/20261106/20261106091700_issue_navigation.hypothesis.md（內含檔名時間Correction）。
+- 後續：03外展／晚到回跳／scale右錨／trade定位／輔助線；04overview anchors/axis/mask/gesture共同event-time domain（保留1500/4500）；05sticky。共同Renderer由asteer單一owner；backend/core02/Research mapper/BacktestWorkspace Client DTO仍原owner。
