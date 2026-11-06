@@ -496,3 +496,6 @@ Core61 supersedes unpublished-to-host60; reuse per-project outputs, new immutabl
 ## Current：2026-11-06 overview Move/Resize 語意（RFC-0036 amendment）
 
 不同 overview/active 尺度的根數沒有相同座標單位。現有 NavigatorWindow 同時表示移動與縮放，consumer 無法可靠知道是否保留 count；依 count 相等推論會把等寬 Resize 誤判。新增明確 NavigatorMove，舊用途保持。來源為 canonical Research Questions.md 03/04 與 owner msg-fsi-d797b3aeb2e44366bfdfced3db1eb14c。contract 可驗，gesture/mapper/真Frame驗收仍未完成。
+
+
+2026-11-06 時間顯示補充（RFC0036）：GLOBAL稀疏anchors不能承諾任意ordinal的精確時間，owner接受明標「約」的display-only值；導航authority仍由實際資料決定。獨立overview的active draft為None不代表gesture結束，清理須同時尊重pending事件與queued下一手勢。

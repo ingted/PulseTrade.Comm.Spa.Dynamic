@@ -806,17 +806,18 @@ module TaWorkspaceRenderer =
     let residentTimeAxisWithPalette palette displayTime timestamps =
         residentTimeAxisForScaleWithPalette palette displayTime (RendererModel.residentCalendarScale timestamps) timestamps
 
-    let boundaryTimeLabels palette (displayTime: TaRendererDisplayTime) testId rowId boundsView =
+    let boundaryTimeLabelsWithApproximation palette (displayTime: TaRendererDisplayTime) testId rowId captions boundsView =
         View.Map2 (fun bounds zone ->
-            let first, last = bounds |> Option.defaultValue ("", "")
-            let label prefix value = prefix + (if value = "" then "—" else TaDisplayTimeFormatter.fullOrOriginal zone value)
-            let firstText, lastText = label "首根 " first, label "末根 " last
+            let first, last, approximate = bounds |> Option.defaultValue ("", "", false)
+            let label prefix value = (if approximate then "約 " else "") + prefix + (if value = "" then "—" else TaDisplayTimeFormatter.fullOrOriginal zone value)
+            let firstText, lastText = label (fst captions) first, label (snd captions) last
             div [
                 Attr.Create "data-testid" testId
                 Attr.Create "data-ta-main-boundary-row" rowId
                 Attr.Create "data-canonical-start" first
                 Attr.Create "data-canonical-end" last
                 Attr.Create "data-preview" "false"
+                Attr.Create "data-time-approximate" (if approximate then "true" else "false")
                 Attr.Create "data-default-start-text" firstText
                 Attr.Create "data-default-end-text" lastText
                 attr.style ("display:flex; flex:1 1 460px; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:2px 12px; min-width:0; min-height:18px; padding:0 4px; font-family:Consolas,monospace; font-size:10px; color:" + palette.AxisText + "; background:" + palette.AxisSurface + ";")
@@ -825,6 +826,10 @@ module TaWorkspaceRenderer =
                 span [Attr.Create "data-time-boundary-end" "true"; attr.style "white-space:nowrap;"] [text lastText]
             ] :> Doc) boundsView displayTime.Zone
         |> Doc.EmbedView
+
+    let boundaryTimeLabels palette displayTime testId rowId boundsView =
+        boundaryTimeLabelsWithApproximation palette displayTime testId rowId ("首根 ","末根 ")
+            (boundsView |> View.Map (Option.map (fun (first,last) -> first,last,false)))
 
     let timeAxis testId rowId timestamps =
         let zone = Var.Create SduiDisplayTimeZone.Utc
@@ -2956,6 +2961,10 @@ module TaWorkspaceRenderer =
         let addSignalPeriod = Var.Create "9"
         let draftWindow = Var.Create<TaVisibleWindow option> None
         let navigatorSelectionRatiosOverride = Var.Create<Option<float * float>> None
+        let navigatorBoundaryTimesOverride = Var.Create<Option<string * string>> None
+        let clearNavigatorPreview () =
+            navigatorSelectionRatiosOverride.Value <- None
+            navigatorBoundaryTimesOverride.Value <- None
         let mutable renderedNavigatorDraft: TaVisibleWindow option = None
         let globalResidentDraft = Var.Create<TaResidentCoverageWindow option> None
         let mutable pendingGlobalResidentIntent: TaCoverageWindowIntent option = None
@@ -2971,10 +2980,6 @@ module TaWorkspaceRenderer =
         let mutable finishMainPlotDrag: (Event -> unit) option = None
         let mutable cancelMainPlotDrag: (unit -> unit) option = None
         let mutable suppressNextMainPlotClick = false
-        draftWindow.View
-        |> View.Sink (fun draft ->
-            if draft.IsNone && finishNavigatorDrag.IsNone then
-                navigatorSelectionRatiosOverride.Value <- None)
         let mutable activeNavigatorCursor: string option = None
         let mutable navigatorCursorAfterRender: string option = None
         let mutable chartRenderSequence = 0
@@ -3287,7 +3292,7 @@ module TaWorkspaceRenderer =
             publishViewportDispatchDiagnostics chartStackElement
         let rejectNavigatorDraft feedback =
             draftWindow.Value <- None
-            navigatorSelectionRatiosOverride.Value <- None
+            clearNavigatorPreview ()
             setUiState { uiState.Value with Feedback = feedback }
         let settleVisibleRangeDraft () =
             if finishNavigatorDrag.IsNone && pendingBoundaryPan.IsNone && committedCoverageReady () then
@@ -3296,7 +3301,11 @@ module TaWorkspaceRenderer =
                         queuedViewportIntent.IsSome
                         draftWindow.Value
                 if queuedViewportIntent.IsNone && pendingEventRangeSettlement.IsNone then
-                    navigatorSelectionRatiosOverride.Value <- None
+                    clearNavigatorPreview ()
+        draftWindow.View
+        |> View.Sink (fun draft ->
+            if RendererModel.navigatorPreviewCanClear draft.IsSome finishNavigatorDrag.IsSome pendingBoundaryPan.IsSome pendingEventRangeSettlement.IsSome queuedViewportIntent.IsSome then
+                clearNavigatorPreview ())
         settleCommittedViewportDraft <- fun () ->
             if uiState.Value.PendingActionId.IsNone then
                 settleVisibleRangeDraft ()
@@ -3520,7 +3529,7 @@ module TaWorkspaceRenderer =
                     if completed then
                         pendingEventRangeSettlement <- None
                         if pending.ViewportIntentGeneration = viewportIntentGeneration && finishNavigatorDrag.IsNone && queuedViewportIntent.IsNone then
-                            navigatorSelectionRatiosOverride.Value <- None
+                            clearNavigatorPreview ()
                     window |> Option.iter (fun window ->
                         let followLatest = window.StartIndex = RendererModel.viewportMaximumStart timeline.Length window
                         setUiState
@@ -3970,7 +3979,7 @@ module TaWorkspaceRenderer =
                 residentNavigatorAuthority.Value <- None
                 queuedViewportIntent <- None
                 draftWindow.Value <- None
-                navigatorSelectionRatiosOverride.Value <- None
+                clearNavigatorPreview ()
                 setUiState
                     { uiState.Value with
                         HiddenRows = Set.empty
@@ -4778,6 +4787,7 @@ module TaWorkspaceRenderer =
                         RendererModel.resolveWindow options.MinimumVisibleBars (maximumVisibleBarsNow ()) localTotal uiState.Value.FollowLatest uiState.Value.Window
                     let publishedNavigatorDraft = draftWindow.Value
                     let publishedNavigatorRatios = navigatorSelectionRatiosOverride.Value
+                    let publishedNavigatorTimes = navigatorBoundaryTimesOverride.Value
                     let loadedCoverageSnapshot =
                         dragCoverageProjection
                         |> Option.map (fun projection ->
@@ -4790,6 +4800,13 @@ module TaWorkspaceRenderer =
                         snapshotKey.Identity = runtimeState.Value.Identity
                         && (coverageProjection runtimeState.Value
                             |> Option.exists (RendererModel.residentGestureScopeMatches projection))
+                    let capturedNavigatorTimeline =
+                        loadedCoverageSnapshot
+                        |> Option.bind (fun (_, _, _, projection, _) ->
+                            RendererModel.tryOverviewTimeline projection
+                            |> Option.filter (Array.isEmpty >> not)
+                            |> Option.map (fun _ -> projection.OverviewAnchors |> Array.map _.EventTimeUtc))
+                        |> Option.defaultWith (fun () -> RendererModel.referenceTimelineForDocumentPrepared dragDocument dragPreparedData)
                     let overviewDomain =
                         loadedCoverageSnapshot
                         |> Option.bind (fun (_, _, timeline, projection, _) ->
@@ -4897,6 +4914,7 @@ module TaWorkspaceRenderer =
                             clampRatio (fst frozenStartRatios + ratioDelta (draft.StartIndex - committed.StartIndex)),
                             clampRatio (snd frozenStartRatios + ratioDelta (draftEnd - committedEnd))
                         navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft committed)
+                        navigatorBoundaryTimesOverride.Value <- RendererModel.selectionBoundaryTimes capturedNavigatorTimeline (frozenRatiosForDraft committed)
                         (navigatorRoot |> As<HTMLElement>).Style.SetProperty("cursor", "grabbing")
                         let startClientX =
                             RendererModel.navigatorDragAnchorClientX
@@ -4931,6 +4949,7 @@ module TaWorkspaceRenderer =
                                 match pendingDraft with
                                 | Some draft ->
                                     navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft draft)
+                                    navigatorBoundaryTimesOverride.Value <- RendererModel.selectionBoundaryTimes capturedNavigatorTimeline (frozenRatiosForDraft draft)
                                     if not usesOverviewTimeline then draftWindow.Value <- Some draft
                                 | None -> ()
 
@@ -5007,6 +5026,7 @@ module TaWorkspaceRenderer =
                                         (if usesOverviewTimeline then None else draftWindow.Value)
                                         pendingDraft
                                 navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft draft)
+                                navigatorBoundaryTimesOverride.Value <- RendererModel.selectionBoundaryTimes capturedNavigatorTimeline (frozenRatiosForDraft draft)
                                 if not usesOverviewTimeline then draftWindow.Value <- Some draft
                                 let requestedStart = committed.StartIndex + latestRawDelta
                                 setDragDiagnostic "data-drag-last-delta" (string latestRawDelta)
@@ -5115,7 +5135,7 @@ module TaWorkspaceRenderer =
                                 | _ -> commitLocalDraft ()
                                 if draftWindow.Value.IsNone
                                    && not (usesOverviewTimeline && (pendingEventRangeSettlement.IsSome || queuedViewportIntent.IsSome || uiState.Value.PendingActionId.IsSome)) then
-                                    navigatorSelectionRatiosOverride.Value <- None
+                                    clearNavigatorPreview ()
                                 cleanup ()
 
                         moveHandler <-
@@ -5133,6 +5153,7 @@ module TaWorkspaceRenderer =
                                     activeNavigatorCursor <- None
                                     if not usesOverviewTimeline then draftWindow.Value <- publishedNavigatorDraft
                                     navigatorSelectionRatiosOverride.Value <- publishedNavigatorRatios
+                                    navigatorBoundaryTimesOverride.Value <- publishedNavigatorTimes
                                     setDragDiagnostic "data-drag-outcome" "cancelled"
                                     cleanup ())
 
@@ -6783,7 +6804,9 @@ module TaWorkspaceRenderer =
                                                             | None -> ())
                                                         finishNavigatorDragFromElement
                                                     boundaryTimeLabels currentPlotPalette displayTime "ta-resident-boundary-times" ""
-                                                        (selectionWindow |> View.Map (RendererModel.selectionBoundaryTimes overviewDisplayTimeline))
+                                                        (View.Map2 (fun frozen current -> frozen |> Option.orElse current)
+                                                            navigatorBoundaryTimesOverride.View
+                                                            (selectionWindow |> View.Map (RendererModel.selectionBoundaryTimes overviewDisplayTimeline)))
                                                     match independentOverviewTimeline with
                                                     | Some timeline -> residentTimeAxisWithPalette currentPlotPalette displayTime timeline
                                                     | None ->
@@ -6830,6 +6853,16 @@ module TaWorkspaceRenderer =
                                                         |> RendererModel.globalResidentSelectionRatios globalOverview)
                                                 let globalPoints = RendererModel.overviewPointsForAnchors globalOverview.Anchors
                                                 let globalTimeline = globalOverview.Anchors |> Array.map _.EventTimeUtc
+                                                let globalBoundaryTimes =
+                                                    View.Map2 (fun draft ready ->
+                                                        match draft with
+                                                        | Some target ->
+                                                            RendererModel.globalResidentBoundaryTimes globalOverview.Anchors target
+                                                            |> Option.map (fun (first,last) -> first,last,true)
+                                                        | None when ready ->
+                                                            RendererModel.visibleBoundaryTimes currentReferenceTimeline {StartIndex=0;Count=currentReferenceTimeline.Length}
+                                                            |> Option.map (fun (first,last) -> first,last,false)
+                                                        | None -> None) globalResidentDraft.View preparedRowsReady.View
                                                 let globalRangeText =
                                                     displayTime.Zone
                                                     |> View.Map (fun zone ->
@@ -6882,6 +6915,8 @@ module TaWorkspaceRenderer =
                                                                     (element |> As<HTMLElement>).Style.SetProperty("cursor", cursor)))
                                                             startGlobalResidentDrag
                                                             finishGlobalResidentDragFromElement
+                                                        boundaryTimeLabelsWithApproximation currentPlotPalette displayTime "ta-global-boundary-times" ""
+                                                            ("載入首根 ","載入末根 ") globalBoundaryTimes
                                                         globalCalendarAxisWithPalette
                                                             currentPlotPalette
                                                             "ta-global-overview-time-axis"

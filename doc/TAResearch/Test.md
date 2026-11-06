@@ -225,3 +225,6 @@ WBS: `doc/TAResearch/WBS.md`
 ## 2026-11-06 NavigatorMove contract 與18883驗收
 
 DYN-T-782：MainPlotPan／NavigatorWindow／NavigatorMove三用途typed codec roundtrip。DYN-T-783：新用途拒絕ordinal、direction、open-ended混用。DYN-T-784：request cap1500之0/1/1500/1501邊界及禁止作resident relocation。Contracts52→59全過；Renderer209既有案例全過，含tick/reverse/sticky/guides。真資料結果與未驗項見doc/Verification.md；不以unit等同UI通過。
+
+
+2026-11-06 DYN-T-795/796/797：真anchor近似標示的lookup、invalid/overflow、pending gesture預覽保留與settled清理。Renderer228/228通過；此為model/source驗證，GLOBAL/TA/resident實際layout及late-frame操作須新版browser gate，見doc/Verification.md。

@@ -3591,6 +3591,24 @@ module RendererModel =
             let lastExclusive = int(Math.Ceiling(max 0.0 (min 1.0 right) * float timeline.Length))
             visibleBoundaryTimes timeline {StartIndex=first;Count=lastExclusive-first}
 
+    // Display only: sparse, sorted real anchors cannot supply an exact market
+    // time for every GLOBAL ordinal. Never use these labels as navigation input.
+    let globalResidentBoundaryTimes (anchors: TaOverviewAnchor array) (window: TaResidentCoverageWindow) =
+        if anchors.Length=0 || window.StartObservationOrdinal<0L || window.ObservationCount<=0
+           || window.StartObservationOrdinal>Int64.MaxValue-int64(window.ObservationCount-1) then None
+        else
+            let at ordinal =
+                let mutable low = 0
+                let mutable high = anchors.Length
+                while low < high do
+                    let middle = low + (high-low)/2
+                    if anchors[middle].ObservationOrdinal <= ordinal then low <- middle+1 else high <- middle
+                anchors[max 0 (low-1)].EventTimeUtc
+            Some(at window.StartObservationOrdinal, at (window.StartObservationOrdinal+int64(window.ObservationCount-1)))
+
+    let navigatorPreviewCanClear draftPresent dragging coveragePending eventRangePending queued =
+        not (draftPresent || dragging || coveragePending || eventRangePending || queued)
+
     let navigatorSelectionRatiosForRenderWithAuthority
         activeGestureOverride
         (projection: TaLoadedCoverageProjection option)

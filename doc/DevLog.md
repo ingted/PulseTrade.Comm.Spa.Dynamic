@@ -2561,3 +2561,14 @@ Scoped bumpVersion同步Renderer→Contracts[0.1.43]，nupkgSHA19AB70AB10B919CE8
 沿用Display time zone，在既有TA guide footer顯示可視時間軸的首末K時間；主圖拖曳時顯示captured timeline的選取起迄，cleanup恢復既有時間。resident navigator從實際繪製anchors與selection ratios顯示首末K，跨休市不插值假時間。沒有新RPC、timer或viewport authority。GLOBAL稀疏anchors的exact/approximation契約已詢問owner aea41a7e，尚未新增GLOBAL時間顯示。
 
 DYN793/794驗實際首末bar、gap、UTCsuffix、單根、空值與非法selection；Renderer225/225、0ignored/failed/errored0.9329147s。Release build0errors45warnings46.10s（44既有及1個新增非必要upcast警告）；producer/testSHA相同37BCD70D9EEC8CAFCE40F778618A55FB3A8C72F3D77FF3BDD5C6F5FE1516165B。Evidence：log/20261106/20261106084123.asteer_load03_boundary-time-build.log與boundary-time-tests.log（同prefix）。尚未pack／部署／browser測量layout或拖曳時間，本checkpoint不可當UI完成。
+
+
+## 2026-11-06 GLOBAL 時間與 navigator 預覽生命期 checkpoint
+
+依 owner msg-fsi-63369a207c294d4eb45c0addfcdb0b55，GLOBAL 拖曳從實際稀疏 anchors 取得附近時間並明標「約」；只作 label，不回寫導航 ordinal、request UTC 或行情資料。資料 ready 後改顯示實際 resident 首末 K 時間，未 ready 不標成精確值。TA／resident 仍用既有 Display time zone，跨休市不製造不存在的 K 棒。
+
+修正獨立 overview 不寫 active draftWindow 時，舊 None sink 提早清掉 mask 的問題：只有 drag／coverage／event-range／queued intent 全部結束才能清 preview。拖曳時同步凍結 mask 及其真實時間軸，晚到 frame 不得用新時間軸重新解讀舊 mask；cancel 恢復前態。
+
+DYN-T-795/796 驗 GLOBAL 真實 anchor 查找與非法／overflow 拒絕；DYN-T-797 驗 held/drop-pending/coverage/queued/settled 的清理條件。最終 Release build0errors/45warnings（44既有＋1個非必要upcast）、42.98s；Renderer Expecto228/228、0ignored/failed/errored、0.8823107s。producer/test DLL SHA256：5B7D8CD2C9AD04A8B5611AA70423953364985ABC797A6A10EC91EF62C07C25E1。Evidence：log/20261106/20261106084123.asteer_load03_global-time-{build-r2,tests-r2}.log；第一輪227/227記錄保留。
+
+這是 source checkpoint；版本與包由 daedilus 負責，現有 .35 不覆寫，本片連同 faf65a6 留下一包。新版真 browser 的標籤佈局、拖曳、late frame、guide/tagging互斥與最小視窗邊界仍待驗收，不以unit代替UI。Research窄mapper已在 E:/deletable/asteer-fsx01 commit5feff22cbb9af0866ce00039a4ab28644f49d0a0 交付並真SQL8/8通過。18883控制仍由owner持有，18884未動。

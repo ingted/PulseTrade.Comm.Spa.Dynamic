@@ -267,3 +267,6 @@ Active-local boundary不得用query-relative ordinal表示未載入的相鄰頁�
 在 TaCoverageWindowPurpose 末端追加 NavigatorMove；原 MainPlotPan／NavigatorWindow tag 與語意保持。NavigatorMove 限 ExplicitBounds、StartObservationOrdinal=None、Direction=None，ObservationCount 為欲保留的 active count，仍受 request.MaximumBasePoints 與 SDK 上限限制。Research 上限1500，通用SDK舊4000常數不變。ResidentCoverageChanged 不接受這個用途。
 
 Renderer 後續用同一 OverviewAnchors 時軸對齊縮圖、遮罩、手勢與端點；跨尺度索引不可寫入主圖 draftWindow。Move 以新用途提交，Resize 保留 NavigatorWindow；Research WorkspaceRuntime 只改明確授權 mapper，經既有 generation/ACK 機制結算。版本／exact package chain 由 daedilus 操作。契約 roundtrip／拒絕案例已驗；Renderer dispatch、server保留根數及跨尺度真UI尚待完成。回鏈 doc/SA.md、doc/SD.md、doc/WBS.md、doc/Verification.md 與本輪log。
+
+
+2026-11-06 amendment：owner msg-fsi-63369a207c294d4eb45c0addfcdb0b55 接受GLOBAL預覽以附近真anchor時間明標「約」，僅顯示用途；settlement ready後顯示真resident首末K。不得寫入request/ordinal/行情時間。TA/resident維持真時間；mask與時間共用capture，pending gesture不得因active draft=None被提早清掉。source228/228，實際UI仍pending。

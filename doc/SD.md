@@ -1067,3 +1067,6 @@ Core61 supersedes unpublished-to-host60; reuse per-project outputs, new immutabl
 ## Current：2026-11-06 typed NavigatorMove（RFC-0036 amendment）
 
 TaCoverageWindowPurpose 末端新增 NavigatorMove。VisibleRangeChanged validation 要求 ExplicitBounds／無 ordinal／無 direction；ObservationCount 為1..min(MaximumBasePoints, SDK limit)。BrowserRuntimeCodec 保持原wire路徑，舊兩用途與新用途皆 roundtrip；ResidentCoverageChanged 繼續僅允許 NavigatorWindow。下一切片以 OverviewAnchors + prepared axis interval end 形成 event range，Move帶目前active count，Resize帶span；cross-axis draft僅改navigator preview，不能當active index。Research mapper保留Move count並按1500 cap，仍走原generation/ACK。源碼／文件／package owner與驗收狀態見Verification及log。
+
+
+2026-11-06 補充：globalResidentBoundaryTimes以真anchor ordinal二分查找顯示界線；ready後使用actual resident timeline。navigatorBoundaryTimesOverride隨frozen ratios在同一rAF更新；navigatorPreviewCanClear確認drag/coverage/eventRange/queue皆空，reject/settle/cancel沿既有generation流程清理或恢復。不得把近似label送回VisibleRangeChanged。

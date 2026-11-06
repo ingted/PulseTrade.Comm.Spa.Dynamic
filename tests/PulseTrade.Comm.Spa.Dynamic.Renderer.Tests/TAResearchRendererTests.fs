@@ -39,6 +39,27 @@ let independentOverviewFixture (times: string array) : TaLoadedCoverageProjectio
 
 let tests =
     testList "TA renderer model" [
+        testCase "DYN-T-797 navigator preview survives drop and late frames until its pending work settles" <| fun _ ->
+            Expect.isFalse (RendererModel.navigatorPreviewCanClear false true false false false) "a held gesture owns its frozen mask and time labels"
+            Expect.isFalse (RendererModel.navigatorPreviewCanClear false false false true false) "independent overview has no active draft but still awaits event-range data"
+            Expect.isFalse (RendererModel.navigatorPreviewCanClear false false true false false) "an adjacent page reply must settle before preview cleanup"
+            Expect.isFalse (RendererModel.navigatorPreviewCanClear false false false false true) "an older reply cannot clear the next queued gesture"
+            Expect.isTrue (RendererModel.navigatorPreviewCanClear false false false false false) "fully settled navigation returns to current actual boundaries"
+
+        testCase "DYN-T-795 GLOBAL time preview selects real sparse anchors without calendar interpolation" <| fun _ ->
+            let anchors=[|0L,"2026-11-06T10:00:00Z";100L,"2026-11-09T09:00:00Z";200L,"2026-11-10T09:00:00Z"|]
+                        |> Array.map (fun (ordinal,time) -> {ObservationOrdinal=ordinal;EventTimeUtc=time;Value=SduiValue.Number 1.0})
+            Expect.equal (RendererModel.globalResidentBoundaryTimes anchors {StartObservationOrdinal=50L;ObservationCount=100})
+                (Some(anchors[0].EventTimeUtc,anchors[1].EventTimeUtc)) "display-only approximation uses known anchors, never an invented weekend time"
+            Expect.equal (RendererModel.globalResidentBoundaryTimes anchors {StartObservationOrdinal=100L;ObservationCount=1})
+                (Some(anchors[1].EventTimeUtc,anchors[1].EventTimeUtc)) "an exact anchor remains its real time"
+
+        testCase "DYN-T-796 invalid GLOBAL time previews have no fabricated bounds" <| fun _ ->
+            let anchors=[|{ObservationOrdinal=0L;EventTimeUtc="2026-11-06T10:00:00Z";Value=SduiValue.Number 1.0}|]
+            for window in [{StartObservationOrdinal=0L;ObservationCount=0};{StartObservationOrdinal= -1L;ObservationCount=10};{StartObservationOrdinal=Int64.MaxValue;ObservationCount=2}] do
+                Expect.isNone (RendererModel.globalResidentBoundaryTimes anchors window) "reject invalid or overflowing display windows"
+            Expect.isNone (RendererModel.globalResidentBoundaryTimes [||] {StartObservationOrdinal=0L;ObservationCount=100}) "missing anchors do not supply a time"
+
         testCase "DYN-T-793 visible and selected boundaries preserve actual UTC bar times across gaps" <| fun _ ->
             let times=[|"2026-11-06T10:00:00+00:00";"2026-11-06T11:00:00+00:00";"2026-11-09T09:00:00Z";"2026-11-09T10:00:00Z"|]
             Expect.equal (RendererModel.visibleBoundaryTimes times {StartIndex=1;Count=2}) (Some(times[1],times[2]))
