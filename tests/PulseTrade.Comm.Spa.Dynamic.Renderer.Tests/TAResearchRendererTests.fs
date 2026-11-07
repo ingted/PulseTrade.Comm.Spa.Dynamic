@@ -4376,6 +4376,51 @@ let tests =
             Expect.equal (formatted SduiDisplayTimeZone.AmericaChicago winter).FullText "2026-01-02 09:00:00 CST" "Chicago winter uses CST."
             Expect.equal (formatted SduiDisplayTimeZone.AmericaNewYork winter).FullText "2026-01-02 10:00:00 EST" "New York winter uses EST."
 
+        testCase "00013.6 resident stripe hover follows selected timezone without moving the event" <| fun _ ->
+            let eventTime = "2026-06-18T13:28:00.0000000+00:00"
+            let stripe =
+                { StripeId = "sell-1328"
+                  EventTimeUtc = eventTime
+                  Color = "#ff0000"
+                  StrokeWidthCssPixels = 1.0
+                  Label = Some "MKT SELL"
+                  Tooltip = [||] }
+            let visual =
+                { TraceId = "fills"
+                  TargetTraceId = "decision-k"
+                  CollisionGroup = "fills"
+                  LayerOrder = 0
+                  Lane = 0
+                  SlotIndex = 42
+                  Stripes = [| stripe |] }
+            let hover zone value =
+                RendererModel.overviewStripeHoverTextWith (TaDisplayTimeFormatter.fullOrOriginal zone) [| value |]
+            Expect.equal (hover SduiDisplayTimeZone.FixedUtcPlus8 visual) "MKT SELL · 2026-06-18 21:28:00 UTC+8" "The reported 13:28Z event displays at 21:28, without adding a minute."
+            Expect.equal (hover SduiDisplayTimeZone.Utc visual) "MKT SELL · 2026-06-18 13:28:00 UTC" "Switching back to UTC formats the original event again."
+            let rollover = { visual with Stripes = [| { stripe with EventTimeUtc = "2026-06-18T17:28:00Z" } |] }
+            Expect.equal (hover SduiDisplayTimeZone.FixedUtcPlus8 rollover) "MKT SELL · 2026-06-19 01:28:00 UTC+8" "Display conversion carries the date across midnight."
+            Expect.equal visual.Stripes[0].EventTimeUtc eventTime "Display conversion preserves the canonical event identity."
+            Expect.equal visual.SlotIndex 42 "Display conversion preserves the stripe's axis position."
+
+        testCase "00013.6 resident stripe hover retains ordering fallback and bounded entries" <| fun _ ->
+            let stripes =
+                Array.init 10 (fun i ->
+                    { StripeId = "stripe-" + string i
+                      EventTimeUtc = "not-a-time"
+                      Color = "#ff0000"
+                      StrokeWidthCssPixels = 1.0
+                      Label = if i = 0 then Some "MKT SELL" else None
+                      Tooltip = [||] })
+            let visual =
+                { TraceId = "fills"; TargetTraceId = "decision-k"; CollisionGroup = "fills"
+                  LayerOrder = 0; Lane = 0; SlotIndex = 42; Stripes = stripes }
+            let text = RendererModel.overviewStripeHoverTextWith (TaDisplayTimeFormatter.fullOrOriginal SduiDisplayTimeZone.FixedUtcPlus8) [| visual |]
+            let entries = text.Split(" | ")
+            Expect.equal entries.Length 8 "Dense hover retains the eight-event budget."
+            Expect.equal entries[0] "MKT SELL · not-a-time" "An invalid transport timestamp remains inspectable."
+            Expect.equal entries[7] "stripe-7 · not-a-time" "Missing labels retain stripe IDs and authored event order."
+            Expect.equal (RendererModel.overviewStripeHoverTextWith id [||]) "" "No events produce no hover content."
+
         testCase "DYN-T-630 display formatter changes offset at US DST boundaries" <| fun _ ->
             let compact zone value = TaDisplayTimeFormatter.tryFormat zone value |> Option.map _.FullText
             Expect.equal (compact SduiDisplayTimeZone.AmericaChicago "2026-03-08T07:59:59Z") (Some "2026-03-08 01:59:59 CST") "Chicago remains standard before 08:00Z."

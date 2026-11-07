@@ -1901,6 +1901,16 @@ module RendererModel =
 
     let overviewStripeTooltipText category stripe = overviewStripeTooltipTextWith id category stripe
 
+    let overviewStripeHoverTextWith formatEventTime (visuals: TaOverviewStripeVisual array) =
+        visuals
+        |> Array.collect (fun visual ->
+            visual.Stripes
+            |> Array.map (fun stripe ->
+                let label = stripe.Label |> Option.defaultValue stripe.StripeId
+                label + " · " + formatEventTime stripe.EventTimeUtc))
+        |> Array.truncate 8
+        |> String.concat " | "
+
     let cursorEventItemsWith formatEventTime slotIndex (traces: TaTraceSpec array) (markers: TaMarkerPlacement array) (stripes: TaOverviewStripePlacement array) =
         let traceOrder = traces |> Array.mapi (fun index trace -> trace.TraceId, index) |> Map.ofArray
         let traceCategory =

@@ -982,10 +982,10 @@ module TaWorkspaceRenderer =
             JS.Window.AddEventListener("resize", resizeHandler)
             schedule ()
 
-    let overviewSvgWithPalette palette (points: TaOverviewCandlePoint array) (stripeVisuals: TaOverviewStripeVisual array) referenceLength selectionWindow onReady onPointerDown onDragEnd =
+    let overviewSvgWithPaletteAndEventTime palette (formatEventTime: View<string -> string>) (points: TaOverviewCandlePoint array) (stripeVisuals: TaOverviewStripeVisual array) referenceLength selectionWindow onReady onPointerDown onDragEnd =
         let width = 1000.0
         let height = 82.0
-        let stripeTooltip = Var.Create<Option<float * string>>(None)
+        let stripeTooltip = Var.Create<Option<float * TaOverviewStripeVisual array>>(None)
         let sampled = RendererModel.compactOverviewCandles 280 points
         let authoredWickCount =
             sampled
@@ -1079,16 +1079,6 @@ module TaWorkspaceRenderer =
             stripeVisuals
             |> Array.groupBy (stripeX >> Math.Round >> int)
             |> Map.ofArray
-        let stripeTooltipText (visuals: TaOverviewStripeVisual array) =
-            visuals
-            |> Array.collect (fun visual ->
-                visual.Stripes
-                |> Array.map (fun stripe ->
-                    let label = stripe.Label |> Option.defaultValue stripe.StripeId
-                    label + " · " + stripe.EventTimeUtc))
-            |> Array.truncate 8
-            |> String.concat " | "
-
         svgElement "svg" [
             Attr.Create "data-testid" "ta-overview-navigator"
             Attr.Create "data-plot-surface-theme" palette.ThemeName
@@ -1131,7 +1121,7 @@ module TaWorkspaceRenderer =
                     let candidates =
                         [| pixel; pixel - 1; pixel + 1; pixel - 2; pixel + 2 |]
                         |> Array.tryPick (fun key -> Map.tryFind key stripeBuckets)
-                    stripeTooltip.Value <- candidates |> Option.map (fun values -> x, stripeTooltipText values))
+                    stripeTooltip.Value <- candidates |> Option.map (fun values -> x, values))
             on.mouseLeave (fun element _ ->
                 stripeTooltip.Value <- None
                 let dragOutcome = element.GetAttribute("data-drag-outcome")
@@ -1232,18 +1222,23 @@ module TaWorkspaceRenderer =
                 svgAttr "fill" "transparent"; svgAttr "pointer-events" "all"; svgAttr "style" "cursor:ew-resize;"
             ] []
             yield
-                stripeTooltip.View
-                |> View.Map (function
+                View.Map2 (fun formatTime tooltip ->
+                    match tooltip with
                     | None -> Doc.Empty
-                    | Some(x, value) ->
+                    | Some(x, visuals) ->
+                        let value = RendererModel.overviewStripeHoverTextWith formatTime visuals
                         let bounded = if value.Length <= 180 then value else value.Substring(0, 177) + "..."
                         let boxX = max 4.0 (min 716.0 (x + 6.0))
                         svgElement "g" [ Attr.Create "data-testid" "ta-overview-stripe-tooltip"; svgAttr "pointer-events" "none" ] [
                             svgElement "rect" [ svgAttr "x" (fixedText boxX); svgAttr "y" "3"; svgAttr "width" "280"; svgAttr "height" "18"; svgAttr "rx" "2"; svgAttr "fill" palette.TooltipSurface; svgAttr "fill-opacity" "0.95"; svgAttr "stroke" palette.TooltipBorder; svgAttr "stroke-width" "0.7" ] []
                             svgElement "text" [ svgAttr "x" (fixedText (boxX + 5.0)); svgAttr "y" "15"; svgAttr "fill" palette.TooltipText; svgAttr "font-family" "Consolas,monospace"; svgAttr "font-size" "9" ] [ text bounded ]
                         ] :> Doc)
+                    formatEventTime stripeTooltip.View
                 |> Doc.EmbedView
         ]
+
+    let overviewSvgWithPalette palette points stripeVisuals referenceLength selectionWindow onReady onPointerDown onDragEnd =
+        overviewSvgWithPaletteAndEventTime palette (View.Const id) points stripeVisuals referenceLength selectionWindow onReady onPointerDown onDragEnd
 
     let overviewSvg points stripeVisuals referenceLength selectionWindow onReady onPointerDown onDragEnd =
         overviewSvgWithPalette lightPlotPalette points stripeVisuals referenceLength selectionWindow onReady onPointerDown onDragEnd
@@ -6894,8 +6889,9 @@ module TaWorkspaceRenderer =
                                                     residentNavigatorAuthority.View
                                             let residentOverview =
                                                 div [ Attr.Create "data-testid" "ta-overview-with-axis"; Attr.Create "data-resident-document-revision" (string renderedState.DocumentRevision); Attr.Create "data-resident-data-revision" (string renderedState.DataRevision); attr.style "min-width:0;" ] [
-                                                    overviewSvgWithPalette
+                                                    overviewSvgWithPaletteAndEventTime
                                                         currentPlotPalette
+                                                        (displayTime.Zone |> View.Map TaDisplayTimeFormatter.fullOrOriginal)
                                                         overviewPoints
                                                         overviewStripeVisuals
                                                         overviewReferenceTimeline.Length
