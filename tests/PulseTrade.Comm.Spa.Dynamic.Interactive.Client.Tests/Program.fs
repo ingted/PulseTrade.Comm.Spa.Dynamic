@@ -66,6 +66,357 @@ let snapshotFrame sequence =
                       "ta.status", SduiValue.Array [| SduiValue.Number 2.0 |] ]
               Freshness = TaFreshness.Live } }
 
+// Synthetic market values belong only to this Test project.
+let cacheReuseFixture includePreview =
+    let start = DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.Zero)
+    let count = if includePreview then 1501 else 1500
+    let axis: TemporalAxis =
+        { AxisRef = "axis.cache"
+          Revision = 1L
+          Points =
+            Array.init count (fun index ->
+                let last = start.AddMinutes(float (index + 1))
+                { Position = int64 index
+                  SourceIntervalId = $"cache-fixture-{index}"
+                  ScaleKey = "1K"
+                  IntervalStartUtc = last.AddMinutes -1.0
+                  IntervalEndUtc = last
+                  EventTimeUtc = Some last
+                  ObservedThroughUtc = last
+                  AvailableAtUtc = Some last
+                  Finality = if index = 1500 then PointFinality.Preview else PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan
+                  Quality = None }) }
+    let series: TemporalSeries =
+        { AxisRef = axis.AxisRef
+          AxisRevision = axis.Revision
+          Points = Array.init count (fun i -> { Position = int64 i; Value = SduiValue.Number(float i) }) }
+    let coverage: TaLoadedCoverageProjection =
+        { CoverageIdentity = "cache-fixture"
+          CoverageRevision = 1L
+          QueryGeneration = 1L
+          Completeness = TaCoverageCompleteness.Complete
+          TotalObservationCount = Some(int64 count)
+          Segments =
+            [| { SegmentId = "resident"
+                 StartEventTimeUtc = start.ToString("O")
+                 EndEventTimeExclusiveUtc = start.AddMinutes(float count).ToString("O")
+                 StartObservationOrdinal = 0L
+                 ObservationCount = int64 count } |]
+          OverviewAxisRef = axis.AxisRef
+          OverviewAnchors = [||]
+          ActiveDetail = { StartObservationOrdinal = 0L; ObservationCount = 1500; BaseAxisRef = axis.AxisRef }
+          GlobalOverview =
+            Some { TotalObservationCount = int64 count
+                   AxisRef = axis.AxisRef
+                   Anchors = [||]
+                   ResidentStartObservationOrdinal = 0L
+                   ResidentObservationCount = count } }
+    let document =
+        { framePumpDocument with
+            TemporalAxisRefs = [| axis.AxisRef |]
+            Rows =
+                [| { RowId = "cache-series"; Kind = TaRowKind.Sma; DataRef = "series.cache"
+                     HeightWeight = 1.0; Visible = true; Options = Map.empty; Traces = [||] } |]
+            DefaultView = Map.empty |> TaLoadedCoverageCodec.applyDataRef "coverage.cache" }
+    let mounted, _ =
+        RuntimeReducer.reduce (RuntimeReducer.initial framePumpIdentity)
+            { documentFrame with Payload = RuntimePayload.Document document }
+    let state, _ =
+        RuntimeReducer.reduce mounted
+            { snapshotFrame 2L with
+                Payload = RuntimePayload.Snapshot
+                    { Data = Map [ document.RowsRef, SduiValue.Array [||]
+                                   document.StatusRef, SduiValue.Array [||]
+                                   axis.AxisRef, TemporalAxisCodec.encode axis
+                                   "series.cache", TemporalSeriesCodec.encode series
+                                   "coverage.cache", TaLoadedCoverageCodec.encode coverage ]
+                      Freshness = TaFreshness.Live } }
+    Expect.isNone state.LastError "The fixture must pass the canonical document/snapshot reducer."
+    Expect.equal state.DataRevision 1L "The fixture snapshot must be accepted."
+    state
+
+let cacheReuseIdentity =
+    { OwnerFingerprint = "cache-fixture-owner"; SchemaRevision = RuntimeCacheProjection.CurrentSchemaRevision }
+
+let cacheReuseCoverage (state: RuntimeState) =
+    TaLoadedCoverageCodec.tryDecodeResolved state.Document.Value.DefaultView state.Data
+    |> Result.defaultWith (fun errors -> failtestf "Invalid fixture coverage: %A" errors)
+    |> Option.defaultWith (fun () -> failtest "Missing fixture coverage")
+
+let cacheReusePatch (state: RuntimeState) start count =
+    let previous = cacheReuseCoverage state
+    let coverage =
+        { previous with
+            CoverageRevision = previous.CoverageRevision + 1L
+            QueryGeneration = previous.QueryGeneration + 1L
+            ActiveDetail = { previous.ActiveDetail with StartObservationOrdinal = start; ObservationCount = count } }
+    let next, _ =
+        RuntimeReducer.reduce state
+            { documentFrame with
+                Kind = RuntimeFrameKind.Patch
+                BaseDataRevision = Some state.DataRevision
+                DataRevision = state.DataRevision + 1L
+                TransportSequence = state.LastTransportSequence + 1L
+                Payload = RuntimePayload.Patch
+                    { Operations = [| PatchOperation.ReplaceDataRef("coverage.cache", TaLoadedCoverageCodec.encode coverage) |] } }
+    Expect.isNone next.LastError "A coverage-only patch must pass the canonical reducer."
+    Expect.equal next.DataRevision (state.DataRevision + 1L) "The patch must commit."
+    next
+
+let cacheReuseEncodeValue (value: SduiValue) =
+    System.Text.Json.JsonSerializer.Serialize(value, RuntimeCodec.options)
+
+let cacheReuseWriter () =
+    let scheduled = Queue<unit -> unit>()
+    let pending = ResizeArray<BrowserRuntimeCacheRecord * (BrowserRuntimeCacheWriteResult -> unit)>()
+    let projected = ref 0
+    let encoded = ResizeArray<SduiValue>()
+    let hits = ResizeArray<bool>()
+    let now = ref (DateTimeOffset(2026, 11, 7, 0, 0, 0, TimeSpan.Zero))
+    let project capturedAt identity state =
+        projected.Value <- projected.Value + 1
+        RuntimeCacheProjection.tryCreateEntry capturedAt identity state
+    let writer =
+        BrowserRuntimeCache.createPhasedWriter
+            scheduled.Enqueue (fun () -> now.Value)
+            (BrowserRuntimeCache.tryPrepareEntry project)
+            (fun reused key ticks entry ->
+                hits.Add(Option.isSome reused)
+                BrowserRuntimeCache.recordForEntryWith RuntimeCacheCodec.encode
+                    (fun value -> encoded.Add value; cacheReuseEncodeValue value) reused key ticks entry)
+            (fun record complete -> pending.Add(record, complete))
+    writer, scheduled, pending, projected, encoded, hits, now
+
+let cacheReuseDrain (scheduled: Queue<unit -> unit>) =
+    while scheduled.Count > 0 do scheduled.Dequeue() ()
+
+let cacheReuseChangeCoverage change (state: RuntimeState) =
+    { state with Data = Map.add "coverage.cache" (TaLoadedCoverageCodec.encode (change (cacheReuseCoverage state))) state.Data }
+
+let cacheReuseCloneValue value =
+    System.Text.Json.JsonSerializer.Deserialize<SduiValue>(cacheReuseEncodeValue value, RuntimeCodec.options)
+
+let cacheReuseTests =
+    testList "cache coverage reuse" [
+        testCase "public phased writer preserves its four-argument CLR method" <| fun _ ->
+            let cacheModule = typeof<BrowserRuntimeCachePreparedWrite>.Assembly.GetType("PulseTrade.Comm.Spa.Dynamic.Interactive.Client.BrowserRuntimeCache")
+            let methodInfo = cacheModule.GetMethod("writeAcceptedStatePhased")
+            Expect.isNotNull methodInfo "Existing compiled consumers require the method, not a new function-valued property."
+            Expect.equal (methodInfo.GetParameters().Length) 4 "The original callable boundary must remain intact."
+
+        for preview in [ false; true ] do
+            testCase (if preview then "projected finals survive raw preview reuse" else "resize and pan reuse unchanged projected items") <| fun _ ->
+                let initial = cacheReuseFixture preview
+                let writer, scheduled, pending, projected, encoded, hits, now = cacheReuseWriter ()
+                writer cacheReuseIdentity initial (fun () -> true) ignore
+                cacheReuseDrain scheduled
+                Expect.equal projected.Value 1 "Cold write must project once."
+                snd pending[0] BrowserRuntimeCacheWriteResult.Written
+                let mutable previousRecord = fst pending[0]
+                let mutable state = initial
+                for start in [ 0L; 100L ] do
+                    state <- cacheReusePatch state start 48
+                    now.Value <- now.Value.AddSeconds 1.0
+                    projected.Value <- 0
+                    encoded.Clear()
+                    writer cacheReuseIdentity state (fun () -> true) ignore
+                    cacheReuseDrain scheduled
+                    let record, complete = pending[pending.Count - 1]
+                    let slowEntry = RuntimeCacheProjection.tryCreateEntry now.Value cacheReuseIdentity state |> Result.defaultWith (fun e -> failtestf "%A" e)
+                    let slowRecord = BrowserRuntimeCache.recordForEntryWith RuntimeCacheCodec.encode cacheReuseEncodeValue None record.Key record.TouchedAtTicks slowEntry
+                    Expect.equal record slowRecord "Full and reused records, including current header and coverage, must be equivalent."
+                    Expect.equal projected.Value 0 "An accepted metadata-only patch must skip full temporal projection."
+                    Expect.equal encoded.Count 1 "Only coverage may be encoded again."
+                    Expect.isTrue hits[hits.Count - 1] "The writer must report a reuse hit."
+                    for item in record.DataItems do
+                        let old = previousRecord.DataItems |> Array.find (fun old -> old.DataRef = item.DataRef)
+                        Expect.equal (Object.ReferenceEquals(item, old)) (item.DataRef <> "coverage.cache") "Unchanged item objects must be retained."
+                    let header = System.Text.Json.JsonSerializer.Deserialize<RuntimeCacheEntry>(record.EntryHeaderJson, RuntimeCodec.options)
+                    let entry =
+                        { header with Snapshot = { header.Snapshot with Data = record.DataItems |> Array.map (fun item -> item.DataRef, System.Text.Json.JsonSerializer.Deserialize<SduiValue>(item.ValueJson, RuntimeCodec.options)) |> Map.ofArray } }
+                    let axis = TemporalAxisCodec.decode entry.Snapshot.Data["axis.cache"] |> Result.defaultWith (fun e -> failtestf "%A" e)
+                    let series = TemporalSeriesCodec.decode entry.Snapshot.Data["series.cache"] |> Result.defaultWith (fun e -> failtestf "%A" e)
+                    Expect.equal axis.Points.Length 1500 "Preview axis points must never reappear."
+                    Expect.equal series.Points.Length 1500 "Preview series values must never reappear."
+                    let hydrated = BrowserRuntimeCache.tryRehydrate cacheReuseIdentity state entry |> Result.defaultWith (fun e -> failtestf "Rehydrate rejected: %A" e)
+                    Expect.equal (cacheReuseCoverage hydrated).ActiveDetail (cacheReuseCoverage state).ActiveDetail "Rehydrate must retain the newest viewport."
+                    complete BrowserRuntimeCacheWriteResult.Written
+                    previousRecord <- record
+
+        let replaceData key change (state: RuntimeState) =
+            { state with Data = Map.add key (change state.Data[key]) state.Data }
+        let replaceDocument change (state: RuntimeState) = { state with Document = state.Document |> Option.map change }
+        let guardMisses: (string * (RuntimeState -> RuntimeState)) list =
+            [ "equal axis with new reference", replaceData "axis.cache" cacheReuseCloneValue
+              "equal series with new reference", replaceData "series.cache" cacheReuseCloneValue
+              "non-temporal metadata new reference", replaceData "ta.status" cacheReuseCloneValue
+              "finality changed", replaceData "axis.cache" (fun value ->
+                  let axis = TemporalAxisCodec.decode value |> Result.defaultWith (fun e -> failtestf "%A" e)
+                  TemporalAxisCodec.encode { axis with Points = axis.Points |> Array.mapi (fun i p -> if i = 1499 then { p with Finality = PointFinality.Preview } else p) })
+              "series changed", replaceData "series.cache" (fun value ->
+                  let series = TemporalSeriesCodec.decode value |> Result.defaultWith (fun e -> failtestf "%A" e)
+                  TemporalSeriesCodec.encode { series with Points = series.Points |> Array.mapi (fun i p -> if i = 0 then { p with Value = SduiValue.Number -1.0 } else p) })
+              "marker key added", fun s -> { s with Data = Map.add "marker.extra" (SduiValue.Array [||]) s.Data }
+              "key removed", fun s -> { s with Data = Map.remove "ta.status" s.Data }
+              "equal-size key replacement", fun s -> { s with Data = s.Data |> Map.remove "ta.status" |> Map.add "marker.extra" (SduiValue.Array [||]) }
+              "runtime document identity", fun s -> { s with Identity = { s.Identity with DocumentId = DocumentId "new-document" } }
+              "canvas identity", fun s -> { s with Identity = { s.Identity with CanvasInstanceId = CanvasInstanceId "new-canvas" } }
+              "document revision", fun s -> { s with DocumentRevision = s.DocumentRevision + 1L }
+              "document object", replaceDocument (fun d -> { d with Title = d.Title })
+              "workspace", replaceDocument (fun d -> { d with WorkspaceId = "new-workspace" })
+              "missing document", fun s -> { s with Document = None }
+              "coverage identity", cacheReuseChangeCoverage (fun c -> { c with CoverageIdentity = "new-coverage" })
+              "resident segments", cacheReuseChangeCoverage (fun c -> { c with Segments = c.Segments |> Array.map (fun s -> { s with SegmentId = "refilled" }) })
+              "resident start", cacheReuseChangeCoverage (fun c -> { c with GlobalOverview = c.GlobalOverview |> Option.map (fun g -> { g with ResidentStartObservationOrdinal = 1L; ResidentObservationCount = 1499 }) })
+              "resident count", cacheReuseChangeCoverage (fun c -> { c with GlobalOverview = c.GlobalOverview |> Option.map (fun g -> { g with ResidentObservationCount = 1499 }) })
+              "global coverage removed", cacheReuseChangeCoverage (fun c -> { c with GlobalOverview = None })
+              "base axis", cacheReuseChangeCoverage (fun c -> { c with ActiveDetail = { c.ActiveDetail with BaseAxisRef = "axis.other" } })
+              "malformed coverage", replaceData "coverage.cache" (fun _ -> SduiValue.Null)
+              "coverage ref removed", fun s -> { s with Data = Map.remove "coverage.cache" s.Data } ]
+        for name, change in guardMisses do
+            testCase ("fallback: " + name) <| fun _ ->
+                let state = cacheReuseFixture false
+                let writer, scheduled, pending, projected, _, hits, _ = cacheReuseWriter ()
+                writer cacheReuseIdentity state (fun () -> true) ignore
+                cacheReuseDrain scheduled
+                snd pending[0] BrowserRuntimeCacheWriteResult.Written
+                projected.Value <- 0
+                writer cacheReuseIdentity (change (cacheReusePatch state 100L 48)) (fun () -> true) ignore
+                cacheReuseDrain scheduled
+                Expect.equal projected.Value 1 "Every failed guard must run the original full projector."
+                Expect.isTrue (hits |> Seq.forall not) "A fallback must never be reported as reuse."
+
+        for name, identity in
+            [ "owner", { cacheReuseIdentity with OwnerFingerprint = "other-owner" }
+              "schema", { cacheReuseIdentity with SchemaRevision = cacheReuseIdentity.SchemaRevision + 1L } ] do
+            testCase ("fallback: " + name) <| fun _ ->
+                let state = cacheReuseFixture false
+                let writer, scheduled, pending, projected, _, hits, _ = cacheReuseWriter ()
+                writer cacheReuseIdentity state (fun () -> true) ignore
+                cacheReuseDrain scheduled
+                snd pending[0] BrowserRuntimeCacheWriteResult.Written
+                projected.Value <- 0
+                writer identity (cacheReusePatch state 0L 48) (fun () -> true) ignore
+                cacheReuseDrain scheduled
+                Expect.equal projected.Value 1 "Changed cache identity must project independently."
+                Expect.isTrue (hits |> Seq.forall not) "Identity changes cannot reuse previous records."
+
+        for inlineCoverage in [ false; true ] do
+            testCase (if inlineCoverage then "inline coverage remains on full path" else "missing data-ref remains on full path") <| fun _ ->
+                let initial = cacheReuseFixture false
+                let view = if inlineCoverage then TaLoadedCoverageCodec.apply (cacheReuseCoverage initial) Map.empty else Map.empty
+                let state = { initial with Document = Some { initial.Document.Value with DefaultView = view } }
+                let writer, scheduled, pending, projected, _, hits, _ = cacheReuseWriter ()
+                writer cacheReuseIdentity state (fun () -> true) ignore
+                cacheReuseDrain scheduled
+                snd pending[0] BrowserRuntimeCacheWriteResult.Written
+                writer cacheReuseIdentity state (fun () -> true) ignore
+                cacheReuseDrain scheduled
+                Expect.equal projected.Value 2 "Only a valid stable coverage data-ref is eligible."
+                Expect.isTrue (hits |> Seq.forall not) "Inline/absent coverage cannot reuse."
+
+        for stage in [ 1; 2 ] do
+            testCase ($"cancellation before stage {stage} neither writes nor promotes") <| fun _ ->
+                let state = cacheReuseFixture false
+                let writer, scheduled, pending, projected, encoded, _, _ = cacheReuseWriter ()
+                let mutable current = true
+                let outcomes = ResizeArray<BrowserRuntimeCachePhasedWriteOutcome>()
+                writer cacheReuseIdentity state (fun () -> current) outcomes.Add
+                if stage = 2 then scheduled.Dequeue() ()
+                current <- false
+                cacheReuseDrain scheduled
+                Expect.sequenceEqual outcomes [ BrowserRuntimeCachePhasedWriteOutcome.CancelledBeforeWrite ] "Cancellation must complete once."
+                Expect.isEmpty pending "Cancellation must not reach IndexedDB."
+                Expect.isEmpty encoded "Cancellation must not encode the record."
+                projected.Value <- 0
+                writer cacheReuseIdentity state (fun () -> true) ignore
+                cacheReuseDrain scheduled
+                Expect.equal projected.Value 1 "Cancelled preparation must not seed the memo."
+
+        for reason in [ "indexeddb-unavailable"; "indexeddb-write-aborted"; "indexeddb-write-failed" ] do
+            testCase ("failed write does not promote: " + reason) <| fun _ ->
+                let state = cacheReuseFixture false
+                let writer, scheduled, pending, projected, _, _, _ = cacheReuseWriter ()
+                let outcomes = ResizeArray<BrowserRuntimeCachePhasedWriteOutcome>()
+                writer cacheReuseIdentity state (fun () -> true) outcomes.Add
+                cacheReuseDrain scheduled
+                snd pending[0] (BrowserRuntimeCacheWriteResult.Unavailable reason)
+                Expect.sequenceEqual outcomes [ BrowserRuntimeCachePhasedWriteOutcome.Completed(BrowserRuntimeCacheAcceptedStateWriteResult.Unavailable reason) ] "Failures must remain failures."
+                projected.Value <- 0
+                writer cacheReuseIdentity (cacheReusePatch state 0L 48) (fun () -> true) ignore
+                cacheReuseDrain scheduled
+                Expect.equal projected.Value 1 "A failed write must not seed reuse."
+
+        testCase "reverse write completion cannot replace the newest successful memo" <| fun _ ->
+            let state = cacheReuseFixture false
+            let newer = replaceData "ta.status" (fun _ -> SduiValue.Array [| SduiValue.Text "newer" |]) state
+            let writer, scheduled, pending, projected, _, _, _ = cacheReuseWriter ()
+            writer cacheReuseIdentity state (fun () -> true) ignore
+            cacheReuseDrain scheduled
+            writer cacheReuseIdentity newer (fun () -> true) ignore
+            cacheReuseDrain scheduled
+            snd pending[1] BrowserRuntimeCacheWriteResult.Written
+            snd pending[0] BrowserRuntimeCacheWriteResult.Written
+            projected.Value <- 0
+            writer cacheReuseIdentity (cacheReusePatch newer 100L 48) (fun () -> true) ignore
+            cacheReuseDrain scheduled
+            Expect.equal projected.Value 0 "The newer completed record must remain the reusable authority."
+            let item record = record.DataItems |> Array.find (fun i -> i.DataRef = "ta.status")
+            Expect.isTrue (Object.ReferenceEquals(item (fst pending[1]), item (fst pending[2]))) "Older completion must not replace newer item references."
+
+        testCase "superseded completion and duplicate callbacks cannot promote" <| fun _ ->
+            let state = cacheReuseFixture false
+            let writer, scheduled, pending, projected, _, _, _ = cacheReuseWriter ()
+            let mutable current = true
+            let outcomes = ResizeArray<BrowserRuntimeCachePhasedWriteOutcome>()
+            writer cacheReuseIdentity state (fun () -> current) outcomes.Add
+            cacheReuseDrain scheduled
+            current <- false
+            snd pending[0] BrowserRuntimeCacheWriteResult.Written
+            current <- true
+            snd pending[0] BrowserRuntimeCacheWriteResult.Written
+            Expect.equal outcomes.Count 1 "A duplicate storage callback must be ignored."
+            projected.Value <- 0
+            writer cacheReuseIdentity (cacheReusePatch state 100L 48) (fun () -> true) ignore
+            cacheReuseDrain scheduled
+            Expect.equal projected.Value 1 "A successful but superseded write cannot seed reuse."
+
+        testCase "new identity releases the memo even if its write is cancelled" <| fun _ ->
+            let state = cacheReuseFixture false
+            let writer, scheduled, pending, projected, _, _, _ = cacheReuseWriter ()
+            writer cacheReuseIdentity state (fun () -> true) ignore
+            cacheReuseDrain scheduled
+            snd pending[0] BrowserRuntimeCacheWriteResult.Written
+            writer cacheReuseIdentity { state with Identity = { state.Identity with DocumentId = DocumentId "different" } } (fun () -> false) ignore
+            cacheReuseDrain scheduled
+            projected.Value <- 0
+            writer cacheReuseIdentity (cacheReusePatch state 100L 48) (fun () -> true) ignore
+            cacheReuseDrain scheduled
+            Expect.equal projected.Value 1 "Returning to an old identity must rebuild after the single memo was released."
+
+        testCase "fast projection retains canonical rejection and never writes an invalid state" <| fun _ ->
+            let state = cacheReuseFixture false
+            let writer, scheduled, pending, projected, encoded, _, _ = cacheReuseWriter ()
+            writer cacheReuseIdentity state (fun () -> true) ignore
+            cacheReuseDrain scheduled
+            snd pending[0] BrowserRuntimeCacheWriteResult.Written
+            let invalid = { cacheReusePatch state 100L 48 with Poll = RuntimePollState.PausedForResync }
+            let expected = RuntimeCacheProjection.tryCreateEntry (DateTimeOffset(2026, 11, 7, 0, 0, 0, TimeSpan.Zero)) cacheReuseIdentity invalid
+            let outcomes = ResizeArray<BrowserRuntimeCachePhasedWriteOutcome>()
+            projected.Value <- 0
+            encoded.Clear()
+            writer cacheReuseIdentity invalid (fun () -> true) outcomes.Add
+            cacheReuseDrain scheduled
+            match expected, Seq.toList outcomes with
+            | Error expectedErrors, [ BrowserRuntimeCachePhasedWriteOutcome.Completed(BrowserRuntimeCacheAcceptedStateWriteResult.Rejected actual) ] ->
+                Expect.equal actual expectedErrors "The fast path must preserve canonical state validation."
+            | _ -> failtest "Both paths must reject the paused state."
+            Expect.equal projected.Value 0 "The case must exercise fast-path validation."
+            Expect.isEmpty encoded "Rejected state must not encode."
+            Expect.equal pending.Count 1 "Rejected state must not reach storage."
+    ]
+
 let tests =
     testList
         "interactive client lifecycle"
@@ -268,6 +619,41 @@ let tests =
                   | false, Some(BrowserRuntimeFramePumpOutcome.Applied state) ->
                       Expect.equal state.LastTransportSequence 2L "Only the complete ordered candidate is published."
                   | other -> failtest $"Unexpected budgeted-pump outcome: {other}.")
+
+          testCase "browser time budget preserves FIFO atomic completion and cancellation at a turn boundary" (fun _ ->
+              for cancelAfterFirstTurn in [false;true] do
+                  let turns = Queue<unit -> unit>()
+                  let mutable clock = 0.0
+                  let mutable worked = 0
+                  let mutable current = true
+                  let mutable publications = 0
+                  let mutable outcome = None
+                  let schedule =
+                      PulseTrade.Comm.Spa.Dynamic.Renderer.RendererModel.createBudgetedWorkScheduler
+                          BrowserRuntimeFramePump.BrowserWorkBudgetMilliseconds
+                          PulseTrade.Comm.Spa.Dynamic.Renderer.RendererModel.ScheduledWorkMaximumCount
+                          turns.Enqueue
+                          (fun () -> clock)
+                          ignore
+                  let frames = [|yield documentFrame; for sequence in 2L..12L -> heartbeat sequence|] |> Array.map BrowserRuntimeCodec.encode
+                  BrowserRuntimeFramePump.reduceEncodedFramesWith
+                      (fun _ work -> schedule (fun () -> worked <- worked+1; work (); clock <- clock+2.0))
+                      (Some(RuntimeReducer.initial framePumpIdentity))
+                      frames
+                      (fun () -> current)
+                      (fun value -> publications <- publications+1; outcome <- Some value)
+                  turns.Dequeue() ()
+                  Expect.equal worked 4 "four two-millisecond stages share a bounded turn before yielding for input"
+                  Expect.isNone outcome "a partial multi-frame candidate is never published"
+                  if cancelAfterFirstTurn then current <- false
+                  while turns.Count > 0 do turns.Dequeue() ()
+                  Expect.equal publications 1 "cancellation or completion must be terminal exactly once"
+                  match cancelAfterFirstTurn,outcome with
+                  | true,Some BrowserRuntimeFramePumpOutcome.Superseded -> ()
+                  | false,Some(BrowserRuntimeFramePumpOutcome.Applied state) ->
+                      Expect.equal state.LastTransportSequence 12L "all frames must be reduced in order"
+                      Expect.equal state.DocumentRevision documentFrame.DocumentRevision "the document survives the complete heartbeat sequence"
+                  | other -> failtest $"Unexpected browser-budget outcome: {other}.")
 
           testCase "frame pump cancels stale generation before publishing" (fun _ ->
               let scheduled = Queue<unit -> unit>()
@@ -916,4 +1302,4 @@ let tests =
 
 [<EntryPoint>]
 let main argv =
-    runTestsWithCLIArgs [] argv tests
+    runTestsWithCLIArgs [] argv (testList "interactive client" [ tests; cacheReuseTests ])

@@ -276,6 +276,34 @@ module ProjectionCommitGate =
     let sameProjectionState left right =
         sameProjectionKey (key left) (key right)
 
+    let canRetainGlobalContent (current: TaProjectionCommitKey) hasResolvedGlobal published =
+        hasResolvedGlobal
+        && (published
+            |> Option.exists (fun previous ->
+                previous.Identity = current.Identity
+                && previous.CoverageIdentity = current.CoverageIdentity))
+
+    let globalDataSourceFingerprint (state: RuntimeState) =
+        state.Document
+        |> Option.bind (fun document -> Map.tryFind "query.dataSourceFingerprint" document.DefaultView)
+        |> Option.bind (function
+            | SduiValue.Text value when not (String.IsNullOrWhiteSpace value) -> Some value
+            | _ -> None)
+
+    let canRetainGlobalImage current hasResolvedGlobal currentSource publishedSource (published: TaProjectionCommitKey option) =
+        let validSource = Option.filter (String.IsNullOrWhiteSpace >> not)
+        let sameSource, differentSource =
+            match validSource currentSource, validSource publishedSource with
+            | Some current, Some previous -> current = previous, current <> previous
+            | _ -> false, false
+        published.IsSome
+        && not differentSource
+        && (sameSource || canRetainGlobalContent current hasResolvedGlobal published)
+
+    let mountedOverviewsReady requiresGlobal (candidate: TaProjectionCommitKey) globalMounted residentMounted =
+        let matches mounted = mounted |> Option.exists (sameProjectionKey candidate)
+        matches residentMounted && (not requiresGlobal || matches globalMounted)
+
     let initial =
         { Generation = 0
           Pending = None
@@ -416,6 +444,16 @@ module TaPointActivation =
 
 [<JavaScript; RequireQualifiedAccess>]
 module EditorMutationGate =
+    let sameBinding (expected: TaRowEditorBinding) (actual: TaRowEditorBinding) =
+        match TaRowEditorBinding.validate expected, TaRowEditorBinding.validate actual with
+        | Ok expected, Ok actual when expected.TemplateKey = actual.TemplateKey ->
+            let inputs binding =
+                DynamicEditorValidation.nonNull binding.Values
+                |> Array.map (fun input -> input.Path, input.Value)
+                |> Map.ofArray
+            inputs expected = inputs actual
+        | _ -> false
+
     let authoritativeDocumentAdvanced
         (baseIdentity: RuntimeIdentity)
         baseDocumentRevision
@@ -424,6 +462,24 @@ module EditorMutationGate =
         bindingMatches =
         bindingMatches
         && (currentIdentity <> baseIdentity || currentDocumentRevision > baseDocumentRevision)
+
+    let completedFeedback
+        ((baseIdentity, baseRevision, targetRowId, priorRowIds, expectedBinding): RuntimeIdentity * int64 * string option * Set<string> * TaRowEditorBinding)
+        currentIdentity
+        (document: TaWorkspaceDocument)
+        currentRevision =
+        let bindingMatches row =
+            TaRowEditorBinding.tryFind row
+            |> Result.toOption
+            |> Option.flatten
+            |> Option.exists (sameBinding expectedBinding)
+        let matched =
+            match targetRowId with
+            | Some rowId -> document.Rows |> Array.tryFind (fun row -> row.RowId = rowId) |> Option.exists bindingMatches
+            | None -> document.Rows |> Array.exists (fun row -> not (Set.contains row.RowId priorRowIds) && bindingMatches row)
+        if authoritativeDocumentAdvanced baseIdentity baseRevision currentIdentity currentRevision matched then
+            Some(if targetRowId.IsSome then "Row updated." else "Row added.")
+        else None
 
 type TaRowHeightBounds =
     { Minimum: int
@@ -540,6 +596,21 @@ module RendererModel =
     [<Literal>]
     let MainPlotDragThresholdCssPixels = 4.0
 
+    let yAxisValueText (value: float) =
+        if Double.IsNaN value || Double.IsInfinity value then string value
+        else
+            let magnitude = abs value
+            // Round display text only, with symmetric half-up behavior in .NET and JS.
+            // Doubles at this magnitude are already integral; avoid overflowing the scale.
+            let roundedMagnitude =
+                if magnitude >= 1e16 then magnitude
+                else Math.Floor(magnitude * 100.0 + 0.5) / 100.0
+            let rounded =
+                if roundedMagnitude = 0.0 then 0.0
+                elif value < 0.0 then -roundedMagnitude
+                else roundedMagnitude
+            sprintf "%.2f" rounded
+
     let yAxisTickValues tickCount low high =
         if
             tickCount < 2
@@ -593,7 +664,7 @@ module RendererModel =
     let stickyOverviewTop viewportTop slotBottom scopeBottom overviewHeight =
         let finite value = not (Double.IsNaN value || Double.IsInfinity value)
         if not ([ viewportTop; slotBottom; scopeBottom; overviewHeight ] |> List.forall finite)
-           || overviewHeight <= 0.0 || slotBottom >= viewportTop || scopeBottom <= viewportTop then
+           || overviewHeight <= 0.0 || slotBottom - overviewHeight >= viewportTop || scopeBottom <= viewportTop then
             None
         else
             Some(min viewportTop (scopeBottom - overviewHeight))
@@ -1014,6 +1085,31 @@ module RendererModel =
 
     [<Inline "$left === $right">]
     let sameReference (left: obj) (right: obj) = Object.ReferenceEquals(left, right)
+
+    let tryReuseCoverageOnlyPreparedData previousDefaultView nextDefaultView (previous: TaPreparedRendererData) data =
+        let isCoverageMetadata value =
+            match value with
+            | SduiValue.Object fields ->
+                objectText "schema" fields = Some TaLoadedCoverageCodec.Schema
+                && (tryTemporalAxisRaw value |> Option.isNone)
+                && (tryTemporalSeriesRaw value |> Option.isNone)
+            | _ -> false
+
+        match TaLoadedCoverageCodec.tryDataRef previousDefaultView, TaLoadedCoverageCodec.tryDataRef nextDefaultView with
+        | Ok(Some previousRef), Ok(Some nextRef) when previousRef = nextRef && previous.RawData.Count = Map.count data ->
+            match Map.tryFind previousRef previous.RawData, Map.tryFind nextRef data with
+            | Some previousCoverage, Some nextCoverage when isCoverageMetadata previousCoverage && isCoverageMetadata nextCoverage ->
+                let onlyCoverageChanged =
+                    data
+                    |> Map.forall (fun dataRef value ->
+                        match Map.tryFind dataRef previous.RawData with
+                        | Some previousValue -> dataRef = nextRef || sameReference (box previousValue) (box value)
+                        | None -> false)
+                if onlyCoverageChanged then
+                    Some { previous with RawData = data }
+                else None
+            | _ -> None
+        | _ -> None
 
     let sharedPrefixLength (left: SduiValue array) (right: SduiValue array) =
         let limit = min left.Length right.Length
@@ -2167,6 +2263,18 @@ module RendererModel =
                 let normalizedFraction = ((fraction |> Option.defaultValue "") + "0000000").Substring(0, 7)
                 Some(candidate.Substring(0, 10) + "T" + candidate.Substring(11, 8) + "." + normalizedFraction)
 
+    let referenceTradingDatesForTimelinePrepared document (timeline: string array) prepared =
+        let datesByTime =
+            Array.zip
+                (referenceTimelineForDocumentPrepared document prepared)
+                (referenceTradingDatesForDocumentPrepared document prepared)
+            |> Array.choose (fun (timestamp, date) ->
+                match tryUtcTimestamp timestamp, date with
+                | Some key, Some tradingDate -> Some(key, tradingDate)
+                | _ -> None)
+            |> Map.ofArray
+        timeline |> Array.map (tryUtcTimestamp >> Option.bind (fun key -> Map.tryFind key datesByTime))
+
     let queryViewportSelection latestGeneration intentGeneration (query: TaQueryChange) (document: TaWorkspaceDocument) data =
         if intentGeneration <> latestGeneration then
             TaQueryViewportSelection.Stale
@@ -2690,11 +2798,7 @@ module RendererModel =
               Count = requestedCount }
 
     let initialViewportWindowForCoverage minimumCount fallbackCount maximumCount total defaultView projection =
-        let selected =
-            match Map.tryFind "initialVisibleEnd" defaultView with
-            | Some(SduiValue.Text value) when not(String.IsNullOrWhiteSpace value) ->
-                projection |> Option.bind (tryCoverageActiveLocalWindow total)
-            | _ -> None
+        let selected = projection |> Option.bind (tryCoverageActiveLocalWindow total)
         match selected with
         | Some window ->
             let count = min maximumCount window.Count
@@ -3018,6 +3122,28 @@ module RendererModel =
         match TaLoadedCoverageCodec.tryDecodeResolved defaultView data with
         | Ok(Some projection) -> Some projection
         | _ -> None
+
+    // Runtime patches replace immutable SduiValue objects. Keep only the current
+    // coverage object, never the whole Data map; each renderer owns its reader.
+    let createLoadedCoverageReader () =
+        let mutable previous: (SduiValue * TaLoadedCoverageProjection option) option = None
+        fun defaultView data ->
+            let raw =
+                match TaLoadedCoverageCodec.tryDataRef defaultView with
+                | Error _ -> None
+                | Ok(Some dataRef) -> Map.tryFind dataRef data
+                | Ok None -> Map.tryFind TaLoadedCoverageCodec.DefaultViewKey defaultView
+            match raw with
+            | None ->
+                previous <- None
+                None
+            | Some value ->
+                match previous with
+                | Some(cachedValue, projection) when Object.ReferenceEquals(cachedValue, value) -> projection
+                | _ ->
+                    let projection = tryLoadedCoverageResolved defaultView data
+                    previous <- Some(value, projection)
+                    projection
 
     let authoritativeGlobalOverviewReady requiresGlobalOverview (state: RuntimeState) =
         match state.Document with
@@ -3530,7 +3656,7 @@ module RendererModel =
                 let index = upperTimestampBound timeline target - 1
                 if index < 0 then None else Some(min (timeline.Length - 1) index)
 
-    let overviewSelectionRatios projection (activeReferenceTimeline: string array) activeWindow =
+    let tryOverviewNavigatorWindow projection (activeReferenceTimeline: string array) activeWindow =
         if projection.OverviewAxisRef = projection.ActiveDetail.BaseAxisRef then
             None
         else
@@ -3549,9 +3675,100 @@ module RendererModel =
                         match eventTimeSlot overviewTimeline first, eventTimeSlot overviewTimeline last with
                         | Some firstSlot, Some lastSlot ->
                             let lastExclusive = min overviewTimeline.Length (max (firstSlot + 1) (lastSlot + 1))
-                            Some(float firstSlot / float overviewTimeline.Length, float lastExclusive / float overviewTimeline.Length)
+                            Some { StartIndex = firstSlot; Count = lastExclusive - firstSlot }
                         | _ -> None
                     | _ -> None
+
+    let tryOverviewNavigatorGestureDomain projection activeReferenceTimeline activeWindow =
+        tryOverviewNavigatorWindow projection activeReferenceTimeline activeWindow
+        |> Option.map (fun window ->
+            { DomainCount = projection.OverviewAnchors.Length
+              CommittedWindow = window
+              UsesResidentAuthority = false })
+
+    let overviewMatchesActiveIntervals (document: TaWorkspaceDocument) prepared (activeReferenceTimeline: string array) projection =
+        let total = projection.OverviewAnchors.Length
+        let basePoints =
+            document.BaseRowId
+            |> Option.bind (fun rowId -> document.Rows |> Array.tryFind (fun row -> row.Visible && row.RowId = rowId))
+            |> Option.bind (fun row ->
+                let traces = effectiveTraces row |> Array.filter _.Visible
+                traces
+                |> Array.tryFind (fun trace -> trace.DataRef = row.DataRef)
+                |> Option.orElseWith (fun () -> traces |> Array.tryHead))
+            |> Option.map (fun trace ->
+                let dataRef = trace.CandleDataRefs |> Option.map _.OpenRef |> Option.defaultValue trace.DataRef
+                resolvedSeriesPrepared dataRef prepared)
+        match tryOverviewTimeline projection, basePoints, Map.tryFind projection.OverviewAxisRef prepared.ResolvedAxes with
+        | Some overviewTimeline, Some points, Some overviewAxis
+            when total > 0
+                 && total = activeReferenceTimeline.Length
+                 && total = points.Length
+                 && total = overviewAxis.Points.Count ->
+            let overviewPoints = overviewAxis.Points |> Map.toArray |> Array.map snd
+            let sameObservationSequence =
+                Seq.init total id
+                |> Seq.forall (fun index ->
+                    match points[index].Temporal with
+                    | None -> false
+                    | Some active ->
+                        let overview = overviewPoints[index]
+                        match tryUtcTimestamp active.IntervalStartUtc, tryUtcTimestamp active.IntervalEndUtc,
+                              tryUtcTimestamp overview.IntervalStartUtc, tryUtcTimestamp overview.IntervalEndUtc,
+                              tryUtcTimestamp (presentationTimestamp active), tryUtcTimestamp activeReferenceTimeline[index],
+                              tryUtcTimestamp (presentationTimestamp overview) with
+                        | Some activeStart, Some activeEnd, Some overviewStart, Some overviewEnd,
+                          Some activeTime, Some referenceTime, Some overviewTime ->
+                            activeStart < activeEnd
+                            && activeStart = overviewStart
+                            && activeEnd = overviewEnd
+                            && active.ScaleKey = overview.ScaleKey
+                            && activeStart = overviewTimeline[index]
+                            && overviewTime = overviewTimeline[index]
+                            && activeTime = referenceTime
+                            && activeStart <= activeTime && activeTime < activeEnd
+                        | _ -> false)
+            sameObservationSequence
+        | _ -> false
+
+    let overviewNavigatorMaximumCount maximumCount document prepared activeReferenceTimeline projection =
+        let total = projection.OverviewAnchors.Length
+        if overviewMatchesActiveIntervals document prepared activeReferenceTimeline projection then
+            min total (max 1 maximumCount)
+        else total
+
+    let tryOverviewLocalMovePreview maximumCount document prepared projection drag activeCount (window: TaVisibleWindow) =
+        let timeline = referenceTimelineForDocumentPrepared document prepared
+        // Overview anchors and active labels differ for aggregated candles. Reuse
+        // the full interval/scale/order proof; never copy cross-axis indices blindly.
+        if drag = TaWindowDrag.Move
+           && window.Count = activeCount
+           && window.Count > 0 && window.Count <= maximumCount
+           && window.Count <= timeline.Length
+           && window.StartIndex >= 0 && window.StartIndex <= timeline.Length - window.Count
+           && overviewMatchesActiveIntervals document prepared timeline projection then
+            Some window
+        else None
+
+    let navigatorResizeHandleGeometry width selectionX selectionWidth =
+        if not (finiteNumber width && finiteNumber selectionX && finiteNumber selectionWidth)
+           || width <= 0.0 || selectionWidth <= 0.0 then
+            0.0, 0.0, 0.0
+        else
+            let x = max 0.0 (min width selectionX)
+            let selectedWidth = min selectionWidth (width - x)
+            // At a track edge, clamping two fixed hit areas can cover the entire
+            // narrow selection. Leave its center available for a Move gesture.
+            let handleWidth = min 8.0 (selectedWidth / 3.0)
+            max 0.0 (min (width - handleWidth) (x - handleWidth / 2.0)),
+            max 0.0 (min (width - handleWidth) (x + selectedWidth - handleWidth / 2.0)),
+            handleWidth
+
+    let overviewSelectionRatios projection activeReferenceTimeline activeWindow =
+        tryOverviewNavigatorWindow projection activeReferenceTimeline activeWindow
+        |> Option.map (fun window ->
+            float window.StartIndex / float projection.OverviewAnchors.Length,
+            float (window.StartIndex + window.Count) / float projection.OverviewAnchors.Length)
 
     let overviewSelectionRatiosForGlobalWindow projection (activeReferenceTimeline: string array) globalWindow =
         tryLocalWindowForLoadedCoverage activeReferenceTimeline.Length projection globalWindow
@@ -3564,6 +3781,47 @@ module RendererModel =
             let bounded = clampWindow 1 Int32.MaxValue total window
             float bounded.StartIndex / float total,
             float (bounded.StartIndex + bounded.Count) / float total
+
+    let visibleBoundaryTimes (timeline: string array) window =
+        if timeline.Length = 0 || window.Count <= 0 then None
+        else
+            let bounded = clampWindow 1 Int32.MaxValue timeline.Length window
+            Some(timeline[bounded.StartIndex], timeline[bounded.StartIndex + bounded.Count - 1])
+
+    let selectionBoundaryTimes (timeline: string array) (left, right) =
+        if timeline.Length = 0 || not (finiteNumber left && finiteNumber right) || right <= left then None
+        else
+            let stableSlot ratio =
+                let slot = max 0.0 (min 1.0 ratio) * float timeline.Length
+                let integer = Math.Round slot
+                // Normalized start + delta can cancel near zero while retaining absolute
+                // ratio error from values of magnitude one. Keep the eight-epsilon budget
+                // for division/addition/scaling, then convert it to slots using axis length.
+                // At 4500 slots this is below 8e-12 of one slot; real fractions keep floor/ceil.
+                // Display conversion only: gesture and settlement coordinates are unchanged.
+                let tolerance = 8.0 * 2.220446049250313e-16 * float timeline.Length
+                if abs (slot - integer) <= tolerance then integer else slot
+            let first = int(Math.Floor(stableSlot left))
+            let lastExclusive = int(Math.Ceiling(stableSlot right))
+            visibleBoundaryTimes timeline {StartIndex=first;Count=lastExclusive-first}
+
+    // Display only: sparse, sorted real anchors cannot supply an exact market
+    // time for every GLOBAL ordinal. Never use these labels as navigation input.
+    let globalResidentBoundaryTimes (anchors: TaOverviewAnchor array) (window: TaResidentCoverageWindow) =
+        if anchors.Length=0 || window.StartObservationOrdinal<0L || window.ObservationCount<=0
+           || window.StartObservationOrdinal>Int64.MaxValue-int64(window.ObservationCount-1) then None
+        else
+            let at ordinal =
+                let mutable low = 0
+                let mutable high = anchors.Length
+                while low < high do
+                    let middle = low + (high-low)/2
+                    if anchors[middle].ObservationOrdinal <= ordinal then low <- middle+1 else high <- middle
+                anchors[max 0 (low-1)].EventTimeUtc
+            Some(at window.StartObservationOrdinal, at (window.StartObservationOrdinal+int64(window.ObservationCount-1)))
+
+    let navigatorPreviewCanClear draftPresent dragging coveragePending eventRangePending queued =
+        not (draftPresent || dragging || coveragePending || eventRangePending || queued)
 
     let navigatorSelectionRatiosForRenderWithAuthority
         activeGestureOverride
@@ -3578,15 +3836,18 @@ module RendererModel =
         | None ->
             match projection with
             | Some current ->
-                match coverageNavigatorWindowWithAuthority activeReferenceTimeline.Length activeWindow authority current with
-                | Some(_, total, committed) ->
-                    localDraft
-                    |> Option.defaultValue committed
-                    |> selectionRatios total
+                match overviewSelectionRatios current activeReferenceTimeline (localDraft |> Option.defaultValue activeWindow) with
+                | Some ratios -> ratios
                 | None ->
-                    localDraft
-                    |> Option.defaultValue activeWindow
-                    |> selectionRatios activeReferenceTimeline.Length
+                    match coverageNavigatorWindowWithAuthority activeReferenceTimeline.Length activeWindow authority current with
+                    | Some(_, total, committed) ->
+                        localDraft
+                        |> Option.defaultValue committed
+                        |> selectionRatios total
+                    | None ->
+                        localDraft
+                        |> Option.defaultValue activeWindow
+                        |> selectionRatios activeReferenceTimeline.Length
             | _ ->
                 localDraft
                 |> Option.defaultValue activeWindow
@@ -3808,6 +4069,12 @@ module RendererModel =
     let tryNavigatorEventRangeIntent projection targetWindow =
         tryEventRangeIntent TaCoverageWindowPurpose.NavigatorWindow projection targetWindow
 
+    let tryNavigatorGestureEventRangeIntent drag activeCount maximumCount projection targetWindow =
+        let moving = drag = TaWindowDrag.Move
+        let count = if moving then activeCount else targetWindow.Count
+        let purpose = if moving then TaCoverageWindowPurpose.NavigatorMove else TaCoverageWindowPurpose.NavigatorWindow
+        tryEventRangeIntent purpose projection { targetWindow with Count = max 1 (min maximumCount count) }
+
     let tryRefreshQueuedEventRangeAction capturedIdentity (projection: TaLoadedCoverageProjection option) action =
         if capturedIdentity <> (projection |> Option.map _.CoverageIdentity) then
             None
@@ -3852,6 +4119,11 @@ module RendererModel =
             min DynamicRuntimeDefaults.MaximumVisibleRangeBasePoints (max 1 maximumVisibleBars)
         let viewportObservationCount = max 1 (min requestObservationCount observationCount)
         requestObservationCount, viewportObservationCount
+
+    let navigatorActiveEdgeDelta direction referenceLength window =
+        let bounded = clampWindow 1 Int32.MaxValue referenceLength window
+        let target = if direction = TaCoverageDirection.Earlier then -bounded.Count else referenceLength
+        target - bounded.StartIndex
 
     let requiresCrossAxisNavigatorEventRangeMaterialization projection =
         projection.GlobalOverview
@@ -3899,6 +4171,23 @@ module RendererModel =
                 TaCoverageIntentProjectionSettlement.Reanchor
                     { StartIndex = startIndex
                       Count = observationCount }
+            | _ when actionPending -> TaCoverageIntentProjectionSettlement.Await
+            | _ -> TaCoverageIntentProjectionSettlement.Reject
+
+    let navigatorEventRangeProjectionSettlement
+        maximumVisibleBars
+        referenceLength
+        purpose
+        observationCount
+        pendingQueryGeneration
+        actionPending
+        (projection: TaLoadedCoverageProjection) =
+        if projection.QueryGeneration < pendingQueryGeneration then TaCoverageIntentProjectionSettlement.Await
+        else
+            match tryCoverageActiveLocalWindow referenceLength projection with
+            | Some window when window.Count <= maximumVisibleBars
+                               && (purpose = TaCoverageWindowPurpose.NavigatorWindow || window.Count = observationCount) ->
+                TaCoverageIntentProjectionSettlement.Reanchor window
             | _ when actionPending -> TaCoverageIntentProjectionSettlement.Await
             | _ -> TaCoverageIntentProjectionSettlement.Reject
 
@@ -3976,6 +4265,30 @@ module RendererModel =
             let activeTimeline = rowTimelinePrepared baseRow prepared
             let timeline = navigatorEventTimeline activeTimeline projection
             visibleEventRangePreparedOnTimeline document prepared timeline window
+
+    let overviewVisibleEventRangePrepared
+        (document: TaWorkspaceDocument)
+        prepared
+        (projection: TaLoadedCoverageProjection)
+        window =
+        match tryBaseRow document, tryOverviewTimeline projection with
+        | Some(baseRowId, _), Some timeline when timeline.Length > 0 && window.Count > 0 ->
+            let selected = clampWindow 1 Int32.MaxValue timeline.Length window
+            let startKey = timeline[selected.StartIndex]
+            let startTime = projection.OverviewAnchors[selected.StartIndex].EventTimeUtc
+            let last = selected.StartIndex + selected.Count - 1
+            let anchor = projection.OverviewAnchors[last]
+            prepared.ResolvedAxes
+            |> Map.tryFind projection.OverviewAxisRef
+            |> Option.bind (fun axis -> Map.tryFind (float anchor.ObservationOrdinal) axis.Points)
+            |> Option.filter (fun point -> tryUtcTimestamp (presentationTimestamp point) = tryUtcTimestamp anchor.EventTimeUtc)
+            |> Option.bind (fun point ->
+                tryUtcTimestamp point.IntervalEndUtc
+                |> Option.filter (fun endKey -> compare endKey timeline[last] > 0 && compare endKey startKey > 0)
+                |> Option.map (fun _ -> point.IntervalEndUtc))
+            |> Option.map (fun endTime ->
+                { BaseRowId = baseRowId; StartEventTimeUtc = startTime; EndEventTimeExclusiveUtc = endTime })
+        | _ -> None
 
     let paddedRange fallbackLow fallbackHigh values =
         let mutable found = false
@@ -4272,6 +4585,18 @@ module RendererModel =
                           IsMajor = false; IsSessionStart = false }))
                 |> Array.tryPick id
             hourStep, (match fallback with Some tick -> Array.append ticks [| tick |] | None -> ticks), guides
+
+    let residentTimeAxisForCoveragePrepared document prepared (projection: TaLoadedCoverageProjection option) =
+        let referenceTimeline = referenceTimelineForDocumentPrepared document prepared
+        let overviewTimeline =
+            projection |> Option.bind (fun coverage ->
+                tryOverviewTimeline coverage
+                |> Option.filter (Array.isEmpty >> not)
+                |> Option.map (fun _ -> coverage.OverviewAnchors |> Array.map _.EventTimeUtc))
+            |> Option.defaultValue referenceTimeline
+        let scale = residentCalendarScale referenceTimeline
+        let dates = referenceTradingDatesForTimelinePrepared document overviewTimeline prepared
+        scale, (fun zone -> tradingSessionAxisGrid false scale zone overviewTimeline dates)
 
     let residentTradingCalendarGrid scaleMinutes zone timestamps tradingDates =
         tradingSessionAxisGrid false scaleMinutes zone timestamps tradingDates

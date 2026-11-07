@@ -29,8 +29,610 @@ let temporalPoint sourceIntervalId scale startUtc endUtc observedThroughUtc avai
           Quality = quality
           Value = value }
 
+let independentOverviewFixture (times: string array) : TaLoadedCoverageProjection =
+    { CoverageIdentity="independent-overview"; CoverageRevision=7L; QueryGeneration=3L
+      Completeness=TaCoverageCompleteness.Partial; TotalObservationCount=None; Segments=[||]
+      OverviewAxisRef="overview.60k"
+      OverviewAnchors=times |> Array.mapi (fun i t -> {ObservationOrdinal=100L+int64 i;EventTimeUtc=t;Value=SduiValue.Number(float i)})
+      ActiveDetail={BaseAxisRef="active.1k";StartObservationOrdinal=700L;ObservationCount=1500}
+      GlobalOverview=None }
+
+let coveragePreparationFixture () =
+    let axisRef = "fixture.axis"
+    let axis =
+        { AxisRef = axisRef
+          Revision = 1L
+          Points =
+            [| for position in 0L .. 2L do
+                   let startUtc = DateTimeOffset(2026, 11, 6, 1, int position, 0, TimeSpan.Zero)
+                   yield
+                       { Position = position
+                         SourceIntervalId = $"coverage-fixture:{position}"
+                         ScaleKey = "1K"
+                         IntervalStartUtc = startUtc
+                         IntervalEndUtc = startUtc.AddMinutes 1.0
+                         EventTimeUtc = Some(startUtc.AddMinutes 1.0)
+                         ObservedThroughUtc = startUtc.AddMinutes 1.0
+                         AvailableAtUtc = Some(startUtc.AddMinutes 1.0)
+                         Finality = PointFinality.Final
+                         Projection = TemporalProjection.CandleSpan
+                         Quality = Some "complete" } |] }
+    let series =
+        { AxisRef = axisRef
+          AxisRevision = 1L
+          Points = [| for position in 0L .. 2L -> { Position = position; Value = SduiValue.Number(float position) } |] }
+    let coverage =
+        independentOverviewFixture (axis.Points |> Array.map (fun point -> point.EventTimeUtc.Value.ToString("O")))
+    let coverageRef = "fixture.custom-coverage-ref"
+    let data =
+        Map [ axisRef, TemporalAxisCodec.encode axis
+              "fixture.series", TemporalSeriesCodec.encode series
+              "fixture.inline", SduiValue.Array [| SduiValue.Number 10.0; SduiValue.Number 11.0 |]
+              "fixture.status", SduiValue.Object(Map [ "state", SduiValue.Text "ready" ])
+              coverageRef, TaLoadedCoverageCodec.encode coverage ]
+    let nextCoverage =
+        { coverage with
+            CoverageRevision = coverage.CoverageRevision + 1L
+            ActiveDetail = { coverage.ActiveDetail with StartObservationOrdinal = 701L } }
+    TaLoadedCoverageCodec.applyDataRef coverageRef Map.empty,
+    data,
+    Map.add coverageRef (TaLoadedCoverageCodec.encode nextCoverage) data
+
+let navigatorIntervalFixture scale splitCandles (starts: DateTimeOffset array) =
+    let activeRef = "fixture.active-axis"
+    let overviewRef = "fixture.overview-axis"
+    let activeAxis =
+        { AxisRef = activeRef
+          Revision = 1L
+          Points =
+            starts |> Array.mapi (fun index start ->
+                let finish = start.AddMinutes(float scale)
+                { Position = int64 index; SourceIntervalId = $"fixture-bar:{index}"; ScaleKey = string scale + "K"
+                  IntervalStartUtc = start; IntervalEndUtc = finish; EventTimeUtc = Some(finish.AddMinutes(-1.0))
+                  ObservedThroughUtc = finish; AvailableAtUtc = Some finish; Finality = PointFinality.Final
+                  Projection = TemporalProjection.CandleSpan; Quality = Some "test-fixture" }) }
+    let overviewAxis =
+        { activeAxis with
+            AxisRef = overviewRef
+            Points = activeAxis.Points |> Array.map (fun point ->
+                { point with SourceIntervalId = "overview:" + point.SourceIntervalId; EventTimeUtc = Some point.IntervalStartUtc }) }
+    let refs =
+        { OpenRef = "fixture.ha.open"; HighRef = "fixture.ha.high"; LowRef = "fixture.ha.low"
+          CloseRef = "fixture.ha.close"; VolumeRef = "fixture.ha.volume" }
+    let trace =
+        { TraceId = "fixture.base"; Kind = TaTraceKind.Candlestick
+          DataRef = (if splitCandles then "fixture.ha.composite" else "fixture.price")
+          Label = "fixture"; Color = ""; Width = 1.0; Visible = true
+          CandleDataRefs = (if splitCandles then Some refs else None); Options = Map.empty }
+    let row =
+        { RowId = "fixture.base"; Kind = (if splitCandles then TaRowKind.HeikinAshi else TaRowKind.Candlestick)
+          DataRef = trace.DataRef; HeightWeight = 1.0; Visible = true; Traces = [|trace|]; Options = Map.empty }
+    let document =
+        { WorkspaceId = "fixture.navigator"; Title = "fixture"; RowsRef = "rows"; StatusRef = "status"
+          SharedTimeAxis = true; TemporalAxisRefs = [|activeRef;overviewRef|]; BaseRowId = Some row.RowId
+          Rows = [|row|]; EditorSchemas = [||]; AllowedActions = [||]; DefaultView = Map.empty }
+    let series value =
+        { AxisRef = activeRef; AxisRevision = 1L
+          Points = starts |> Array.mapi (fun index _ -> { Position = int64 index; Value = value index }) }
+        |> TemporalSeriesCodec.encode
+    let data =
+        Map [ activeRef, TemporalAxisCodec.encode activeAxis; overviewRef, TemporalAxisCodec.encode overviewAxis ]
+    let data =
+        if splitCandles then
+            [refs.OpenRef;refs.HighRef;refs.LowRef;refs.CloseRef;refs.VolumeRef]
+            |> List.fold (fun state dataRef -> Map.add dataRef (series (fun index -> SduiValue.Number(float(index+1)))) state) data
+        else
+            Map.add trace.DataRef
+                (series (fun index -> candle (activeAxis.Points[index].EventTimeUtc.Value.ToString("O")) 10.0 12.0 9.0 11.0 1.0)) data
+    let prepared = RendererModel.prepareData data
+    let projection =
+        { independentOverviewFixture (starts |> Array.map (fun time -> time.ToString("O"))) with
+            OverviewAxisRef = overviewRef
+            ActiveDetail = { BaseAxisRef = activeRef; StartObservationOrdinal = 0L; ObservationCount = starts.Length } }
+    document, prepared, RendererModel.referenceTimelineForDocumentPrepared document prepared, projection
+
+let navigatorLocalPreviewFixture scale splitCandles starts =
+    let document, prepared, active, projection = navigatorIntervalFixture scale splitCandles starts
+    // The range codec resolves anchors by ordinal, whereas the older cap-only
+    // fixture deliberately supplies an independent 100-based domain.
+    let anchored =
+        { projection with
+            OverviewAnchors = projection.OverviewAnchors |> Array.mapi (fun index anchor ->
+                { anchor with ObservationOrdinal = int64 index }) }
+    document, prepared, active, anchored
+
+let editorCompletionFixture () =
+    let authoritative =
+        { TemplateKey = "ta.macd"
+          Values =
+            [| { Path = "fastPeriod"; Value = EditorScalarValue.Number 34.0 }
+               { Path = "slowPeriod"; Value = EditorScalarValue.Number 89.0 }
+               { Path = "signalPeriod"; Value = EditorScalarValue.Number 144.0 }
+               { Path = "using"; Value = EditorScalarValue.Text "close" } |] }
+    let submitted =
+        { authoritative with
+            Values = authoritative.Values |> Array.fold (fun values input -> RendererModel.setEditorInput input values) [||] }
+    submitted, authoritative
+
 let tests =
     testList "TA renderer model" [
+        testCase "DYN-T-797 navigator preview survives drop and late frames until its pending work settles" <| fun _ ->
+            Expect.isFalse (RendererModel.navigatorPreviewCanClear false true false false false) "a held gesture owns its frozen mask and time labels"
+            Expect.isFalse (RendererModel.navigatorPreviewCanClear false false false true false) "independent overview has no active draft but still awaits event-range data"
+            Expect.isFalse (RendererModel.navigatorPreviewCanClear false false true false false) "an adjacent page reply must settle before preview cleanup"
+            Expect.isFalse (RendererModel.navigatorPreviewCanClear false false false false true) "an older reply cannot clear the next queued gesture"
+            Expect.isTrue (RendererModel.navigatorPreviewCanClear false false false false false) "fully settled navigation returns to current actual boundaries"
+
+        testCase "DYN-T-795 GLOBAL time preview selects real sparse anchors without calendar interpolation" <| fun _ ->
+            let anchors=[|0L,"2026-11-06T10:00:00Z";100L,"2026-11-09T09:00:00Z";200L,"2026-11-10T09:00:00Z"|]
+                        |> Array.map (fun (ordinal,time) -> {ObservationOrdinal=ordinal;EventTimeUtc=time;Value=SduiValue.Number 1.0})
+            Expect.equal (RendererModel.globalResidentBoundaryTimes anchors {StartObservationOrdinal=50L;ObservationCount=100})
+                (Some(anchors[0].EventTimeUtc,anchors[1].EventTimeUtc)) "display-only approximation uses known anchors, never an invented weekend time"
+            Expect.equal (RendererModel.globalResidentBoundaryTimes anchors {StartObservationOrdinal=100L;ObservationCount=1})
+                (Some(anchors[1].EventTimeUtc,anchors[1].EventTimeUtc)) "an exact anchor remains its real time"
+
+        testCase "DYN-T-796 invalid GLOBAL time previews have no fabricated bounds" <| fun _ ->
+            let anchors=[|{ObservationOrdinal=0L;EventTimeUtc="2026-11-06T10:00:00Z";Value=SduiValue.Number 1.0}|]
+            for window in [{StartObservationOrdinal=0L;ObservationCount=0};{StartObservationOrdinal= -1L;ObservationCount=10};{StartObservationOrdinal=Int64.MaxValue;ObservationCount=2}] do
+                Expect.isNone (RendererModel.globalResidentBoundaryTimes anchors window) "reject invalid or overflowing display windows"
+            Expect.isNone (RendererModel.globalResidentBoundaryTimes [||] {StartObservationOrdinal=0L;ObservationCount=100}) "missing anchors do not supply a time"
+
+        testCase "DYN-T-793 visible and selected boundaries preserve actual UTC bar times across gaps" <| fun _ ->
+            let times=[|"2026-11-06T10:00:00+00:00";"2026-11-06T11:00:00+00:00";"2026-11-09T09:00:00Z";"2026-11-09T10:00:00Z"|]
+            Expect.equal (RendererModel.visibleBoundaryTimes times {StartIndex=1;Count=2}) (Some(times[1],times[2]))
+                "the displayed endpoints are real selected bars, not a fabricated time in the market closure"
+            Expect.equal (RendererModel.selectionBoundaryTimes times (0.25,0.75)) (Some(times[1],times[2]))
+                "overview labels follow the exact painted selection slots"
+            Expect.equal (RendererModel.selectionBoundaryTimes times (0.0,1.0)) (Some(times[0],times[3]))
+                "full width includes the actual first and last bar without dropping UTC offsets"
+            Expect.equal (RendererModel.selectionBoundaryTimes times (0.75,1.0)) (Some(times[3],times[3]))
+                "a one-bar selection displays that same actual bar at both endpoints"
+
+        testCase "00000 boundary labels preserve integer slots across floating point noise" <| fun _ ->
+            let timesFixture = Array.init 4500 (fun index -> "fixture-slot:" + string index)
+            let bounds left right = RendererModel.selectionBoundaryTimes timesFixture (left,right)
+            Expect.equal (bounds 0.711111111111111 1.0) (Some(timesFixture[3200],timesFixture[4499]))
+                "the observed left-handle draft must match the committed 3201-4500 bar labels"
+            Expect.equal (bounds (3200.0/4500.0) 1.0) (Some(timesFixture[3200],timesFixture[4499]))
+                "the integer committed window has the same first bar"
+            Expect.equal (bounds 0.0 0.7111111111111112) (Some(timesFixture[0],timesFixture[3199]))
+                "symmetric positive rounding noise must not extend the exclusive right boundary by a bar"
+            for left,right,first,last in
+                [ 3199.99999/4500.0,1.0,3199,4499
+                  3200.00001/4500.0,1.0,3200,4499
+                  0.0,3199.99999/4500.0,0,3199
+                  0.0,3200.00001/4500.0,0,3200 ] do
+                Expect.equal (bounds left right) (Some(timesFixture[first],timesFixture[last]))
+                    "real fractional positions keep floor/ceiling coverage instead of snapping the gesture"
+
+        testCase "00000 boundary labels match the native near-zero draft and settled window" <| fun _ ->
+            let timesFixture = Array.init 4500 (fun index -> "fixture-slot:" + string index)
+            let expected = Some(timesFixture[4],timesFixture[1503])
+            let observedLeft = 0.000888888888888828
+            Expect.equal (3000.0/4500.0 - 2996.0/4500.0) observedLeft
+                "the native ratio comes from normalized start plus an integer gesture delta"
+            Expect.equal (RendererModel.selectionBoundaryTimes timesFixture (observedLeft,1504.0/4500.0)) expected
+                "the draft starts at slot4, not slot3, despite cancellation near zero"
+            Expect.equal (RendererModel.visibleBoundaryTimes timesFixture {StartIndex=4;Count=1500}) expected
+                "the display-only correction agrees with the unchanged settled window"
+
+        for total in [1500;4500] do
+            testCase (sprintf "00000 boundary labels retain integer gesture endpoints on %d slots" total) <| fun _ ->
+                let timesFixture = Array.init total (fun index -> "fixture-slot:" + string index)
+                let committedStart = total*2/3
+                let committedEnd = total
+                let draftRatio initial target = float initial/float total + float(target-initial)/float total
+                let windows =
+                    [ 0,1; 0,4; 1,3; 4,48; total/3,48
+                      total-49,48; total-48,48; total-4,4; total-1,1
+                      total-1500,1500; 0,total ]
+                for first,count in windows do
+                    let left = draftRatio committedStart first
+                    let right = draftRatio committedEnd (first+count)
+                    Expect.equal (RendererModel.selectionBoundaryTimes timesFixture (left,right))
+                        (Some(timesFixture[first],timesFixture[first+count-1]))
+                        (sprintf "normalized subtraction must preserve both integer boundaries at %d/%d" first count)
+
+            testCase (sprintf "00000 boundary labels preserve genuine fractional positions on %d slots" total) <| fun _ ->
+                let timesFixture = Array.init total (fun index -> "fixture-slot:" + string index)
+                for boundary in [1;4;total/3;total-4;total-1] do
+                    for distance in [1e-10;1e-7;0.125;0.49] do
+                        let at value = value/float total
+                        let edge = float boundary
+                        let cases =
+                            [ at(edge-distance),at(edge+1.0),boundary-1,boundary
+                              at(edge+distance),at(edge+1.0),boundary,boundary
+                              at(edge-1.0),at(edge-distance),boundary-1,boundary-1
+                              at(edge-1.0),at(edge+distance),boundary-1,boundary ]
+                        for left,right,first,last in cases do
+                            Expect.equal (RendererModel.selectionBoundaryTimes timesFixture (left,right))
+                                (Some(timesFixture[first],timesFixture[last]))
+                                (sprintf "a real fraction %.12g around slot%d keeps floor/ceil coverage" distance boundary)
+
+        testCase "00009 resident label domain keeps 30K loaded bars separate from 1K GLOBAL ordinals" <| fun _ ->
+            let overviewFixture : TaGlobalCoverageOverview =
+                { TotalObservationCount=2_996_994L; AxisRef="fixture.axis.1k"; Anchors=[||]
+                  ResidentStartObservationOrdinal=100_000L; ResidentObservationCount=134_869 }
+            let projectionFixture : TaLoadedCoverageProjection =
+                { CoverageIdentity="fixture.30k-with-global-1k"; CoverageRevision=1L; QueryGeneration=1L
+                  Completeness=TaCoverageCompleteness.Complete; TotalObservationCount=Some 134_869L
+                  Segments=[||]; OverviewAxisRef="fixture.axis.30k"; OverviewAnchors=[||]
+                  ActiveDetail={BaseAxisRef="fixture.axis.30k";StartObservationOrdinal=0L;ObservationCount=4500}
+                  GlobalOverview=Some overviewFixture }
+            let domain = RendererModel.resolveNavigatorGestureDomain 40 1500 4500 {StartIndex=3000;Count=1500} None projectionFixture
+            Expect.equal (domain.DomainCount,domain.CommittedWindow) (4500,{StartIndex=3000;Count=1500})
+                "RESIDENT and the viewport both show 4500 loaded / 1500 visible in the prepared 30K axis"
+            Expect.isFalse domain.UsesResidentAuthority "the different 1K axis cannot supply a 30K ordinal authority"
+            Expect.equal (RendererModel.selectionRatios domain.DomainCount domain.CommittedWindow) (2.0/3.0,1.0)
+                "the visible rectangle occupies the final third of the loaded 30K domain"
+            Expect.equal (RendererModel.tryGlobalResidentWindow projectionFixture)
+                (Some {StartObservationOrdinal=100_000L;ObservationCount=134_869})
+                "GLOBAL keeps its original 1K resident count and ordinal domain"
+            let sameAxis = { projectionFixture with ActiveDetail={BaseAxisRef="fixture.axis.1k";StartObservationOrdinal=100_000L;ObservationCount=4500} }
+            let nativeDomain = RendererModel.resolveNavigatorGestureDomain 40 1500 4500 {StartIndex=3000;Count=1500} None sameAxis
+            Expect.equal nativeDomain.DomainCount 134_869 "an actually matching axis still uses the larger authoritative resident domain"
+            let emptyDomain = RendererModel.resolveNavigatorGestureDomain 40 1500 0 {StartIndex=0;Count=0} None projectionFixture
+            Expect.equal (emptyDomain.DomainCount,emptyDomain.CommittedWindow.Count) (0,0) "empty prepared data cannot invent loaded bars from a different axis"
+
+        testCase "DYN-T-794 unavailable or invalid boundary selections do not invent timestamps" <| fun _ ->
+            let times=[|"2026-11-06T10:00:00Z"|]
+            for ratios in [0.0,0.0;0.5,0.25;Double.NaN,1.0;0.0,Double.PositiveInfinity;1.1,1.2] do
+                Expect.isNone (RendererModel.selectionBoundaryTimes times ratios) "empty or invalid selection has no display range"
+            Expect.isNone (RendererModel.selectionBoundaryTimes [||] (0.0,1.0)) "no loaded bar means no endpoint"
+            Expect.isNone (RendererModel.visibleBoundaryTimes times {StartIndex=0;Count=0}) "empty viewport has no endpoint"
+
+        for drag, expectedPurpose, expectedCount in
+            [TaWindowDrag.Move,TaCoverageWindowPurpose.NavigatorMove,600
+             TaWindowDrag.ResizeLeft,TaCoverageWindowPurpose.NavigatorWindow,1500
+             TaWindowDrag.ResizeRight,TaCoverageWindowPurpose.NavigatorWindow,1500] do
+            testCase ("DYN-T-790 navigator gesture dispatch has explicit semantics " + drag) <| fun _ ->
+                let intent=RendererModel.tryNavigatorGestureEventRangeIntent drag 600 1500 (independentOverviewFixture [||]) {StartIndex=500;Count=4000} |> Option.get
+                Expect.equal intent.Purpose expectedPurpose "Move and Resize must not be inferred from equal widths"
+                Expect.equal intent.ObservationCount expectedCount "Move preserves active count; Resize supplies only a bounded hint and server derives the span"
+                Expect.isNone intent.StartObservationOrdinal "overview slots never leak into active/global ordinal authority"
+                Expect.isNone intent.Direction "an in-bounds drop does not become an adjacent refill"
+
+        testCase "DYN-T-791 navigator settlement uses the accepted active window and generation" <| fun _ ->
+            let projection={independentOverviewFixture [||] with
+                                Segments=[|{SegmentId="resident";StartEventTimeUtc="2026-11-01T00:00:00Z";EndEventTimeExclusiveUtc="2026-11-06T00:00:00Z";StartObservationOrdinal=100L;ObservationCount=4500L}|]
+                                ActiveDetail={BaseAxisRef="active.1k";StartObservationOrdinal=700L;ObservationCount=600}}
+            let settle purpose count pending frame=RendererModel.navigatorEventRangeProjectionSettlement 1500 4500 purpose count 3L pending frame
+            Expect.equal (settle TaCoverageWindowPurpose.NavigatorMove 600 false projection)
+                (TaCoverageIntentProjectionSettlement.Reanchor {StartIndex=600;Count=600}) "accepted active ordinals provide the exact local offset even when overview time was not an active start"
+            Expect.equal (settle TaCoverageWindowPurpose.NavigatorWindow 25 false projection)
+                (TaCoverageIntentProjectionSettlement.Reanchor {StartIndex=600;Count=600}) "25 overview slots do not replace the server-derived 600 active bars"
+            Expect.equal (settle TaCoverageWindowPurpose.NavigatorMove 600 false {projection with QueryGeneration=2L}) TaCoverageIntentProjectionSettlement.Await "old frame cannot settle a new gesture"
+            Expect.equal (settle TaCoverageWindowPurpose.NavigatorMove 601 true projection) TaCoverageIntentProjectionSettlement.Await "wait while matching result may still arrive"
+            Expect.equal (settle TaCoverageWindowPurpose.NavigatorMove 601 false projection) TaCoverageIntentProjectionSettlement.Reject "an accepted Move cannot silently change width"
+            Expect.equal (settle TaCoverageWindowPurpose.NavigatorWindow 25 false {projection with ActiveDetail={projection.ActiveDetail with ObservationCount=1501}})
+                TaCoverageIntentProjectionSettlement.Reject "authoritative count still obeys the active 1500 limit"
+
+        testCase "DYN-T-792 independent overview boundary uses an active-axis edge delta" <| fun _ ->
+            let active={StartIndex=1198;Count=80}
+            Expect.equal (RendererModel.navigatorActiveEdgeDelta TaCoverageDirection.Earlier 4500 active) -1278 "select the preceding 80 observations after requesting Earlier1500"
+            Expect.equal (RendererModel.navigatorActiveEdgeDelta TaCoverageDirection.Later 4500 active) 3302 "select the following 80 observations without converting a calendar gap to bars"
+
+        testCase "navigator adjacent drop selects the new block after rolling replacement" <| fun _ ->
+            let timelineFixture first last = [| for index in first .. last -> $"fixture-observation:{index:D5}" |]
+            let projection = { independentOverviewFixture [||] with QueryGeneration = 4L }
+            for count in [ 48; 80; 1500 ] do
+                for direction, oldTimeline, newTimeline, oldStart, expectedStart in
+                    [ TaCoverageDirection.Earlier, timelineFixture 1500 5999, timelineFixture 0 4499, 0, 1500-count
+                      TaCoverageDirection.Earlier, timelineFixture 1500 5999, timelineFixture 0 4499, 1198, 1500-count
+                      TaCoverageDirection.Later, timelineFixture 0 4499, timelineFixture 1500 5999, 4500-count, 3000
+                      TaCoverageDirection.Later, timelineFixture 0 4499, timelineFixture 1500 5999, 1198, 3000 ] do
+                    let visible = { StartIndex = oldStart; Count = count }
+                    let delta = RendererModel.navigatorActiveEdgeDelta direction oldTimeline.Length visible
+                    let actual =
+                        RendererModel.navigatorAdjacentProjectionSettlement 1 1500 delta oldTimeline newTimeline visible 4L false projection
+                    Expect.equal actual (TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = expectedStart; Count = count })
+                        "crossing a resident edge selects exactly the adjacent viewport, not the old loaded-edge window"
+
+        testCase "navigator adjacent drop keeps generation and missing-anchor guards" <| fun _ ->
+            let timelineFixture first last = [| for index in first .. last -> $"fixture-observation:{index:D5}" |]
+            let oldTimeline = timelineFixture 1500 5999
+            let visible = { StartIndex = 0; Count = 80 }
+            let delta = RendererModel.navigatorActiveEdgeDelta TaCoverageDirection.Earlier oldTimeline.Length visible
+            let projection = { independentOverviewFixture [||] with QueryGeneration = 4L }
+            let settle newTimeline generation pending =
+                RendererModel.navigatorAdjacentProjectionSettlement 1 1500 delta oldTimeline newTimeline visible 4L pending
+                    { projection with QueryGeneration = generation }
+            Expect.equal (settle (timelineFixture 0 4499) 3L false) TaCoverageIntentProjectionSettlement.Await
+                "an earlier generation cannot settle the requested adjacent page"
+            Expect.equal (settle (timelineFixture 6000 10499) 4L true) TaCoverageIntentProjectionSettlement.Await
+                "wait for the real time join while the action is pending"
+            Expect.equal (settle (timelineFixture 6000 10499) 4L false) TaCoverageIntentProjectionSettlement.Reject
+                "never invent an anchor when the accepted data lost the requested join"
+            Expect.equal (RendererModel.tryReanchorWindow 1 1500 0 oldTimeline (timelineFixture 0 4499) visible)
+                (Some { StartIndex = 1500; Count = 80 })
+                "ordinary zero-delta anchor retention remains unchanged for non-Navigator callers"
+
+        testCase "navigator adjacent drop separates refill count from visible intent count" <| fun _ ->
+            for direction in [ TaCoverageDirection.Earlier; TaCoverageDirection.Later ] do
+                for visibleCount in [ 48; 80; 1500 ] do
+                    let requestCount, viewportCount = RendererModel.navigatorAdjacentObservationCounts 1500 visibleCount
+                    let intent =
+                        RendererModel.tryNavigatorAdjacentEventRangeIntent direction viewportCount (independentOverviewFixture [||])
+                        |> Option.get
+                    Expect.equal requestCount 1500 "refilling coverage still requests a full 1500-bar page"
+                    Expect.equal intent.ObservationCount visibleCount "the backend receives the actual requested viewport width"
+                    Expect.equal intent.Purpose TaCoverageWindowPurpose.NavigatorWindow "the change is scoped to Navigator semantics"
+                    Expect.isNone intent.StartObservationOrdinal "event-time navigation must not invent an explicit ordinal"
+
+        for label, overviewTimes, activeStart, expectedSlot in
+            [ "different scale",[|"2026-11-06T09:00:00Z";"2026-11-06T10:00:00Z";"2026-11-06T11:00:00Z";"2026-11-06T12:00:00Z"|],"2026-11-06T10:05:00Z",1
+              "weekend gap",[|"2026-11-06T09:00:00Z";"2026-11-06T10:00:00Z";"2026-11-09T09:00:00Z";"2026-11-09T10:00:00Z"|],"2026-11-09T09:05:00Z",2 ] do
+            testCase ("DYN-T-787 overview selection and gesture share their own timeline " + label) <| fun _ ->
+                let projection=independentOverviewFixture overviewTimes
+                let active=[|for minute in 0..9 -> DateTimeOffset.Parse(activeStart).AddMinutes(float minute).ToString("O")|]
+                let visible={StartIndex=0;Count=10}
+                let domain=RendererModel.tryOverviewNavigatorGestureDomain projection active visible |> Option.get
+                Expect.equal domain.DomainCount 4 "four overview anchors are not ten active bars or global ordinals"
+                Expect.equal domain.CommittedWindow {StartIndex=expectedSlot;Count=1} "the ten active minutes occupy one real overview candle"
+                Expect.isFalse domain.UsesResidentAuthority "overview slot numbers must never become resident ordinals"
+                Expect.equal (RendererModel.navigatorSelectionRatiosForRenderWithAuthority None (Some projection) active visible None None)
+                    (float expectedSlot/4.0,float(expectedSlot+1)/4.0) "the visual mask and captured gesture have identical units"
+
+        testCase "DYN-T-788 overview domain keeps its native count and rejects malformed anchors" <| fun _ ->
+            let time m=DateTimeOffset(2026,1,1,0,0,0,TimeSpan.Zero).AddMinutes(float m).ToString("O")
+            let projection=independentOverviewFixture [|for hour in 0..1999 -> time(hour*60)|]
+            let active=[|for minute in 0..1499 -> time minute|]
+            let domain=RendererModel.tryOverviewNavigatorGestureDomain projection active {StartIndex=0;Count=1500} |> Option.get
+            Expect.equal domain.DomainCount 2000 "overview axis length is independent of the active 1500-bar limit"
+            Expect.equal domain.CommittedWindow {StartIndex=0;Count=25} "1500 active minutes cover 25 hourly slots, not 1500 slots"
+            for anchors in [ [||]; [|projection.OverviewAnchors[1];projection.OverviewAnchors[0]|]; [|{projection.OverviewAnchors[0] with EventTimeUtc="invalid"}|] ] do
+                Expect.isNone (RendererModel.tryOverviewNavigatorGestureDomain {projection with OverviewAnchors=anchors} active {StartIndex=0;Count=100})
+                    "unavailable, unordered, or malformed anchors preserve the existing fallback"
+            Expect.isNone (RendererModel.tryOverviewNavigatorGestureDomain {projection with OverviewAxisRef=projection.ActiveDetail.BaseAxisRef} active {StartIndex=0;Count=100})
+                "the existing same-axis resident route keeps its ordinal authority"
+
+        testCase "navigator maximum proves matching intervals with real 30K and 60K label shapes including HA open refs" <| fun _ ->
+            for scale in [ 1; 30; 60 ] do
+                for splitCandles in [ false; true ] do
+                    let startsFixture = Array.init 20 (fun index -> DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero).AddMinutes(float(index*scale)))
+                    let document, prepared, active, projection = navigatorIntervalFixture scale splitCandles startsFixture
+                    Expect.equal active.Length startsFixture.Length "the prepared base timeline must resolve even when the composite HA DataRef has no series"
+                    Expect.equal (DateTimeOffset.Parse(active[0]) - startsFixture[0]).TotalMinutes (float(scale-1))
+                        "the fixture uses actual producer semantics: 30K +29min and 60K +59min, not an equal-label shortcut"
+                    let projection =
+                        { projection with
+                            OverviewAnchors =
+                                projection.OverviewAnchors |> Array.map (fun anchor ->
+                                    { anchor with EventTimeUtc = DateTimeOffset.Parse(anchor.EventTimeUtc).ToString("yyyy-MM-ddTHH:mm:ss'Z'") }) }
+                    Expect.equal (RendererModel.overviewNavigatorMaximumCount 10 document prepared active projection) 10
+                        "equal actual intervals establish one-to-one counts despite different start and presentation labels"
+                    Expect.equal (RendererModel.overviewNavigatorMaximumCount 6 document prepared active projection) 6
+                        "use the configured maximum instead of hardcoding 1500"
+
+        testCase "action scope reset discards old pending request and feedback on a new identity" <| fun _ ->
+            let before : TaRendererUiState =
+                { Window={StartIndex=100;Count=200};FollowLatest=false;HiddenRows=Set.singleton "old"
+                  HiddenTraces=Set.singleton("row","line");RemovedTraces=Set.singleton("row","removed")
+                  AddRowOpen=false;CursorIndex=Some 3;PendingActionId=Some "old-action";Feedback="obsolete error" }
+            let after = TaWorkspaceRenderer.resetUiStateForIdentity before
+            Expect.isNone after.PendingActionId "a new workspace cannot inherit the previous action's ownership"
+            Expect.equal after.Feedback "" "an old failure must not remain on a new workspace"
+            Expect.equal after.Window before.Window "viewport initialization is still owned by the existing document path"
+            Expect.equal (after.HiddenRows,after.HiddenTraces,after.RemovedTraces,after.CursorIndex) (Set.empty,Set.empty,Set.empty,None)
+                "preserve the established identity reset behavior"
+
+        testCase "action scope reset prevents late results from mutating or settling a new request" <| fun _ ->
+            for pending in [None;Some "new-action"] do
+                for result in
+                    [DynamicActionResult.Accepted("old-action",7L)
+                     DynamicActionResult.Rejected("old-action","workspace-action-frame-invalid","superseded")
+                     DynamicActionResult.RevisionConflict("old-action",8L)] do
+                    let mutable ui : TaRendererUiState =
+                        {Window={StartIndex=3000;Count=1500};FollowLatest=true;HiddenRows=Set.empty;HiddenTraces=Set.empty
+                         RemovedTraces=Set.empty;AddRowOpen=false;CursorIndex=None;PendingActionId=pending;Feedback="new workspace"}
+                    let before=ui
+                    let mutable accepted=0
+                    let mutable rejected=0
+                    let mutable settled=0
+                    TaWorkspaceRenderer.settlePendingActionResult "old-action" result "Old accepted."
+                        (fun () -> accepted<-accepted+1;None) (fun () -> rejected<-rejected+1) (fun () -> settled<-settled+1)
+                        (fun () -> ui) (fun next -> ui<-next)
+                    Expect.equal ui before "a late result cannot overwrite the current UI"
+                    Expect.equal (accepted,rejected,settled) (0,0,0) "even an ignored result cannot flush or settle the new viewport's pending work"
+
+        testCase "action scope reset preserves current result handling and callback state changes" <| fun _ ->
+            for result,expectedAccepted,expectedRejected,expectedFeedback in
+                [DynamicActionResult.Accepted("current",7L),1,0,"Authoritative row ready."
+                 DynamicActionResult.Rejected("current","failed","reason"),0,1,"failed: reason"
+                 DynamicActionResult.RevisionConflict("current",8L),0,1,"revision-conflict: workspace is at revision 8."
+                 DynamicActionResult.Accepted("other",7L),0,1,"action-correlation-mismatch: result does not match the pending request."] do
+                let mutable ui : TaRendererUiState =
+                    {Window={StartIndex=20;Count=200};FollowLatest=false;HiddenRows=Set.empty;HiddenTraces=Set.empty
+                     RemovedTraces=Set.empty;AddRowOpen=false;CursorIndex=None;PendingActionId=Some "current";Feedback="submitting"}
+                let mutable accepted=0
+                let mutable rejected=0
+                let mutable settled=0
+                let changed () = ui<-{ui with Window={ui.Window with Count=48}}
+                TaWorkspaceRenderer.settlePendingActionResult "current" result "Accepted."
+                    (fun () -> accepted<-accepted+1;changed ();Some "Authoritative row ready.")
+                    (fun () -> rejected<-rejected+1;changed ()) (fun () -> settled<-settled+1)
+                    (fun () -> ui) (fun next -> ui<-next)
+                Expect.equal (accepted,rejected,settled) (expectedAccepted,expectedRejected,1) "only the owning request settles once"
+                Expect.equal ui.Window.Count 48 "preserve UI changes made by the accepted/rejected callback"
+                Expect.isNone ui.PendingActionId "current terminal results release their request"
+                Expect.equal ui.Feedback expectedFeedback "current failures and overrides retain their established meaning"
+
+        testCase "navigator resize handles leave the actual 48-bar tail move center uncovered" <| fun _ ->
+            let selectionX, selectionWidth = RendererModel.navigatorSelectionBounds 1000.0 (4452.0/4500.0,1.0)
+            let leftX, rightX, handleWidth = RendererModel.navigatorResizeHandleGeometry 1000.0 selectionX selectionWidth
+            let center = selectionX + selectionWidth/2.0
+            Expect.isTrue (leftX+handleWidth < center && center < rightX)
+                "native elementFromPoint must hit Move at the shaded center, not ResizeRight"
+
+        testCase "navigator resize handles preserve a center move lane at both edges and inside" <| fun _ ->
+            for width in [400.0;1000.0] do
+                for count in [12;48;80;200;1500] do
+                    for start in [0;(4500-count)/2;4500-count] do
+                        let x,w = RendererModel.navigatorSelectionBounds width (float start/4500.0,float(start+count)/4500.0)
+                        let leftX,rightX,hitWidth = RendererModel.navigatorResizeHandleGeometry width x w
+                        Expect.isTrue (hitWidth > 0.0 && hitWidth <= 8.0) "resize hit areas remain positive and bounded"
+                        Expect.isTrue (leftX >= 0.0 && rightX+hitWidth <= width) "hit areas stay within the track"
+                        Expect.isTrue (leftX+hitWidth < x+w/2.0 && x+w/2.0 < rightX) "a narrow selection remains movable in every position"
+
+        testCase "navigator resize handles keep existing wide selection geometry" <| fun _ ->
+            for x,w in [0.0,300.0;350.0,300.0;700.0,300.0;0.0,1000.0] do
+                let expected = max 0.0 (min 992.0 (x-4.0)), max 0.0 (min 992.0 (x+w-4.0)), 8.0
+                Expect.equal (RendererModel.navigatorResizeHandleGeometry 1000.0 x w) expected "normal and maximum windows keep their established resize targets"
+
+        testCase "navigator resize handles reject empty and nonfinite geometry" <| fun _ ->
+            for width,x,w in [0.0,0.0,0.0;1000.0,10.0,0.0;1000.0,10.0,-1.0;Double.NaN,0.0,10.0;1000.0,Double.NaN,10.0;1000.0,0.0,Double.PositiveInfinity] do
+                Expect.equal (RendererModel.navigatorResizeHandleGeometry width x w) (0.0,0.0,0.0) "invalid geometry must not create an invisible hit target"
+
+        testCase "overview local move preview matches actual intervals despite different bar labels" <| fun _ ->
+            for scale in [1;30;60] do
+                for splitCandles in [false;true] do
+                    let starts = Array.init 8 (fun i -> DateTimeOffset(2026, 11, 5, 10, 0, 0, TimeSpan.Zero).AddMinutes(float(i*scale)))
+                    let document, prepared, active, projection = navigatorLocalPreviewFixture scale splitCandles starts
+                    let target = {StartIndex=2;Count=3}
+                    Expect.equal (RendererModel.tryOverviewLocalMovePreview 6 document prepared projection TaWindowDrag.Move 3 target) (Some target)
+                        "already loaded identical observations can render before the HTTP response; presentation labels need not equal interval starts"
+                    let displayed = RendererModel.visibleBoundaryTimes active target |> Option.get
+                    Expect.equal (DateTimeOffset.Parse(fst displayed)) (starts[2].AddMinutes(float(scale-1))) "keep the real active label"
+                    let requested = RendererModel.overviewVisibleEventRangePrepared document prepared projection target |> Option.get
+                    Expect.equal (DateTimeOffset.Parse requested.StartEventTimeUtc) starts[2] "the request still uses overview interval authority"
+                    Expect.equal (DateTimeOffset.Parse requested.EndEventTimeExclusiveUtc) (starts[4].AddMinutes(float scale)) "preview does not change the requested interval end"
+
+        testCase "overview local move preview refuses different scale intervals and unavailable metadata" <| fun _ ->
+            let starts = Array.init 8 (fun i -> DateTimeOffset(2026, 11, 5, 10, 0, 0, TimeSpan.Zero).AddMinutes(float(i*30)))
+            let document, prepared, _, projection = navigatorLocalPreviewFixture 30 true starts
+            let axis = prepared.ResolvedAxes[projection.OverviewAxisRef]
+            let replace transform = {prepared with ResolvedAxes=Map.add projection.OverviewAxisRef {axis with Points=axis.Points |> Map.map (fun _ p -> transform p)} prepared.ResolvedAxes}
+            let openRef = document.Rows[0].Traces[0].CandleDataRefs.Value.OpenRef
+            for changed in
+                [ replace (fun p -> {p with ScaleKey="60K"})
+                  replace (fun p -> {p with IntervalEndUtc=DateTimeOffset.Parse(p.IntervalEndUtc).AddMinutes(1.0).ToString("O")})
+                  {prepared with ResolvedAxes=Map.empty}
+                  {prepared with ResolvedSeries=Map.remove openRef prepared.ResolvedSeries} ] do
+                Expect.isNone (RendererModel.tryOverviewLocalMovePreview 6 document changed projection TaWindowDrag.Move 3 {StartIndex=2;Count=3})
+                    "same array length or index is insufficient to borrow an active-axis viewport"
+            let reordered = {projection with OverviewAnchors=Array.rev projection.OverviewAnchors}
+            Expect.isNone (RendererModel.tryOverviewLocalMovePreview 6 document prepared reordered TaWindowDrag.Move 3 {StartIndex=2;Count=3}) "changed order cannot be previewed"
+
+        testCase "overview local move preview leaves resize and changed observation counts authoritative" <| fun _ ->
+            let starts = Array.init 8 (fun i -> DateTimeOffset(2026, 11, 5, 10, 0, 0, TimeSpan.Zero).AddMinutes(float(i*30)))
+            let document, prepared, _, projection = navigatorLocalPreviewFixture 30 false starts
+            for drag, count in [TaWindowDrag.ResizeLeft,3;TaWindowDrag.ResizeRight,3;TaWindowDrag.Move,2] do
+                Expect.isNone (RendererModel.tryOverviewLocalMovePreview 6 document prepared projection drag count {StartIndex=2;Count=3})
+                    "the first preview slice changes position only and never invents a count conversion"
+
+        testCase "overview local move preview validates bounds without clamping or overflowing" <| fun _ ->
+            let starts = Array.init 8 (fun i -> DateTimeOffset(2026, 11, 5, 10, 0, 0, TimeSpan.Zero).AddMinutes(float(i*30)))
+            let document, prepared, _, projection = navigatorLocalPreviewFixture 30 false starts
+            for maximum, target in [2,{StartIndex=2;Count=3};6,{StartIndex= -1;Count=3};6,{StartIndex=6;Count=3};6,{StartIndex=2;Count=0};6,{StartIndex=Int32.MaxValue;Count=3};6,{StartIndex=0;Count=Int32.MaxValue}] do
+                Expect.isNone (RendererModel.tryOverviewLocalMovePreview maximum document prepared projection TaWindowDrag.Move target.Count target) "invalid proposals must use the existing authoritative path"
+            let last = {StartIndex=5;Count=3}
+            Expect.equal (RendererModel.tryOverviewLocalMovePreview 6 document prepared projection TaWindowDrag.Move 3 last) (Some last) "the final loaded interval is valid"
+            let emptyDocument, emptyPrepared, _, emptyProjection = navigatorLocalPreviewFixture 30 false [||]
+            Expect.isNone (RendererModel.tryOverviewLocalMovePreview 6 emptyDocument emptyPrepared emptyProjection TaWindowDrag.Move 3 last) "no observations cannot supply a preview"
+
+        testCase "overview local move preview keeps market gaps and selected candle endpoints" <| fun _ ->
+            let starts = [|"2026-11-06T10:00:00Z";"2026-11-06T10:30:00Z";"2026-11-09T09:00:00Z";"2026-11-09T09:30:00Z"|] |> Array.map DateTimeOffset.Parse
+            let document, prepared, _, projection = navigatorLocalPreviewFixture 30 false starts
+            let target = {StartIndex=0;Count=2}
+            Expect.equal (RendererModel.tryOverviewLocalMovePreview 4 document prepared projection TaWindowDrag.Move 2 target) (Some target) "a common market gap is not a missing observation"
+            let requested = RendererModel.overviewVisibleEventRangePrepared document prepared projection target |> Option.get
+            Expect.equal (DateTimeOffset.Parse requested.EndEventTimeExclusiveUtc) (DateTimeOffset.Parse "2026-11-06T11:00:00Z") "the request ends on Friday, not at Monday's next start"
+
+        testCase "navigator maximum keeps both full-width handles movable and clamps expansion before drop" <| fun _ ->
+            let startsFixture = Array.init 4500 (fun index -> DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero).AddMinutes(float(index*30)))
+            let document, prepared, active, projection = navigatorIntervalFixture 30 false startsFixture
+            let maximum = RendererModel.overviewNavigatorMaximumCount 1500 document prepared active projection
+            for drag, count, delta, expected in
+                [ TaWindowDrag.ResizeRight, 1500, 42, { StartIndex = 2821; Count = 1500 }
+                  TaWindowDrag.ResizeLeft, 1500, -42, { StartIndex = 2737; Count = 1500 }
+                  TaWindowDrag.ResizeRight, 1202, 340, { StartIndex = 2821; Count = 1500 }
+                  TaWindowDrag.ResizeLeft, 1202, -340, { StartIndex = 2439; Count = 1500 }
+                  TaWindowDrag.ResizeRight, 1500, -42, { StartIndex = 2779; Count = 1458 }
+                  TaWindowDrag.ResizeLeft, 1500, 42, { StartIndex = 2821; Count = 1458 } ] do
+                let preview = RendererModel.previewWindowBounds 1 maximum active.Length { StartIndex = 2779; Count = count } drag delta
+                Expect.equal preview expected "the live draft follows the handle while respecting the same maximum as commit"
+                let _, committed = RendererModel.commitWindowBounds 1 maximum active.Length preview
+                Expect.equal committed preview "releasing the handle does not shrink or jump from the displayed draft"
+
+        testCase "navigator maximum rejects true cross-scale and sampled overview correspondence" <| fun _ ->
+            let startsFixture count step = Array.init count (fun index -> DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero).AddMinutes(float(index*step)))
+            let document, prepared, active, projection = navigatorIntervalFixture 1 false (startsFixture 1500 1)
+            let _, hourlyPrepared, _, hourly = navigatorIntervalFixture 60 false (startsFixture 2000 60)
+            let crossScale = { prepared with ResolvedAxes = Map.add hourly.OverviewAxisRef hourlyPrepared.ResolvedAxes[hourly.OverviewAxisRef] prepared.ResolvedAxes }
+            Expect.equal (RendererModel.overviewNavigatorMaximumCount 1500 document crossScale active hourly) 2000
+                "1500 minute bars are not 1500 hourly overview slots"
+            let _, otherPrepared, _, other = navigatorIntervalFixture 60 false (startsFixture 1500 60)
+            let equalLength = { prepared with ResolvedAxes = Map.add other.OverviewAxisRef otherPrepared.ResolvedAxes[other.OverviewAxisRef] prepared.ResolvedAxes }
+            Expect.equal (RendererModel.overviewNavigatorMaximumCount 100 document equalLength active other) 1500
+                "equal lengths with different real intervals do not establish a common cap"
+            let sampled = { projection with OverviewAnchors = projection.OverviewAnchors |> Array.mapi (fun index anchor -> index,anchor) |> Array.choose (fun (index,anchor) -> if index%2=0 then Some anchor else None) }
+            Expect.equal (RendererModel.overviewNavigatorMaximumCount 100 document prepared active sampled) 750
+                "sampling cannot be treated as a one-to-one base observation sequence"
+
+        testCase "navigator maximum verifies interval ends scale and presentation order independently" <| fun _ ->
+            let startsFixture = Array.init 4 (fun index -> DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero).AddMinutes(float(index*30)))
+            let document, prepared, active, projection = navigatorIntervalFixture 30 false startsFixture
+            let axis = prepared.ResolvedAxes[projection.OverviewAxisRef]
+            let mapOverview transform =
+                { prepared with ResolvedAxes = Map.add projection.OverviewAxisRef { axis with Points = axis.Points |> Map.map (fun _ point -> transform point) } prepared.ResolvedAxes }
+            for changed in
+                [ mapOverview (fun point -> { point with IntervalEndUtc = DateTimeOffset.Parse(point.IntervalEndUtc).AddMinutes(-1.0).ToString("O") })
+                  mapOverview (fun point -> { point with ScaleKey = "60K" })
+                  mapOverview (fun point -> { point with IntervalStartUtc = "invalid" })
+                  mapOverview (fun point -> { point with EventTimeUtc = Some point.IntervalEndUtc }) ] do
+                Expect.equal (RendererModel.overviewNavigatorMaximumCount 2 document changed active projection) 4
+                    "matching labels and counts alone cannot hide different interval semantics or invalid metadata"
+            for mismatchedOrder in [ Array.rev active; [| active[0];active[0];active[2];active[3] |] ] do
+                Expect.equal (RendererModel.overviewNavigatorMaximumCount 2 document prepared mismatchedOrder projection) 4
+                    "the temporal points must correspond to the captured presentation sequence in order"
+
+        testCase "navigator maximum rejects absent base metadata without borrowing another trace" <| fun _ ->
+            let startsFixture = Array.init 4 (fun index -> DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero).AddMinutes(float(index*30)))
+            let document, prepared, active, projection = navigatorIntervalFixture 30 true startsFixture
+            let openRef = document.Rows[0].Traces[0].CandleDataRefs.Value.OpenRef
+            let points = prepared.ResolvedSeries[openRef]
+            for changed in
+                [ { prepared with ResolvedSeries = Map.remove openRef prepared.ResolvedSeries }
+                  { prepared with ResolvedSeries = Map.add openRef (points |> Array.mapi (fun index point -> if index=1 then {point with Temporal=None} else point)) prepared.ResolvedSeries }
+                  { prepared with ResolvedAxes = Map.remove projection.OverviewAxisRef prepared.ResolvedAxes } ] do
+                Expect.equal (RendererModel.overviewNavigatorMaximumCount 2 document changed active projection) 4
+                    "missing OpenRef, partial temporal metadata or missing overview intervals require fallback"
+            Expect.equal (RendererModel.overviewNavigatorMaximumCount 2 {document with BaseRowId=None} prepared active projection) 4
+                "an unknown base row cannot establish correspondence from an unrelated trace"
+
+        testCase "navigator maximum compares real instants across market gaps and rejects unavailable timelines" <| fun _ ->
+            let timesFixture =
+                [| "2026-11-06T10:00:00Z"; "2026-11-06T11:00:00Z"; "2026-11-09T09:00:00Z"; "2026-11-09T10:00:00Z" |]
+            let document, prepared, active, projection = navigatorIntervalFixture 30 false (timesFixture |> Array.map DateTimeOffset.Parse)
+            Expect.equal (RendererModel.overviewNavigatorMaximumCount 2 document prepared active projection) 2
+                "a genuine common market gap does not change one-to-one observation counts"
+            Expect.equal (RendererModel.overviewNavigatorMaximumCount 1500 document prepared active projection) 4
+                "the shared cap cannot exceed available observations"
+            for invalidActive in [ [||]; [| "invalid"; active[1]; active[2]; active[3] |]; Array.rev active ] do
+                Expect.equal (RendererModel.overviewNavigatorMaximumCount 2 document prepared invalidActive projection) 4
+                    "missing invalid or reordered active timestamps preserve the original overview domain"
+            for overview in [ [||]; [| timesFixture[0]; timesFixture[0]; timesFixture[2]; timesFixture[3] |]; Array.rev timesFixture
+                              [| "invalid"; timesFixture[1]; timesFixture[2]; timesFixture[3] |] ] do
+                let invalidProjection = {projection with OverviewAnchors=(independentOverviewFixture overview).OverviewAnchors}
+                Expect.equal (RendererModel.overviewNavigatorMaximumCount 2 document prepared active invalidProjection) overview.Length
+                    "missing invalid duplicated or unordered anchors never prove a shared timeline"
+
+        testCase "DYN-T-789 overview ranges use their actual interval end across a gap and at the last candle" <| fun _ ->
+            let projection=independentOverviewFixture [|"2026-11-06T10:00:00Z";"2026-11-09T09:00:00Z"|]
+            let row={RowId="price";Kind=TaRowKind.Candlestick;DataRef="price";HeightWeight=1.0;Visible=true;Traces=[||];Options=Map.empty}
+            let document={WorkspaceId="overview-range";Title="overview";RowsRef="rows";StatusRef="status";SharedTimeAxis=true;TemporalAxisRefs=[||];BaseRowId=Some "price";Rows=[|row|];EditorSchemas=[||];AllowedActions=[||];DefaultView=Map.empty}
+            let points=projection.OverviewAnchors |> Array.map (fun anchor ->
+                let until=DateTimeOffset.Parse(anchor.EventTimeUtc).AddHours(1.0).ToString("O")
+                float anchor.ObservationOrdinal,
+                {SourceIntervalId="overview";ScaleKey="60K";IntervalStartUtc=anchor.EventTimeUtc;IntervalEndUtc=until;EventTimeUtc=Some anchor.EventTimeUtc;ObservedThroughUtc=until;AvailableAtUtc=Some until;Finality="final";Projection="candle";Quality=None}) |> Map.ofArray
+            let prepared={RawData=Map.empty;ResolvedSeries=Map.empty;ResolvedAxes=Map[projection.OverviewAxisRef,{Revision=1.0;RawPoints=[||];Points=points}]}
+            for index, expectedEnd in [0,"2026-11-06T11:00:00Z";1,"2026-11-09T10:00:00Z"] do
+                let range=RendererModel.overviewVisibleEventRangePrepared document prepared projection {StartIndex=index;Count=1} |> Option.get
+                Expect.equal (DateTimeOffset.Parse range.EndEventTimeExclusiveUtc) (DateTimeOffset.Parse expectedEnd)
+                    "an overview candle ends at its own interval end, not next session or the active 1K interval"
+            Expect.isNone (RendererModel.overviewVisibleEventRangePrepared document {prepared with ResolvedAxes=Map.empty} projection {StartIndex=1;Count=1})
+                "missing interval authority must not fabricate a final-candle end"
+
         for label, low, high, top, plotHeight, chartHeight, ticks, expected in
             [ "full price plot",90.0,100.0,0.0,250.0,250.0,[|100.0;95.0;90.0|],[|(100.0,0.0,0.0);(95.0,125.0,50.0);(90.0,250.0,100.0)|]
               "padded plot",90.0,100.0,10.0,200.0,250.0,[|100.0;95.0;90.0|],[|(100.0,10.0,4.0);(95.0,110.0,44.0);(90.0,210.0,84.0)|]
@@ -50,8 +652,10 @@ let tests =
                     "all ten 14px labels have separate increasing positions instead of the live top100% overlap"
 
         for label, inset, naturalBottom, scopeBottom, height, expected in
-            [ "visible overview stays in flow", 0.0, 20.0, 900.0, 119.0, None
-              "touching threshold stays in flow", 60.0, 60.0, 900.0, 119.0, None
+            [ "fully visible overview stays in flow", 0.0, 140.0, 900.0, 119.0, None
+              "natural top touching viewport stays in flow", 60.0, 179.0, 900.0, 119.0, None
+              "partly clipped overview pins before disappearing", 60.0, 178.0, 900.0, 119.0, Some 60.0
+              "one pixel past zero top pins immediately", 0.0, 118.0, 900.0, 119.0, Some 0.0
               "passed overview pins below host toolbar", 60.0, 59.0, 900.0, 119.0, Some 60.0
               "default host inset is zero", 0.0, -1.0, 900.0, 119.0, Some 0.0
               "chart end pushes overview out", 60.0, -10.0, 120.0, 119.0, Some 1.0
@@ -61,7 +665,112 @@ let tests =
               "infinite geometry does not pin", 0.0, -1.0, Double.PositiveInfinity, 119.0, None ] do
             testCase ("DYN-T-777 resident overview sticky geometry " + label) <| fun _ ->
                 Expect.equal (RendererModel.stickyOverviewTop inset naturalBottom scopeBottom height) expected
-                    "only an overview that fully passed the visible top may pin, bounded by its own chart"
+                    "pin when the overview top would be clipped, bounded by its own chart"
+
+        for value, expected in
+            [ 7500.0,"7500.00"; 0.0,"0.00"; -10.0,"-10.00"
+              7500.25,"7500.25"; 0.25,"0.25"; -0.25,"-0.25"
+              3230.5,"3230.50"; 22.882141839297745,"22.88"; 9.992517425179763,"9.99"
+              -22.882141839297745,"-22.88"; -0.125,"-0.13"; 0.125,"0.13"
+              0.123456789,"0.12"; 9.999,"10.00"; -9.999,"-10.00"
+              0.004,"0.00"; -0.004,"0.00" ] do
+            testCase ("DYN-T-798 Y tick and cursor round to two decimals " + string value) <| fun _ ->
+                Expect.equal (RendererModel.yAxisValueText value) expected "display rounds to two places, pads zeros and preserves the underlying numeric input"
+
+        for name, timeline, expected in
+            [ "subset reordered with equivalent UTC text",
+                [| "2026-05-31T22:00:00.0000000+00:00"; "2026-05-28T22:00:00Z" |],
+                [| Some "20260601"; Some "20260529" |]
+              "unknown instants never borrow a date",
+                [| "2026-05-28T22:00:00.0000001Z"; "invalid" |], [| None; None |]
+              "empty overview", [||], [||] ] do
+            testCase ("DYN-T-799 overview trading dates follow exact timeline " + name) <| fun _ ->
+                let trace: TaTraceSpec =
+                    { TraceId="price"; Kind=TaTraceKind.Line; DataRef="price"; Label="price"
+                      Color=""; Width=1.0; Visible=true; CandleDataRefs=None; Options=Map.empty }
+                let row: TaRowSpec =
+                    { RowId="base"; Kind=TaRowKind.Sma; DataRef="price"; HeightWeight=1.0
+                      Visible=true; Options=Map.empty; Traces=[|trace|] }
+                let document: TaWorkspaceDocument =
+                    { WorkspaceId="overview-date-unit"; Title="fixture"; RowsRef="rows"; StatusRef="status"
+                      SharedTimeAxis=true; TemporalAxisRefs=[||]; BaseRowId=Some "base"; Rows=[|row|]
+                      EditorSchemas=[||]; AllowedActions=[||]; DefaultView=Map.empty }
+                let points =
+                    [| "2026-05-28T22:00:00.0000000+00:00",20260529.0
+                       "2026-05-29T00:00:00Z",20260529.0
+                       "2026-05-31T22:00:00Z",20260601.0 |]
+                    |> Array.map (fun (time,day) -> SduiValue.Object(Map [
+                        "t",SduiValue.Text time; "v",SduiValue.Number 100.0; "tradingDate",SduiValue.Number day ]))
+                    |> SduiValue.Array
+                let prepared = Map ["price",points] |> RendererModel.prepareData
+                Expect.equal (RendererModel.referenceTradingDatesForTimelinePrepared document timeline prepared) expected
+                    "One output per exact overview observation, from its known trading date only."
+
+        for scale in [ 1.0; 5.0; 30.0; 60.0 ] do
+            for opening, midnight, day, utcHour, plus8Hour in
+                [ "2026-06-17T22:00:00Z","2026-06-18T00:00:00Z","20260618","22","06"
+                  "2026-01-05T23:00:00Z","2026-01-06T00:00:00Z","20260106","23","07" ] do
+                for zone, openingHour, midnightHour in
+                    [ SduiDisplayTimeZone.Utc,utcHour,"00"; SduiDisplayTimeZone.FixedUtcPlus8,plus8Hour,"08" ] do
+                    testCase (sprintf "DYN-T-800 resident trading date and scale-specific hour density %gK %s %s" scale day (SduiDisplayTimeZone.id zone)) <| fun _ ->
+                        let ticks = RendererModel.tradingSessionAxisGrid false scale zone [|opening;midnight|] [|Some day;Some day|]
+                        let expectedHours =
+                            if scale <= 5.0 then [|midnightHour,false|]
+                            else [|openingHour,true|]
+                        Expect.equal (ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map (fun tick -> tick.Label,tick.IsSessionStart)) expectedHours
+                            "30K/60K only label the actual opening; 1K/5K only label ordinary four-hour marks."
+                        Expect.equal (ticks |> Array.filter _.IsMajor |> Array.map (fun tick -> tick.CanonicalUtc,tick.Label)) [|opening,day|]
+                            "The calendar boundary belongs to the real trading date and is never moved to UTC midnight."
+
+        for scale in [ 1; 5; 30; 60 ] do
+            for opening, day, utcOpening, plus8Opening in
+                [ "2026-06-17T22:00:00Z","20260618","22","06"
+                  "2026-01-05T23:00:00Z","20260106","23","07" ] do
+                for distinctAxes in [ false; true ] do
+                    testCase (sprintf "DYN-T-801 actual resident selector %dK %s differing-axis=%b" scale day distinctAxes) <| fun _ ->
+                        let start = DateTimeOffset.Parse opening
+                        let instants = Array.init (360 / scale + 1) (fun i -> start.AddMinutes(float (i * scale)))
+                        let times = instants |> Array.map (fun t -> t.ToString("yyyy-MM-ddTHH:mm:ssZ"))
+                        let trace: TaTraceSpec =
+                            { TraceId="price"; Kind=TaTraceKind.Line; DataRef="price"; Label="price"
+                              Color=""; Width=1.0; Visible=true; CandleDataRefs=None; Options=Map.empty }
+                        let row: TaRowSpec =
+                            { RowId="base"; Kind=TaRowKind.Sma; DataRef="price"; HeightWeight=1.0
+                              Visible=true; Options=Map.empty; Traces=[|trace|] }
+                        let document: TaWorkspaceDocument =
+                            { WorkspaceId="resident-selector-unit"; Title="fixture"; RowsRef="rows"; StatusRef="status"
+                              SharedTimeAxis=true; TemporalAxisRefs=[||]; BaseRowId=Some "base"; Rows=[|row|]
+                              EditorSchemas=[||]; AllowedActions=[||]; DefaultView=Map.empty }
+                        let points = times |> Array.map (fun t -> SduiValue.Object(Map [
+                            "t",SduiValue.Text t; "v",SduiValue.Number 100.0; "tradingDate",SduiValue.Number(float (Int32.Parse day)) ]))
+                        let prepared = Map ["price",SduiValue.Array points] |> RendererModel.prepareData
+                        let projection =
+                            { independentOverviewFixture (instants |> Array.map (fun t -> t.ToString("O"))) with
+                                OverviewAxisRef = if distinctAxes then "ta-overview-axis-unit" else "base-axis-unit"
+                                ActiveDetail = { BaseAxisRef="base-axis-unit"; StartObservationOrdinal=100L; ObservationCount=times.Length } }
+                        Expect.equal (projection.OverviewAxisRef <> projection.ActiveDetail.BaseAxisRef) distinctAxes "Exercise both real axis-identity states."
+                        Expect.isSome (RendererModel.tryOverviewTimeline projection) "Valid nonempty anchors satisfy the historical Some-branch precondition."
+                        let resolvedScale, makeTicks = RendererModel.residentTimeAxisForCoveragePrepared document prepared (Some projection)
+                        Expect.equal resolvedScale (float scale) "The full base timeline owns the bar scale."
+                        let utc = makeTicks SduiDisplayTimeZone.Utc
+                        let plus8 = makeTicks SduiDisplayTimeZone.FixedUtcPlus8
+                        let dates ticks = ticks |> Array.filter (fun (tick: RendererModel.TradingSessionAxisTick) -> tick.IsMajor)
+                        Expect.equal (dates utc) (dates plus8) "Display timezone must not alter the trading date, canonical instant or slot."
+                        Expect.equal (dates utc |> Array.map (fun tick -> DateTimeOffset.Parse tick.CanonicalUtc,tick.Label)) [|start,day|]
+                            "The actual ET opening owns the supplied next trading date, never calendar midnight."
+                        for zone, ticks, openingHour, regularHours in
+                            [ SduiDisplayTimeZone.Utc,utc,utcOpening,[|"00";"04"|]
+                              SduiDisplayTimeZone.FixedUtcPlus8,plus8,plus8Opening,[|"08";"12"|] ] do
+                            let minor = ticks |> Array.filter (fun tick -> not tick.IsMajor)
+                            let expected = if scale <= 5 then regularHours |> Array.map (fun hour -> hour,false) else [|openingHour,true|]
+                            Expect.equal (minor |> Array.map (fun tick -> tick.Label,tick.IsSessionStart)) expected
+                                "Fine resident has four-hour labels only; coarse resident has only the yellow actual opening."
+                            if scale <= 5 then
+                                let _, main, _ = RendererModel.mainTradingTimeAxisGrid 1200.0 (float scale) zone times (Array.create times.Length (Some day))
+                                let mainHours = main |> Array.filter (fun tick -> not tick.IsMajor)
+                                Expect.equal mainHours.Length 7 "Fine TA has one tick per observed hour across this six-hour interval."
+                                Expect.equal (mainHours |> Array.filter _.IsSessionStart |> Array.map _.Label) [|openingHour|]
+                                    "The main TA keeps its opening even though the fine resident does not label it."
 
         testCase "DYN-T-778 guide tool selection toggles off without replacing another tool implicitly" <| fun _ ->
             Expect.equal (RendererModel.toggleChartGuideTool TaChartGuideTool.Vertical None) (Some TaChartGuideTool.Vertical) "enter vertical drawing"
@@ -555,6 +1264,82 @@ let tests =
                 duplicateCommittedGate.LastCommitted
                 committedGate.LastCommitted
                 "deduplication must preserve the committed watermark"
+
+        testCase "00011 projection receipt waits for both current overview mounts" <| fun _ ->
+            let candidate: TaProjectionCommitKey =
+                { Identity = { DocumentId = DocumentId "run-current"; CanvasInstanceId = CanvasInstanceId "canvas-current" }
+                  DocumentRevision = 3L; DataRevision = 7L; LastTransportSequence = 10L
+                  CoverageIdentity = Some "coverage-current"; CoverageRevision = Some 4L; QueryGeneration = Some 5L }
+            let ready = ProjectionCommitGate.mountedOverviewsReady true candidate
+            Expect.isFalse (ready None None) "row computation alone is not visible GLOBAL/resident proof"
+            Expect.isFalse (ready (Some candidate) None) "GLOBAL alone cannot release the receipt"
+            Expect.isFalse (ready None (Some candidate)) "resident alone cannot release the receipt"
+            Expect.isTrue (ready (Some candidate) (Some candidate)) "both actual current mounts release the row-complete candidate"
+            for stale in
+                [ { candidate with Identity = { candidate.Identity with DocumentId = DocumentId "old-run" } }
+                  { candidate with DocumentRevision = 2L }
+                  { candidate with DataRevision = 6L }
+                  { candidate with CoverageIdentity = Some "old-coverage" }
+                  { candidate with CoverageRevision = Some 3L }
+                  { candidate with QueryGeneration = Some 4L } ] do
+                Expect.isFalse (ready (Some stale) (Some candidate)) "a stale GLOBAL mount cannot acknowledge a new projection"
+                Expect.isFalse (ready (Some candidate) (Some stale)) "a stale resident mount cannot acknowledge a new projection"
+            let heartbeat = { candidate with LastTransportSequence = 11L }
+            Expect.isTrue (ready (Some heartbeat) (Some candidate)) "heartbeat-only transport changes preserve existing projection equality"
+            Expect.isTrue (ProjectionCommitGate.mountedOverviewsReady false candidate None (Some candidate)) "a renderer without GLOBAL still requires its actual resident mount"
+
+        testCase "00011 missing coverage and new domains invalidate old GLOBAL content" <| fun _ ->
+            let published: TaProjectionCommitKey =
+                { Identity = { DocumentId = DocumentId "run-current"; CanvasInstanceId = CanvasInstanceId "canvas-current" }
+                  DocumentRevision = 3L; DataRevision = 7L; LastTransportSequence = 10L
+                  CoverageIdentity = Some "coverage-current"; CoverageRevision = Some 4L; QueryGeneration = Some 5L }
+            let retained current hasGlobal = ProjectionCommitGate.canRetainGlobalContent current hasGlobal (Some published)
+            Expect.isTrue (retained published true) "the visible current overview remains valid"
+            Expect.isFalse (retained published false) "a temporary unresolved GLOBAL must not retain an authoritative old picture"
+            Expect.isFalse (ProjectionCommitGate.canRetainGlobalContent published true None) "an absent publication cannot be called retained"
+            Expect.isFalse (retained { published with Identity = { published.Identity with DocumentId = DocumentId "next-run" } } true) "a different RUN cannot borrow the previous run's GLOBAL"
+            Expect.isFalse (retained { published with CoverageIdentity = Some "different-source-or-scale" } true) "a changed coverage domain invalidates the old content"
+            Expect.isFalse (retained { published with CoverageIdentity = None } true) "losing domain authority invalidates the previous content"
+            Expect.isTrue (retained { published with DocumentRevision = 4L; DataRevision = 8L; QueryGeneration = Some 6L; CoverageRevision = Some 5L } true) "same-domain relocation keeps the optimistic draft until replacement mount; generation equality still gates commit"
+
+        testCase "00011 pending image retention requires the same authoritative source fingerprint" <| fun _ ->
+            let published: TaProjectionCommitKey =
+                { Identity={DocumentId=DocumentId "previous-run";CanvasInstanceId=CanvasInstanceId "previous-canvas"}
+                  DocumentRevision=3L;DataRevision=7L;LastTransportSequence=10L
+                  CoverageIdentity=Some "old-coverage";CoverageRevision=Some 4L;QueryGeneration=Some 5L }
+            let next = { published with Identity={DocumentId=DocumentId "next-run";CanvasInstanceId=CanvasInstanceId "next-canvas"}
+                                        CoverageIdentity=None;CoverageRevision=None;QueryGeneration=None }
+            let sameSource = Some "source-fingerprint-A"
+            let retain source previous = ProjectionCommitGate.canRetainGlobalImage next false source previous (Some published)
+            Expect.isTrue (retain sameSource sameSource) "same true source keeps its already-rendered image across a new RUN with pending coverage"
+            for current,previous in
+                [ None,sameSource; sameSource,None; None,None
+                  Some "source-fingerprint-B",sameSource; sameSource,Some "source-fingerprint-B"
+                  Some "",sameSource; Some " ",Some " "; Some "source-fingerprint-A ",sameSource ] do
+                Expect.isFalse (retain current previous) "unknown, invalid or different source cannot borrow the old market image"
+            Expect.isFalse (ProjectionCommitGate.canRetainGlobalImage next false sameSource sameSource None) "source equality cannot invent an absent published image"
+            Expect.isFalse (ProjectionCommitGate.canRetainGlobalContent next false (Some published)) "retained same-source image has no current authority and must remain read-only"
+            Expect.isFalse (ProjectionCommitGate.mountedOverviewsReady true next (Some published) (Some next)) "read-only old GLOBAL cannot release the new projection receipt"
+            Expect.isFalse (ProjectionCommitGate.canRetainGlobalImage published true (Some "source-fingerprint-B") sameSource (Some published)) "an explicit source mismatch also invalidates otherwise unchanged domain metadata"
+            Expect.isTrue (ProjectionCommitGate.canRetainGlobalImage published true None None (Some published)) "legacy callers keep their existing same-identity/domain behavior"
+
+        testCase "00011 source fingerprint reads exact nonempty owner metadata only" <| fun _ ->
+            let identity = {DocumentId=DocumentId "source-metadata";CanvasInstanceId=CanvasInstanceId "source-metadata"}
+            let document : TaWorkspaceDocument =
+                { WorkspaceId="fixture";Title="fixture";RowsRef="rows";StatusRef="status";SharedTimeAxis=true
+                  TemporalAxisRefs=[||];BaseRowId=None;Rows=[||];EditorSchemas=[||];AllowedActions=[||];DefaultView=Map.empty }
+            let source values =
+                { RuntimeReducer.initial identity with Document=Some {document with DefaultView=Map.ofList values} }
+                |> ProjectionCommitGate.globalDataSourceFingerprint
+            Expect.equal (source ["query.dataSourceFingerprint",SduiValue.Text "inline-source-exact"])
+                (Some "inline-source-exact") "consume the owner's exact cache identity, including inline sources"
+            for values in
+                [ []; ["query.instrument",SduiValue.Text "SAME-SYMBOL"]
+                  ["query.dataSourceFingerprint",SduiValue.Text ""]
+                  ["query.dataSourceFingerprint",SduiValue.Text " "]
+                  ["query.dataSourceFingerprint",SduiValue.Number 1.0] ] do
+                Expect.isNone (source values) "do not infer source from instrument, missing metadata or the wrong value type"
+            Expect.isNone (ProjectionCommitGate.globalDataSourceFingerprint (RuntimeReducer.initial identity)) "no Document has no authoritative source identity"
 
         testCase "DYN-T-734 projection commit survives a heartbeat-only transport advance" <| fun _ ->
             let identity =
@@ -1129,7 +1914,7 @@ let tests =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
             Expect.stringContains
                 source
-                "RendererModel.tryNavigatorEventRangeIntent"
+                "RendererModel.tryNavigatorGestureEventRangeIntent"
                 "the local navigator commit must retain typed navigator origin after axis settlement"
 
         testCase "DYN-T-721 cross-axis exact active fallback still requests event-time materialization" <| fun _ ->
@@ -3681,6 +4466,86 @@ let tests =
                 (EditorMutationGate.authoritativeDocumentAdvanced first 7L replacement 1L true)
                 "A matching authoritative replacement identity completes even when its revision restarts at one."
 
+        testCase "editor completion matches authoritative MACD values despite serialization order" <| fun _ ->
+            let submitted, authoritative = editorCompletionFixture ()
+            Expect.equal (submitted.Values |> Array.map _.Path) [| "fastPeriod";"signalPeriod";"slowPeriod";"using" |]
+                "reproduce the existing setEditorInput path ordering without changing it"
+            Expect.notEqual submitted.Values authoritative.Values "the server schema retains its distinct fast-slow-signal order"
+            let submittedBefore = Array.copy submitted.Values
+            let authoritativeBefore = Array.copy authoritative.Values
+            Expect.isTrue (EditorMutationGate.sameBinding submitted authoritative) "matching unique Path/value inputs complete regardless of array order"
+            Expect.isTrue (EditorMutationGate.sameBinding authoritative submitted) "semantic matching is symmetric"
+            Expect.equal submitted.Values submittedBefore "matching must not reorder the outbound wire inputs"
+            Expect.equal authoritative.Values authoritativeBefore "matching must not mutate the authoritative schema order"
+
+        testCase "editor completion rejects duplicates instead of silently collapsing them" <| fun _ ->
+            let submitted, authoritative = editorCompletionFixture ()
+            for extra in [ submitted.Values[0]; { submitted.Values[0] with Value = EditorScalarValue.Number 13.0 } ] do
+                let duplicate = { submitted with Values = Array.append submitted.Values [|extra|] }
+                Expect.isFalse (EditorMutationGate.sameBinding duplicate authoritative) "duplicate pending paths cannot complete"
+                Expect.isFalse (EditorMutationGate.sameBinding authoritative duplicate) "duplicate authoritative paths cannot complete"
+                Expect.isFalse (EditorMutationGate.sameBinding duplicate duplicate) "even two identical malformed bindings must be rejected"
+
+        testCase "editor completion preserves exact template path and typed value semantics" <| fun _ ->
+            let submitted, authoritative = editorCompletionFixture ()
+            let changedFirst value = { authoritative with Values = Array.append [|{authoritative.Values[0] with Value=value}|] authoritative.Values[1..] }
+            for changed in
+                [ { authoritative with TemplateKey="ta.dmi" }
+                  changedFirst (EditorScalarValue.Number 13.0)
+                  changedFirst (EditorScalarValue.Text "34")
+                  changedFirst (EditorScalarValue.Number Double.NaN)
+                  changedFirst (EditorScalarValue.Number Double.PositiveInfinity)
+                  { authoritative with Values=authoritative.Values[1..] }
+                  { authoritative with Values=Array.append authoritative.Values [|{Path="extra";Value=EditorScalarValue.Bool true}|] }
+                  { authoritative with Values=Array.append [|{authoritative.Values[0] with Path="FastPeriod"}|] authoritative.Values[1..] } ] do
+                Expect.isFalse (EditorMutationGate.sameBinding submitted changed) "different, missing or invalid binding data never completes a save"
+
+        testCase "editor completion keeps the contract normalization for empty input arrays" <| fun _ ->
+            let empty = { TemplateKey="ta.empty"; Values=[||] }
+            Expect.isTrue (EditorMutationGate.sameBinding empty empty) "a valid zero-field template can match itself"
+            Expect.isTrue (EditorMutationGate.sameBinding {empty with Values=null} empty) "the existing contract treats a null Values array as empty"
+            Expect.isFalse (EditorMutationGate.sameBinding {empty with TemplateKey=""} empty) "invalid template identity cannot match"
+
+        testCase "editor completion still requires an advanced authoritative identity or revision" <| fun _ ->
+            let submitted, authoritative = editorCompletionFixture ()
+            let first = { DocumentId=DocumentId "editor-first"; CanvasInstanceId=CanvasInstanceId "editor-first" }
+            let replacement = { DocumentId=DocumentId "editor-replacement"; CanvasInstanceId=CanvasInstanceId "editor-replacement" }
+            let complete identity revision binding =
+                EditorMutationGate.authoritativeDocumentAdvanced first 7L identity revision (EditorMutationGate.sameBinding submitted binding)
+            Expect.isFalse (complete first 7L authoritative) "same document and revision cannot close the editor"
+            Expect.isFalse (complete first 6L authoritative) "an old revision cannot close it either"
+            Expect.isTrue (complete first 8L authoritative) "a newer matching authoritative revision completes"
+            Expect.isTrue (complete replacement 1L authoritative) "a matching replacement identity may restart its revision"
+            Expect.isFalse (complete replacement 1L {authoritative with TemplateKey="ta.dmi"}) "replacement identity cannot bypass binding mismatch"
+
+        testCase "Apply completion feedback retains final success after the authoritative document has arrived" <| fun _ ->
+            let submitted, authoritative = editorCompletionFixture ()
+            let first = {DocumentId=DocumentId "apply-old";CanvasInstanceId=CanvasInstanceId "apply-old"}
+            let replacement = {DocumentId=DocumentId "apply-new";CanvasInstanceId=CanvasInstanceId "apply-new"}
+            let row rowId binding =
+                {RowId=rowId;Kind=TaRowKind.Macd;DataRef="fixture.macd";HeightWeight=1.0;Visible=true;Traces=[||]
+                 Options=Map[TaRowEditorBinding.OptionKey,TaRowEditorBinding.toValue binding]}
+            let document rows =
+                {WorkspaceId="apply-fixture";Title="fixture";RowsRef="rows";StatusRef="status";SharedTimeAxis=true
+                 TemporalAxisRefs=[||];BaseRowId=None;Rows=rows;EditorSchemas=[||];AllowedActions=[||];DefaultView=Map.empty}
+            let pending = first,7L,Some "macd",Set.singleton "macd",submitted
+            let completed = document [|row "macd" authoritative|]
+            let feedback identity revision doc = EditorMutationGate.completedFeedback pending identity doc revision
+            Expect.isNone (feedback first 7L completed) "an Accepted callback before a new document still awaits authoritative completion"
+            Expect.isNone (feedback first 6L completed) "old revisions cannot publish final success"
+            Expect.equal (feedback replacement 1L completed) (Some "Row updated.")
+                "a late Accepted callback uses its captured mutation, even after the editor cleared its live pending state"
+            Expect.equal (feedback first 8L completed) (Some "Row updated.") "same-identity newer document preserves the existing completion gate"
+            Expect.isNone (feedback replacement 1L (document [|row "different-row" authoritative|])) "editing a specific row cannot complete against another row"
+            Expect.isNone (feedback replacement 1L (document [|row "macd" {authoritative with TemplateKey="ta.dmi"}|])) "different template must retain awaiting state"
+            let pendingAdd = first,7L,None,Set.singleton "macd",submitted
+            Expect.isNone (EditorMutationGate.completedFeedback pendingAdd replacement completed 1L) "add cannot match a pre-existing row"
+            Expect.equal (EditorMutationGate.completedFeedback pendingAdd replacement (document [|row "new-macd" authoritative|]) 1L) (Some "Row added.")
+                "a newly authored matching row yields final add feedback"
+            let duplicate = {authoritative with Values=Array.append authoritative.Values [|authoritative.Values[0]|]}
+            Expect.isNone (EditorMutationGate.completedFeedback pendingAdd replacement (document [|row "new-macd" duplicate|]) 1L)
+                "malformed duplicate bindings cannot trigger either close or final feedback"
+
         testCase "document shell cache key includes runtime document and canvas identity" <| fun _ ->
             let first =
                 RuntimeReducer.initial
@@ -4594,6 +5459,171 @@ let tests =
             let missingPeriod = moved |> Array.filter (fun value -> value.Path <> "period")
             Expect.isNonEmpty (RendererModel.validateEditorSubmission schema missingPeriod) "Required scalar omission should fail before submit."
 
+        testCase "coverage reader reuses one immutable coverage object across unrelated updates" <| fun _ ->
+            let view, data, _ = coveragePreparationFixture ()
+            let read = RendererModel.createLoadedCoverageReader ()
+            let first = read view data |> Option.get
+            let next = data |> Map.add "fixture.status" (SduiValue.Text "changed")
+            let second = read view next |> Option.get
+            Expect.equal second (RendererModel.tryLoadedCoverageResolved view next |> Option.get) "memoized decode equals the authoritative codec"
+            Expect.isTrue (Object.ReferenceEquals(first, second)) "the same immutable coverage object must not rebuild its anchors for each UI binding"
+
+        testCase "coverage reader revalidates changed metadata even with matching identity" <| fun _ ->
+            let view, data, nextData = coveragePreparationFixture ()
+            let read = RendererModel.createLoadedCoverageReader ()
+            let first = read view data |> Option.get
+            let second = read view nextData |> Option.get
+            Expect.equal second (RendererModel.tryLoadedCoverageResolved view nextData |> Option.get) "new revision and range must become visible"
+            Expect.notEqual first.ActiveDetail.StartObservationOrdinal second.ActiveDetail.StartObservationOrdinal "the prior range cannot remain cached"
+            let ref = TaLoadedCoverageCodec.tryDataRef view |> Result.toOption |> Option.flatten |> Option.get
+            let equivalentReplacement = nextData |> Map.add ref (TaLoadedCoverageCodec.encode second)
+            let third = read view equivalentReplacement |> Option.get
+            Expect.equal third second "equivalent replacement retains semantics"
+            Expect.isFalse (Object.ReferenceEquals(second, third)) "reference replacement requires full validation, even if identity and revision match"
+
+        testCase "coverage reader preserves data ref precedence and inline compatibility" <| fun _ ->
+            let view, data, nextData = coveragePreparationFixture ()
+            let projection = RendererModel.tryLoadedCoverageResolved view data |> Option.get
+            let inlineView = TaLoadedCoverageCodec.apply projection Map.empty
+            let read = RendererModel.createLoadedCoverageReader ()
+            let inlineFirst = read inlineView Map.empty |> Option.get
+            let inlineSecond = read inlineView data |> Option.get
+            Expect.isTrue (Object.ReferenceEquals(inlineFirst, inlineSecond)) "inline coverage also reuses the exact immutable object"
+            let ref = TaLoadedCoverageCodec.tryDataRef view |> Result.toOption |> Option.flatten |> Option.get
+            let both = TaLoadedCoverageCodec.applyDataRef ref inlineView
+            Expect.equal (read both nextData) (RendererModel.tryLoadedCoverageResolved view nextData) "dataRef takes precedence over stale inline coverage"
+            Expect.isNone (read both Map.empty) "missing referenced data must not fall back to inline metadata"
+            let invalidBinding = inlineView |> Map.add TaLoadedCoverageCodec.DataRefKey (SduiValue.Number 1.0)
+            Expect.isNone (read invalidBinding data) "invalid dataRef must not fall back to otherwise valid inline coverage"
+
+        testCase "coverage reader clears missing invalid and malformed input without stale values" <| fun _ ->
+            let view, data, _ = coveragePreparationFixture ()
+            let ref = TaLoadedCoverageCodec.tryDataRef view |> Result.toOption |> Option.flatten |> Option.get
+            let malformed = data |> Map.add ref (SduiValue.Object(Map [ "schema", SduiValue.Text "invalid" ]))
+            for badView, badData in [ Map.empty, Map.empty; view, Map.empty; view, malformed ] do
+                let read = RendererModel.createLoadedCoverageReader ()
+                let before = read view data |> Option.get
+                Expect.isNone (read badView badData) "invalid or absent input does not reuse earlier success"
+                Expect.isNone (read badView badData) "repeated invalid input remains invalid"
+                let restored = read view data |> Option.get
+                Expect.equal restored before "valid input can recover after invalid input"
+                Expect.isFalse (Object.ReferenceEquals(before, restored)) "the old successful entry must not survive an invalid or absent input"
+
+        testCase "coverage reader is instance scoped and retains only the most recent object" <| fun _ ->
+            let view, data, nextData = coveragePreparationFixture ()
+            let readA = RendererModel.createLoadedCoverageReader ()
+            let readB = RendererModel.createLoadedCoverageReader ()
+            let firstA = readA view data |> Option.get
+            let firstB = readB view data |> Option.get
+            Expect.isFalse (Object.ReferenceEquals(firstA, firstB)) "renderer instances do not share mutable decoded arrays"
+            readA view nextData |> ignore
+            let revisited = readA view data |> Option.get
+            Expect.isFalse (Object.ReferenceEquals(firstA, revisited)) "switching coverage evicts the prior entry instead of growing a history"
+            Expect.equal revisited firstA "eviction changes no decoded values"
+
+        testCase "coverage-only preparation reuses every prepared map with the public custom data ref" <| fun _ ->
+            let view, data, nextData = coveragePreparationFixture ()
+            let previous = RendererModel.prepareData data
+            let actual = RendererModel.tryReuseCoverageOnlyPreparedData view view previous nextData
+            Expect.isSome actual "coverage metadata alone does not require decoding unchanged observations"
+            let prepared = actual.Value
+            Expect.equal prepared (RendererModel.prepareData nextData) "reuse has exactly the independent full-preparation result"
+            Expect.isTrue (Object.ReferenceEquals(prepared.RawData, nextData)) "the accepted envelope carries the new coverage metadata"
+            Expect.isTrue (Object.ReferenceEquals(prepared.ResolvedAxes, previous.ResolvedAxes)) "resolved axes are not reconstructed"
+            Expect.isTrue (Object.ReferenceEquals(prepared.ResolvedSeries, previous.ResolvedSeries)) "resolved series are not reconstructed"
+            Expect.isTrue (Object.ReferenceEquals(previous.RawData, data)) "the prior frame is immutable"
+
+        testCase "coverage-only preparation rejects missing invalid or switched coverage refs" <| fun _ ->
+            let view, data, nextData = coveragePreparationFixture ()
+            let previous = RendererModel.prepareData data
+            let invalidViews =
+                [ Map.empty
+                  Map [ TaLoadedCoverageCodec.DataRefKey, SduiValue.Number 1.0 ]
+                  TaLoadedCoverageCodec.applyDataRef " " Map.empty
+                  TaLoadedCoverageCodec.applyDataRef "fixture.other-coverage" Map.empty ]
+            for invalid in invalidViews do
+                Expect.isNone (RendererModel.tryReuseCoverageOnlyPreparedData invalid view previous nextData) "invalid previous binding requires full preparation"
+                Expect.isNone (RendererModel.tryReuseCoverageOnlyPreparedData view invalid previous nextData) "invalid or switched next binding requires full preparation"
+            let absentView = TaLoadedCoverageCodec.applyDataRef "fixture.absent" Map.empty
+            Expect.isNone (RendererModel.tryReuseCoverageOnlyPreparedData absentView absentView previous nextData) "matching names do not prove the coverage objects exist"
+
+        testCase "coverage-only preparation rejects added removed and renamed data keys" <| fun _ ->
+            let view, data, nextData = coveragePreparationFixture ()
+            let previous = RendererModel.prepareData data
+            let changedMaps =
+                [ Map.add "fixture.added" (Map.find "fixture.inline" nextData) nextData
+                  Map.remove "fixture.series" nextData
+                  nextData |> Map.remove "fixture.series" |> Map.add "fixture.renamed" (Map.find "fixture.series" nextData) ]
+            for changed in changedMaps do
+                Expect.isNone (RendererModel.tryReuseCoverageOnlyPreparedData view view previous changed) "even equal key counts cannot hide renamed or removed observations"
+
+        testCase "coverage-only preparation rejects a same-value new array and all other raw replacements" <| fun _ ->
+            let view, data, nextData = coveragePreparationFixture ()
+            let previous = RendererModel.prepareData data
+            let inlineValues =
+                match Map.find "fixture.inline" data with
+                | SduiValue.Array values -> values
+                | _ -> failtest "fixture must contain an inline series"
+            let copiedValues = Array.copy inlineValues
+            Expect.equal copiedValues inlineValues "the replacement is structurally equal"
+            Expect.isFalse (Object.ReferenceEquals(copiedValues, inlineValues)) "the replacement is a different raw array"
+            let replaceField key field value =
+                match Map.find key data with
+                | SduiValue.Object fields -> SduiValue.Object(Map.add field value fields)
+                | _ -> failtest "fixture must contain a typed object"
+            let changedValues =
+                [ "fixture.inline", SduiValue.Array copiedValues
+                  "fixture.inline", SduiValue.Array(Array.append inlineValues [| SduiValue.Number 12.0 |])
+                  "fixture.inline", SduiValue.Array inlineValues[1..]
+                  "fixture.inline", SduiValue.Array [| SduiValue.Number 99.0; inlineValues[1] |]
+                  "fixture.series", replaceField "fixture.series" "axisRevision" (SduiValue.Number 2.0)
+                  "fixture.series", replaceField "fixture.series" "points" (SduiValue.Array [||])
+                  "fixture.axis", replaceField "fixture.axis" "revision" (SduiValue.Number 2.0)
+                  "fixture.axis", replaceField "fixture.axis" "points" (SduiValue.Array [||])
+                  "fixture.status", SduiValue.Object(Map [ "state", SduiValue.Text "ready" ]) ]
+            for key, value in changedValues do
+                Expect.isNone (RendererModel.tryReuseCoverageOnlyPreparedData view view previous (Map.add key value nextData))
+                    ("raw replacement must retain full preparation: " + key)
+
+        testCase "coverage-only preparation rejects metadata becoming preparable data in either frame" <| fun _ ->
+            let view, data, nextData = coveragePreparationFixture ()
+            let coverageRef = "fixture.custom-coverage-ref"
+            let withCoverageSchema value =
+                match value with
+                | SduiValue.Object fields -> SduiValue.Object(Map.add "schema" (SduiValue.Text TaLoadedCoverageCodec.Schema) fields)
+                | _ -> value
+            let invalidCoverage =
+                [ Map.find "fixture.inline" data
+                  Map.find "fixture.axis" data |> withCoverageSchema
+                  Map.find "fixture.series" data |> withCoverageSchema
+                  SduiValue.Null
+                  SduiValue.Object Map.empty ]
+            for replacement in invalidCoverage do
+                let previous = RendererModel.prepareData data
+                Expect.isNone (RendererModel.tryReuseCoverageOnlyPreparedData view view previous (Map.add coverageRef replacement nextData))
+                    "metadata-to-series or axis must not preserve stale prepared maps even with the coverage schema tag"
+                let changedPrevious = RendererModel.prepareData (Map.add coverageRef replacement data)
+                Expect.isNone (RendererModel.tryReuseCoverageOnlyPreparedData view view changedPrevious nextData)
+                    "series-to-metadata must rebuild and remove the old prepared entry"
+
+        testCase "coverage-only preparation remains subject to superseded generation and receipt guards" <| fun _ ->
+            let view, data, nextData = coveragePreparationFixture ()
+            let prepared = RendererModel.prepareData data
+            Expect.isSome (RendererModel.tryReuseCoverageOnlyPreparedData view view prepared nextData) "the candidate qualifies for metadata reuse"
+            let identity = { DocumentId = DocumentId "coverage-fixture"; CanvasInstanceId = CanvasInstanceId "coverage-fixture" }
+            let first = { RuntimeReducer.initial identity with DataRevision = 1L; Data = nextData }
+            let second = { first with DataRevision = 2L }
+            let firstGate, firstGeneration = ProjectionCommitGate.beginCandidate first ProjectionCommitGate.initial
+            let secondGate, secondGeneration = ProjectionCommitGate.beginCandidate second firstGate
+            let staleGate, staleCommit = ProjectionCommitGate.tryCommit second firstGeneration first secondGate
+            Expect.isNone staleCommit "reuse never grants a superseded generation permission to commit"
+            Expect.equal staleGate secondGate "a stale completion preserves the current pending generation"
+            let committedGate, committed = ProjectionCommitGate.tryCommit second secondGeneration second secondGate
+            Expect.equal committed (Some second) "the current generation still commits through the existing gate"
+            let duplicateGate, duplicateGeneration = ProjectionCommitGate.beginCandidate second committedGate
+            let _, duplicate = ProjectionCommitGate.tryCommit second duplicateGeneration second duplicateGate
+            Expect.isNone duplicate "reuse does not create duplicate receipts"
+
         testCase "scheduled preparation preserves synchronous prepared data semantics" <| fun _ ->
             let values =
                 [| for index in 0 .. 31 do
@@ -4910,9 +5940,8 @@ let tests =
             let residentStart = source.IndexOf("let residentOverview =", StringComparison.Ordinal)
             let residentEnd = source.IndexOf("match currentCoverageProjection", residentStart, StringComparison.Ordinal)
             let residentBody = source.Substring(residentStart, residentEnd - residentStart)
-            Expect.stringContains residentBody "residentTimeAxisForTradingDatesWithPalette" "RESIDENT must use authoritative trading dates for day boundaries."
-            Expect.stringContains residentBody "referenceTradingDatesForDocumentPrepared currentDocument currentPreparedData" "Session identity must come from the same complete atomic frame as the navigator."
-            Expect.stringContains residentBody "RendererModel.residentCalendarScale currentReferenceTimeline" "Scale must come from the full bar timeline, not downsampled overview anchors."
+            Expect.stringContains residentBody "residentTimeAxisForCoverageWithPalette" "RESIDENT must use the same coverage-axis selector exercised by DYN-T-801."
+            // DYN-T-801 verifies scale, trading dates and display clock through the real selector.
             Expect.stringContains globalBody "settleGlobalResidentProjection renderedState" "GLOBAL preview settles against the newly mounted atomic frame."
             let globalSvgStart = source.IndexOf("let globalOverviewSvgWithPalette", StringComparison.Ordinal)
             let globalSvgBody = source.Substring(globalSvgStart, source.IndexOf("on.mouseMove", globalSvgStart, StringComparison.Ordinal) - globalSvgStart)
@@ -4955,9 +5984,11 @@ let tests =
             Expect.isGreaterThan replacementStart authoritativeStart "The additive authoritative replacement overload must exist."
             Expect.isGreaterThan replacementEnd replacementStart "The replacement overload must have a bounded source range."
             let replacementBody = source.Substring(replacementStart, replacementEnd - replacementStart)
-            Expect.stringContains replacementBody "RendererModel.authoritativeGlobalOverviewReady true state" "Only a resolved authoritative GLOBAL projection owns replacement."
-            Expect.stringContains replacementBody "authoritativeReady.Value <- true" "Replacement must be monotonic."
-            Expect.stringContains replacementBody "if ready then authoritativeDoc else bootstrapDoc" "The actual GLOBAL bootstrap must be replaced in place."
+            Expect.stringContains replacementBody "RendererModel.authoritativeGlobalOverviewReady true runtimeState.Value" "An already-authoritative workspace does not reload the bootstrap."
+            Expect.stringContains replacementBody "displayTimeZone bootstrapContent runtimeState" "Bootstrap is content supplied to the same workspace renderer, never a replacement workspace."
+            Expect.stringContains source "\"ta-global-overview-slot\"" "00011 requires a renderer-owned GLOBAL slot outside document-specific content."
+            Expect.stringContains source "\"ta-workspace-chrome\"" "The real toolbar and row region must exist in the common workspace shell."
+            Expect.isFalse (replacementBody.Contains("if ready then authoritativeDoc else bootstrapDoc", StringComparison.Ordinal)) "00011: switching a standalone GLOBAL into the entire workspace changes its position relative to the toolbar."
 
         testCase "adjacent coverage uses explicit document authority boundaries" <| fun _ ->
             let start0 = "2026-09-22T01:00:00Z"
@@ -5236,8 +6267,8 @@ let tests =
             Expect.stringContains source "RendererModel.tryNavigatorGestureCoverageIntent" "Only a typed resident-local drop may map back through a GLOBAL coverage intent."
             Expect.stringContains source "let gestureDomain =" "Pointer math must snapshot one consistent domain and committed window."
             Expect.stringContains source "dragCoverageProjection" "Pointerdown coverage must use the projection decoded for the exact rendered navigator prepared data."
-            Expect.isFalse (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragPreparedData.RawData", StringComparison.Ordinal)) "Pointerdown must not re-decode the projection with a second document authority."
-            Expect.isFalse (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragState.Data", StringComparison.Ordinal)) "An unresolved runtime envelope must not erase the rendered navigator projection."
+            Expect.isFalse ((source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragPreparedData.RawData", StringComparison.Ordinal) || source.Contains("readLoadedCoverage document.DefaultView dragPreparedData.RawData", StringComparison.Ordinal))) "Pointerdown must not re-decode the projection with a second document authority."
+            Expect.isFalse ((source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView dragState.Data", StringComparison.Ordinal) || source.Contains("readLoadedCoverage document.DefaultView dragState.Data", StringComparison.Ordinal))) "An unresolved runtime envelope must not erase the rendered navigator projection."
             Expect.stringContains source "not gestureDomain.UsesResidentAuthority && followLatest <> uiState.Value.FollowLatest" "A zero-delta active-local drop must not become an action through mismatched follow-latest domains."
             Expect.stringContains source "min timeline.Length projection.ActiveDetail.ObservationCount" "Active-detail locality must obey contract count even when a wider timeline is cached."
 
@@ -5299,13 +6330,13 @@ let tests =
                 (source.Contains("let currentDocument = navigatorDocumentForRenderedFrame document renderedState", StringComparison.Ordinal))
                 "A retained mapper must resolve its document from the current atomic shell frame, not its lexical cached shell."
             Expect.isTrue
-                (Text.RegularExpressions.Regex.IsMatch(source, "tryLoadedCoverageResolved currentDocument\\.DefaultView currentPreparedData\\.RawData"))
+                (Text.RegularExpressions.Regex.IsMatch(source, "(?:tryLoadedCoverageResolved|readLoadedCoverage) currentDocument\\.DefaultView currentPreparedData\\.RawData"))
                 "Coverage projection must pair the current frame document with that frame's prepared RawData."
             Expect.isTrue
                 (Text.RegularExpressions.Regex.IsMatch(source, "Some\\(renderedState, currentDocument, currentPreparedData, currentCoverageProjection\\)"))
                 "The gesture publication must carry the current frame document that actually decoded the projection."
             Expect.isFalse
-                (source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView currentPreparedData.RawData", StringComparison.Ordinal))
+                ((source.Contains("RendererModel.tryLoadedCoverageResolved document.DefaultView currentPreparedData.RawData", StringComparison.Ordinal) || source.Contains("readLoadedCoverage document.DefaultView currentPreparedData.RawData", StringComparison.Ordinal)))
                 "No retained navigator mapper may decode latest prepared data through its lexical cached document."
 
         testCase "DYN-T-730 navigator gesture telemetry identifies the runtime publication consumed by pointerdown" <| fun _ ->
@@ -5433,7 +6464,8 @@ let tests =
             let current = projection 4401 2842 1500
             let resolve view coverage = RendererModel.initialViewportWindowForCoverage 12 48 1500 4401 view coverage
             Expect.equal (resolve authored (Some current)) {StartIndex=2842;Count=1500} "The final 59 resident bars are not part of the authored initial viewport"
-            Expect.equal (resolve (Map.remove "initialVisibleEnd" authored) (Some current)) {StartIndex=2901;Count=1500} "Legacy default remains follow-latest"
+            Expect.equal (resolve (Map.remove "initialVisibleEnd" authored) (Some current)) {StartIndex=2842;Count=1500} "A valid committed active window remains authoritative without an authored date"
+            Expect.equal (resolve (Map.remove "initialVisibleEnd" authored) (Some(projection 4401 2901 1500))) {StartIndex=2901;Count=1500} "A fresh RUN whose active window is the default tail still follows that tail"
             Expect.equal (resolve authored None) {StartIndex=2901;Count=1500} "Absent coverage does not invent an ordinal"
             Expect.equal (resolve authored (Some(projection 4401 0 1))) {StartIndex=0;Count=1} "An early single real bar must not expand past the requested right edge"
             Expect.equal (resolve authored (Some(projection 4000 2842 1500))) {StartIndex=2901;Count=1500} "A different resident axis cannot supply local ordinals"
@@ -5443,6 +6475,49 @@ let tests =
             Expect.isNone (expand false {StartIndex=0;Count=32} current) "Do not overwrite a user's manual viewport"
             Expect.isNone (expand true {StartIndex=0;Count=8} current) "A resized provisional viewport is not an untouched bootstrap"
             Expect.isNone (expand true {StartIndex=0;Count=32} {current with QueryGeneration=1L}) "A different query is not a bootstrap expansion"
+
+        testCase "Apply viewport initialization preserves authoritative 48 and the first subsequent move" <| fun _ ->
+            // Test-only metadata reproduces the native post-Apply DOM ordinals and counts.
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity="apply-viewport-fixture";CoverageRevision=3L;QueryGeneration=2L
+                  Completeness=TaCoverageCompleteness.Partial;TotalObservationCount=None
+                  Segments=[|{SegmentId="resident";StartEventTimeUtc="2026-01-08T07:30:00Z";EndEventTimeExclusiveUtc="2026-04-10T04:00:00Z"
+                              StartObservationOrdinal=93189L;ObservationCount=4500L}|]
+                  OverviewAxisRef="fixture.overview.30k";OverviewAnchors=[||]
+                  ActiveDetail={BaseAxisRef="axis.30k";StartObservationOrdinal=94833L;ObservationCount=48}
+                  GlobalOverview=Some {TotalObservationCount=3000000L;AxisRef="axis.1k";Anchors=[||]
+                                       ResidentStartObservationOrdinal=100000L;ResidentObservationCount=134885} }
+            let defaults = Map["visibleBars",SduiValue.Number 1500.0]
+            let window = RendererModel.initialViewportWindowForCoverage 12 48 1500 4500 defaults (Some projection)
+            Expect.equal window {StartIndex=1644;Count=48} "new identity must use active-axis segment ordinals, not the default tail or GLOBAL1K ordinals"
+            let before : TaRendererUiState =
+                {Window={StartIndex=3000;Count=1500};FollowLatest=true;HiddenRows=Set.empty;HiddenTraces=Set.empty
+                 RemovedTraces=Set.empty;AddRowOpen=false;CursorIndex=None;PendingActionId=None;Feedback="Row updated."}
+            let after = TaWorkspaceRenderer.applyResolvedViewportWindow 4500 window before
+            Expect.isFalse after.FollowLatest "the accepted non-tail window owns follow mode as well as width"
+            Expect.equal (RendererModel.resolveWindow 12 1500 4500 after.FollowLatest after.Window) window "the next render must not snap to1500 latest bars"
+            let moved = RendererModel.previewWindowBounds 12 1500 4500 after.Window TaWindowDrag.Move 193
+            Expect.equal moved {StartIndex=1837;Count=48} "the first native-equivalent move preserves48"
+            let intent = RendererModel.tryNavigatorGestureEventRangeIntent TaWindowDrag.Move after.Window.Count 1500 projection moved |> Option.get
+            Expect.equal intent.ObservationCount projection.ActiveDetail.ObservationCount "the move must satisfy the unchanged backend visible-count fence"
+
+        testCase "Apply viewport initialization preserves fallback for absent invalid or unmappable coverage" <| fun _ ->
+            let defaults = Map["visibleBars",SduiValue.Number 1500.0]
+            let projection : TaLoadedCoverageProjection =
+                { independentOverviewFixture [||] with
+                    Segments=[|{SegmentId="resident";StartEventTimeUtc="2026-01-08T07:30:00Z";EndEventTimeExclusiveUtc="2026-04-10T04:00:00Z"
+                                StartObservationOrdinal=93189L;ObservationCount=4500L}|]
+                    ActiveDetail={BaseAxisRef="axis.30k";StartObservationOrdinal=94833L;ObservationCount=48} }
+            let invalid =
+                [ None
+                  Some {projection with ActiveDetail={projection.ActiveDetail with StartObservationOrdinal=93188L}}
+                  Some {projection with ActiveDetail={projection.ActiveDetail with StartObservationOrdinal=97680L}}
+                  Some {projection with ActiveDetail={projection.ActiveDetail with ObservationCount=0}}
+                  Some {projection with Segments=[||]}
+                  Some {projection with Segments=[|{projection.Segments[0] with ObservationCount=4000L}|]} ]
+            for coverage in invalid do
+                Expect.equal (RendererModel.initialViewportWindowForCoverage 12 48 1500 4500 defaults coverage) {StartIndex=3000;Count=1500}
+                    "unavailable or invalid local coverage keeps the established default, never guesses a global ordinal"
 
         testCase "DYN-T-761 resolved bootstrap viewport cannot be undone by follow-latest on the next render" <| fun _ ->
             let before: TaRendererUiState =

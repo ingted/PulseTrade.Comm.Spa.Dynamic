@@ -520,9 +520,9 @@ module DynamicRuntimeDefaults =
     let MaximumVisibleRangeBasePoints = 4000
 
     let limits =
-        { MaxRowsPerCanvas = 8
+        { MaxRowsPerCanvas = 16
           MaxTracesPerRow = 32
-          MaxTotalTraces = 64
+          MaxTotalTraces = 128
           MaxInitialBarsPerSeries = 5000
           MaxRetainedBarsPerSeries = 4500
           MaxPatchOperations = 64

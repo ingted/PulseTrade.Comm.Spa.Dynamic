@@ -101,6 +101,11 @@ module BrowserRuntimeFramePump =
     [<Literal>]
     let PointDecodeBatchSize = 256
 
+    // Keep each browser turn bounded while avoiding a separate paint delay for
+    // every pair of small decode stages. Renderer preparation keeps its own budget.
+    [<Literal>]
+    let BrowserWorkBudgetMilliseconds = 8.0
+
     let mutable browserScheduleSequence = 0
 
     let scheduleBrowserStages onStageCompleted =
@@ -113,7 +118,7 @@ module BrowserRuntimeFramePump =
         let now () = float (Date.Now())
         let schedule =
             RendererModel.createBudgetedWorkScheduler
-                RendererModel.ScheduledWorkBudgetMilliseconds
+                BrowserWorkBudgetMilliseconds
                 RendererModel.ScheduledWorkMaximumCount
                 (fun work -> JS.RequestAnimationFrame(fun _ -> work ()) |> ignore)
                 now

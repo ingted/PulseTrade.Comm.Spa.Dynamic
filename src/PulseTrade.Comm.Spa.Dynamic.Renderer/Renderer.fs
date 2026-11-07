@@ -47,6 +47,7 @@ type TaPendingEventRangeSettlement =
       StartEventTimeUtc: string
       EndEventTimeExclusiveUtc: string
       ObservationCount: int
+      Purpose: TaCoverageWindowPurpose
       QueryGeneration: int64
       ViewportIntentGeneration: int }
 
@@ -436,6 +437,54 @@ module TaWorkspaceRenderer =
         | RuntimePollState.Disposed -> true
         | _ -> false
 
+    let resetUiStateForIdentity (current: TaRendererUiState) =
+        { current with
+            HiddenRows = Set.empty
+            HiddenTraces = Set.empty
+            RemovedTraces = Set.empty
+            CursorIndex = None
+            PendingActionId = None
+            Feedback = "" }
+
+    let settlePendingActionResult
+        requestId
+        (result: DynamicActionResult)
+        successText
+        onAccepted
+        onRejected
+        afterSettled
+        (readUi: unit -> TaRendererUiState)
+        (writeUi: TaRendererUiState -> unit) =
+        let resultRequestId =
+            match result with
+            | DynamicActionResult.Accepted(id, _)
+            | DynamicActionResult.Rejected(id, _, _)
+            | DynamicActionResult.RevisionConflict(id, _) -> id
+        let ownsPending = (readUi ()).PendingActionId = Some requestId
+        if not ownsPending then ()
+        elif resultRequestId <> requestId then
+            onRejected ()
+            writeUi { (readUi ()) with
+                        PendingActionId = None
+                        Feedback = "action-correlation-mismatch: result does not match the pending request." }
+        else
+            match result with
+            | DynamicActionResult.Accepted(_, revision) ->
+                let feedbackOverride = onAccepted ()
+                writeUi { (readUi ()) with
+                            PendingActionId = None
+                            Feedback = feedbackOverride |> Option.defaultValue (successText + " Revision " + string revision + ".") }
+            | DynamicActionResult.Rejected(_, code, message) ->
+                onRejected ()
+                writeUi { (readUi ()) with PendingActionId = None; Feedback = code + ": " + message }
+            | DynamicActionResult.RevisionConflict(_, actualRevision) ->
+                onRejected ()
+                writeUi { (readUi ()) with
+                            PendingActionId = None
+                            Feedback = "revision-conflict: workspace is at revision " + string actualRevision + "." }
+        // A superseded request must not settle or flush the new workspace's work.
+        if ownsPending then afterSettled ()
+
     let submit
         (callbacks: TaRendererCallbacks)
         (uiState: Var<TaRendererUiState>)
@@ -472,43 +521,10 @@ module TaWorkspaceRenderer =
                     | Ok accepted -> accepted
                     | Error error -> DynamicActionResult.Rejected(request.RequestId, error.Code, error.Message)
 
-                let resultRequestId =
-                    match result with
-                    | DynamicActionResult.Accepted(requestId, _)
-                    | DynamicActionResult.Rejected(requestId, _, _)
-                    | DynamicActionResult.RevisionConflict(requestId, _) -> requestId
-
-                if uiState.Value.PendingActionId <> Some request.RequestId then
-                    ()
-                elif resultRequestId <> request.RequestId then
-                    onRejected ()
-                    uiState.Value <-
-                        { uiState.Value with
-                            PendingActionId = None
-                            Feedback = "action-correlation-mismatch: result does not match the pending request." }
-                else
-                    match result with
-                    | DynamicActionResult.Accepted(_, revision) ->
-                        let feedbackOverride = onAccepted ()
-                        uiState.Value <-
-                            { uiState.Value with
-                                PendingActionId = None
-                                Feedback =
-                                    feedbackOverride
-                                    |> Option.defaultValue (successText + " Revision " + string revision + ".") }
-                    | DynamicActionResult.Rejected(_, code, message) ->
-                        onRejected ()
-                        uiState.Value <-
-                            { uiState.Value with
-                                PendingActionId = None
-                                Feedback = code + ": " + message }
-                    | DynamicActionResult.RevisionConflict(_, actualRevision) ->
-                        onRejected ()
-                        uiState.Value <-
-                            { uiState.Value with
-                                PendingActionId = None
-                                Feedback = "revision-conflict: workspace is at revision " + string actualRevision + "." }
-                afterSettled ()
+                settlePendingActionResult
+                    request.RequestId result successText onAccepted onRejected afterSettled
+                    (fun () -> uiState.Value)
+                    (fun next -> uiState.Value <- next)
             }
             |> Async.StartImmediate
 
@@ -790,6 +806,11 @@ module TaWorkspaceRenderer =
         renderTradingTimeAxisWithPalette palette displayTime scaleMinutes "trading-date" false "ta-overview-time-axis" "" (View.Const 82)
             (fun _ zone -> 0, RendererModel.tradingSessionAxisGrid false scaleMinutes zone timestamps tradingDates, [||])
 
+    let residentTimeAxisForCoverageWithPalette palette displayTime document prepared projection =
+        let scale, makeTicks = RendererModel.residentTimeAxisForCoveragePrepared document prepared projection
+        renderTradingTimeAxisWithPalette palette displayTime scale "trading-date" false "ta-overview-time-axis" "" (View.Const 82)
+            (fun _ zone -> 0, makeTicks zone, [||])
+
     let mainTradingTimeAxisWithPalette palette displayTime row (dataView: View<TaPreparedRendererData>) timestamps plotHeight =
         dataView |> View.Map (fun prepared ->
             let scale = RendererModel.rowCalendarScalePrepared row prepared
@@ -804,6 +825,31 @@ module TaWorkspaceRenderer =
 
     let residentTimeAxisWithPalette palette displayTime timestamps =
         residentTimeAxisForScaleWithPalette palette displayTime (RendererModel.residentCalendarScale timestamps) timestamps
+
+    let boundaryTimeLabelsWithApproximation palette (displayTime: TaRendererDisplayTime) testId rowId captions boundsView =
+        View.Map2 (fun bounds zone ->
+            let first, last, approximate = bounds |> Option.defaultValue ("", "", false)
+            let label prefix value = (if approximate then "約 " else "") + prefix + (if value = "" then "—" else TaDisplayTimeFormatter.fullOrOriginal zone value)
+            let firstText, lastText = label (fst captions) first, label (snd captions) last
+            div [
+                Attr.Create "data-testid" testId
+                Attr.Create "data-ta-main-boundary-row" rowId
+                Attr.Create "data-canonical-start" first
+                Attr.Create "data-canonical-end" last
+                Attr.Create "data-preview" "false"
+                Attr.Create "data-time-approximate" (if approximate then "true" else "false")
+                Attr.Create "data-default-start-text" firstText
+                Attr.Create "data-default-end-text" lastText
+                attr.style ("display:flex; flex:1 1 460px; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:2px 12px; min-width:0; min-height:18px; padding:0 4px; font-family:Consolas,monospace; font-size:10px; color:" + palette.AxisText + "; background:" + palette.AxisSurface + ";")
+            ] [
+                span [Attr.Create "data-time-boundary-start" "true"; attr.style "white-space:nowrap;"] [text firstText]
+                span [Attr.Create "data-time-boundary-end" "true"; attr.style "white-space:nowrap;"] [text lastText]
+            ] :> Doc) boundsView displayTime.Zone
+        |> Doc.EmbedView
+
+    let boundaryTimeLabels palette displayTime testId rowId boundsView =
+        boundaryTimeLabelsWithApproximation palette displayTime testId rowId ("首根 ","末根 ")
+            (boundsView |> View.Map (Option.map (fun (first,last) -> first,last,false)))
 
     let timeAxis testId rowId timestamps =
         let zone = Var.Create SduiDisplayTimeZone.Utc
@@ -983,14 +1029,17 @@ module TaWorkspaceRenderer =
         let upBodyPath = bodyPath (fun point -> point.Close > point.Open)
         let downBodyPath = bodyPath (fun point -> point.Close < point.Open)
         let flatBodyPath = bodyPath (fun point -> point.Close = point.Open)
-        let handleWidth = 8.0
         let selectionGeometry ratios = RendererModel.navigatorSelectionBounds width ratios
         let geometryText projection = selectionWindow |> View.Map (selectionGeometry >> projection >> fixedText)
         let selectionX = geometryText fst
         let selectionWidth = geometryText snd
         let selectionRightX = geometryText (fun (selectionX, selectionWidth) -> selectionX + selectionWidth)
-        let leftHandleX = geometryText (fun (selectionX, _) -> max 0.0 (min (width - handleWidth) (selectionX - handleWidth / 2.0)))
-        let rightHandleX = geometryText (fun (selectionX, selectionWidth) -> max 0.0 (min (width - handleWidth) (selectionX + selectionWidth - handleWidth / 2.0)))
+        let handleGeometry selection =
+            let selectionX, selectionWidth = selection
+            RendererModel.navigatorResizeHandleGeometry width selectionX selectionWidth
+        let leftHandleX = geometryText (handleGeometry >> fun (left, _, _) -> left)
+        let rightHandleX = geometryText (handleGeometry >> fun (_, right, _) -> right)
+        let handleWidth = geometryText (handleGeometry >> fun (_, _, hitWidth) -> hitWidth)
         let mutable latestSelectionRatios = 0.0, 0.0
         let observedSelectionWindow =
             selectionWindow
@@ -1164,7 +1213,7 @@ module TaWorkspaceRenderer =
             yield svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-left-handle"
                 Attr.Create "data-window-drag-mode" TaWindowDrag.ResizeLeft
-                Attr.Dynamic "x" leftHandleX; svgAttr "y" "0"; svgAttr "width" (fixedText handleWidth); svgAttr "height" "82"
+                Attr.Dynamic "x" leftHandleX; svgAttr "y" "0"; Attr.Dynamic "width" handleWidth; svgAttr "height" "82"
                 svgAttr "fill" "transparent"; svgAttr "pointer-events" "all"; svgAttr "style" "cursor:ew-resize;"
             ] []
             yield svgElement "line" [
@@ -1179,7 +1228,7 @@ module TaWorkspaceRenderer =
             yield svgElement "rect" [
                 Attr.Create "data-testid" "ta-overview-right-handle"
                 Attr.Create "data-window-drag-mode" TaWindowDrag.ResizeRight
-                Attr.Dynamic "x" rightHandleX; svgAttr "y" "0"; svgAttr "width" (fixedText handleWidth); svgAttr "height" "82"
+                Attr.Dynamic "x" rightHandleX; svgAttr "y" "0"; Attr.Dynamic "width" handleWidth; svgAttr "height" "82"
                 svgAttr "fill" "transparent"; svgAttr "pointer-events" "all"; svgAttr "style" "cursor:ew-resize;"
             ] []
             yield
@@ -2150,7 +2199,7 @@ module TaWorkspaceRenderer =
                     let valueText = fixedText value
                     let topPercent = fixedText (pointerYValue * 100.0 / height) + "%"
                     for cursor in yAxisCursorElements () do
-                        cursor.TextContent <- valueText
+                        cursor.TextContent <- RendererModel.yAxisValueText value
                         cursor.SetAttribute("data-ta-y-axis-cursor-value", valueText)
                         cursor.SetAttribute("data-ta-y-axis-cursor-y", pointerY)
                         cursor.SetAttribute("data-ta-y-axis-cursor-visible", "true")
@@ -2390,7 +2439,7 @@ module TaWorkspaceRenderer =
                                 ] []
                             if vertical then
                                 match referenceSlots.TryGetValue guide.Timestamp with
-                                | true, index -> yield line "vertical" (xAt index) top (xAt index) (top + plotHeight)
+                                | true, index -> yield line "vertical" (xAt index) 0.0 (xAt index) height
                                 | _ -> ()
                             if horizontal then
                                 match RendererModel.tryChartGuideY top plotHeight low high guide.Value with
@@ -2462,7 +2511,7 @@ module TaWorkspaceRenderer =
                                     + translate
                                     + "; "
                                     + padding)
-                            ] [ text (fixedText value) ])
+                            ] [ text (RendererModel.yAxisValueText value) ])
                         |> Doc.Concat)
                     |> Doc.EmbedView
             ]
@@ -2721,6 +2770,8 @@ module TaWorkspaceRenderer =
                 Attr.Create "data-testid" ("ta-guide-tools-" + row.RowId)
                 attr.style ("display:flex; justify-content:flex-end; flex-wrap:wrap; gap:4px; padding:3px 8px; background:" + palette.AxisSurface + ";")
             ] [
+                yield boundaryTimeLabels palette displayTime ("ta-main-boundary-times-" + row.RowId) row.RowId
+                    (View.Const(RendererModel.visibleBoundaryTimes visibleTimestamps {StartIndex=0;Count=visibleTimestamps.Length}))
                 for tool, label in [ TaChartGuideTool.Vertical,"垂直線"; TaChartGuideTool.Horizontal,"水平線"; TaChartGuideTool.Cross,"十字線" ] do
                     yield button [
                         attr.``type`` "button"
@@ -2879,13 +2930,42 @@ module TaWorkspaceRenderer =
         |> Async.StartImmediate
         renderGlobalOverviewBootstrapStateWithDisplayTimeZone displayTimeZone overview.View
 
-    let renderWithProjectionCommitAndDisplayTimeZone
+    let renderWithProjectionCommitAndDisplayTimeZoneAndBootstrapContent
         (options: TaRendererOptions)
         (callbacks: TaRendererCallbacks)
         (onProjectionCommitted: RuntimeState -> unit)
         (displayTimeZone: View<SduiDisplayTimeZone>)
+        (bootstrapContent: Doc option)
         (runtimeState: Var<RuntimeState>) =
         ensureAxisResizeTracking ()
+        let globalContent = Var.Create(bootstrapContent |> Option.defaultValue Doc.Empty)
+        let mutable publishedGlobalKey: TaProjectionCommitKey option = None
+        let mutable publishedGlobalSource: string option = None
+        let globalImageReadOnly = Var.Create false
+        let mutable bootstrapMayShow = bootstrapContent.IsSome
+        let mutable hasAuthoritativeGlobal = false
+        let loadingGlobalContent () =
+            div [
+                Attr.Create "data-testid" "ta-global-overview-loading"
+                Attr.Create "data-global-phase" "awaiting-current-authority"
+                attr.style "display:flex; align-items:center; gap:8px; min-width:0; height:40px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px; white-space:nowrap;"
+            ] [ strong [] [ text "GLOBAL" ]; span [] [ text "Loading authoritative overview…" ] ] :> Doc
+        let resetGlobalContent () =
+            publishedGlobalKey <- None
+            publishedGlobalSource <- None
+            globalImageReadOnly.Value <- true
+            globalContent.Value <-
+                if bootstrapMayShow then bootstrapContent |> Option.defaultValue Doc.Empty
+                else loadingGlobalContent ()
+        let retainOrResetGlobalContent state =
+            let currentKey = ProjectionCommitGate.key state
+            let hasGlobal = RendererModel.authoritativeGlobalOverviewReady true state
+            if ProjectionCommitGate.canRetainGlobalImage currentKey hasGlobal
+                   (ProjectionCommitGate.globalDataSourceFingerprint state) publishedGlobalSource publishedGlobalKey then
+                if not (ProjectionCommitGate.canRetainGlobalContent currentKey hasGlobal publishedGlobalKey) then
+                    globalImageReadOnly.Value <- true
+            else
+                resetGlobalContent ()
         let mutable currentDisplayTimeZone = SduiDisplayTimeZone.Utc
         let displayTime =
             { Zone = displayTimeZone
@@ -2933,6 +3013,10 @@ module TaWorkspaceRenderer =
         let addSignalPeriod = Var.Create "9"
         let draftWindow = Var.Create<TaVisibleWindow option> None
         let navigatorSelectionRatiosOverride = Var.Create<Option<float * float>> None
+        let navigatorBoundaryTimesOverride = Var.Create<Option<string * string>> None
+        let clearNavigatorPreview () =
+            navigatorSelectionRatiosOverride.Value <- None
+            navigatorBoundaryTimesOverride.Value <- None
         let mutable renderedNavigatorDraft: TaVisibleWindow option = None
         let globalResidentDraft = Var.Create<TaResidentCoverageWindow option> None
         let mutable pendingGlobalResidentIntent: TaCoverageWindowIntent option = None
@@ -2948,10 +3032,6 @@ module TaWorkspaceRenderer =
         let mutable finishMainPlotDrag: (Event -> unit) option = None
         let mutable cancelMainPlotDrag: (unit -> unit) option = None
         let mutable suppressNextMainPlotClick = false
-        draftWindow.View
-        |> View.Sink (fun draft ->
-            if draft.IsNone && finishNavigatorDrag.IsNone then
-                navigatorSelectionRatiosOverride.Value <- None)
         let mutable activeNavigatorCursor: string option = None
         let mutable navigatorCursorAfterRender: string option = None
         let mutable chartRenderSequence = 0
@@ -3019,9 +3099,16 @@ module TaWorkspaceRenderer =
         let scheduleNextFrame work =
             JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
         let mutable projectionCommitGate = ProjectionCommitGate.initial
+        let mutable mountedGlobalOverview: (TaProjectionCommitKey * Element) option = None
+        let mutable mountedResidentOverview: (TaProjectionCommitKey * Element) option = None
+        let mutable completedRowsAwaitingMount: (int * RuntimeState) option = None
+        let mutable projectionFrameScheduled = false
+        let connectedMountKey (mounted: (TaProjectionCommitKey * Element) option) =
+            mounted |> Option.bind (fun (key, element) -> if element.IsConnected then Some key else None)
         let mutable projectionPendingGeneration = 0
         let mutable projectionPendingAtMs = 0.0
         let beginProjection state =
+            completedRowsAwaitingMount <- None
             let nextGate, generation = ProjectionCommitGate.beginCandidate state projectionCommitGate
             projectionCommitGate <- nextGate
             projectionPendingGeneration <- generation
@@ -3039,22 +3126,53 @@ module TaWorkspaceRenderer =
         let pendingProjectionFor state =
             ProjectionCommitGate.pendingGenerationFor state projectionCommitGate
         let mutable settleCommittedViewportDraft = ignore
+        let requestProjectionCommit () =
+            if not projectionFrameScheduled && completedRowsAwaitingMount.IsSome then
+                projectionFrameScheduled <- true
+                scheduleNextFrame (fun () ->
+                    projectionFrameScheduled <- false
+                    match completedRowsAwaitingMount with
+                    | Some(generation, state)
+                        when pendingProjectionFor state = Some generation
+                             && ProjectionCommitGate.sameProjectionState runtimeState.Value state ->
+                        let ready =
+                            ProjectionCommitGate.mountedOverviewsReady
+                                (RendererModel.authoritativeGlobalOverviewReady true state
+                                 || (publishedGlobalKey.IsSome && globalImageReadOnly.Value))
+                                (ProjectionCommitGate.key state)
+                                (connectedMountKey mountedGlobalOverview)
+                                (connectedMountKey mountedResidentOverview)
+                        if ready then
+                            completedRowsAwaitingMount <- None
+                            let nextGate, committed =
+                                ProjectionCommitGate.tryCommit runtimeState.Value generation state projectionCommitGate
+                            projectionCommitGate <- nextGate
+                            committed
+                            |> Option.iter (fun committedState ->
+                                let committedAtMs = float (Date.Now())
+                                let root = JS.Document.DocumentElement
+                                if not (isNull root) then
+                                    root.SetAttribute("data-renderer-projection-committed-generation", string generation)
+                                    root.SetAttribute("data-renderer-projection-committed-at-ms", string committedAtMs)
+                                    root.SetAttribute("data-renderer-global-mounted-data-revision", connectedMountKey mountedGlobalOverview |> Option.map (fun key -> string key.DataRevision) |> Option.defaultValue "")
+                                    root.SetAttribute("data-renderer-resident-mounted-data-revision", connectedMountKey mountedResidentOverview |> Option.map (fun key -> string key.DataRevision) |> Option.defaultValue "")
+                                    if generation = projectionPendingGeneration then
+                                        root.SetAttribute("data-renderer-pending-to-commit-ms", string (committedAtMs - projectionPendingAtMs))
+                                onProjectionCommitted committedState
+                                settleCommittedViewportDraft ())
+                    | _ -> completedRowsAwaitingMount <- None)
         let completeProjection generation state =
-            scheduleNextFrame (fun () ->
-                let nextGate, committed =
-                    ProjectionCommitGate.tryCommit runtimeState.Value generation state projectionCommitGate
-                projectionCommitGate <- nextGate
-                committed
-                |> Option.iter (fun committedState ->
-                    let committedAtMs = float (Date.Now())
-                    let root = JS.Document.DocumentElement
-                    if not (isNull root) then
-                        root.SetAttribute("data-renderer-projection-committed-generation", string generation)
-                        root.SetAttribute("data-renderer-projection-committed-at-ms", string committedAtMs)
-                        if generation = projectionPendingGeneration then
-                            root.SetAttribute("data-renderer-pending-to-commit-ms", string (committedAtMs - projectionPendingAtMs))
-                    onProjectionCommitted committedState
-                    settleCommittedViewportDraft ()))
+            if pendingProjectionFor state = Some generation then
+                completedRowsAwaitingMount <- Some(generation, state)
+                requestProjectionCommit ()
+        let recordGlobalMount (state: RuntimeState) (element: Element) =
+            if element.IsConnected && ProjectionCommitGate.sameProjectionState runtimeState.Value state then
+                mountedGlobalOverview <- Some(ProjectionCommitGate.key state, element)
+                requestProjectionCommit ()
+        let recordResidentMount (state: RuntimeState) (element: Element) =
+            if element.IsConnected && ProjectionCommitGate.sameProjectionState runtimeState.Value state then
+                mountedResidentOverview <- Some(ProjectionCommitGate.key state, element)
+                requestProjectionCommit ()
         let scheduleRowDataRefresh projectionCandidateGeneration candidateState prepared =
             dataWorkGeneration <- dataWorkGeneration + 1
             let generation = dataWorkGeneration
@@ -3131,8 +3249,10 @@ module TaWorkspaceRenderer =
         let maximumVisibleBarsFor document =
             RendererModel.documentMaximumVisibleBars options.MaximumVisibleBars document.DefaultView
 
+        let readLoadedCoverage = RendererModel.createLoadedCoverageReader ()
+
         let coverageIdentity (state: RuntimeState) (document: TaWorkspaceDocument) =
-            RendererModel.tryLoadedCoverageResolved document.DefaultView state.Data
+            readLoadedCoverage document.DefaultView state.Data
             |> Option.map _.CoverageIdentity
 
         let viewportScopeKey (state: RuntimeState) (document: TaWorkspaceDocument) =
@@ -3147,7 +3267,7 @@ module TaWorkspaceRenderer =
 
         let coverageProjection (state: RuntimeState) =
             state.Document
-            |> Option.bind (fun document -> RendererModel.tryLoadedCoverageResolved document.DefaultView state.Data)
+            |> Option.bind (fun document -> readLoadedCoverage document.DefaultView state.Data)
 
         let applyDocumentDefaultViewport (state: RuntimeState) prepared =
             match state.Document with
@@ -3219,11 +3339,11 @@ module TaWorkspaceRenderer =
         let viewportDataReady = Var.Create false
         let commandsDisabledView =
             View.Map2
-                (fun state ui -> remoteDisabled state.Poll || ui.PendingActionId.IsSome)
+                (fun (state: RuntimeState) ui -> state.Document.IsNone || remoteDisabled state.Poll || ui.PendingActionId.IsSome)
                 runtimeState.View
                 uiState.View
         let commandsDisabledNow () =
-            remoteDisabled runtimeState.Value.Poll || uiState.Value.PendingActionId.IsSome
+            runtimeState.Value.Document.IsNone || remoteDisabled runtimeState.Value.Poll || uiState.Value.PendingActionId.IsSome
         let visibleRangeActionAllowed (state: RuntimeState) =
             state.Document
             |> Option.map _.AllowedActions
@@ -3264,7 +3384,7 @@ module TaWorkspaceRenderer =
             publishViewportDispatchDiagnostics chartStackElement
         let rejectNavigatorDraft feedback =
             draftWindow.Value <- None
-            navigatorSelectionRatiosOverride.Value <- None
+            clearNavigatorPreview ()
             setUiState { uiState.Value with Feedback = feedback }
         let settleVisibleRangeDraft () =
             if finishNavigatorDrag.IsNone && pendingBoundaryPan.IsNone && committedCoverageReady () then
@@ -3272,6 +3392,12 @@ module TaWorkspaceRenderer =
                     RendererModel.optimisticViewportAfterActionSettlement
                         queuedViewportIntent.IsSome
                         draftWindow.Value
+                if queuedViewportIntent.IsNone && pendingEventRangeSettlement.IsNone then
+                    clearNavigatorPreview ()
+        draftWindow.View
+        |> View.Sink (fun draft ->
+            if RendererModel.navigatorPreviewCanClear draft.IsSome finishNavigatorDrag.IsSome pendingBoundaryPan.IsSome pendingEventRangeSettlement.IsSome queuedViewportIntent.IsSome then
+                clearNavigatorPreview ())
         settleCommittedViewportDraft <- fun () ->
             if uiState.Value.PendingActionId.IsNone then
                 settleVisibleRangeDraft ()
@@ -3312,6 +3438,7 @@ module TaWorkspaceRenderer =
                           StartEventTimeUtc = change.StartEventTimeUtc
                           EndEventTimeExclusiveUtc = change.EndEventTimeExclusiveUtc
                           ObservationCount = intent.ObservationCount
+                          Purpose = intent.Purpose
                           QueryGeneration = intent.QueryGeneration
                           ViewportIntentGeneration = viewportIntentGeneration }
                 | _ -> None
@@ -3467,22 +3594,34 @@ module TaWorkspaceRenderer =
         let settlePendingEventRangeProjectionFor (next: RuntimeState) nextPreparedData =
             match pendingEventRangeSettlement, next.Document with
             | Some pending, Some document when document.BaseRowId = Some pending.BaseRowId ->
-                match RendererModel.tryLoadedCoverageResolved document.DefaultView next.Data with
+                match readLoadedCoverage document.DefaultView next.Data with
                 | Some projection ->
                     let timeline = RendererModel.referenceTimelineForDocumentPrepared document nextPreparedData
                     let completed, window, rejected =
-                        RendererModel.mainPlotEventRangeProjectionSettlement
-                            options.MinimumVisibleBars
-                            (maximumVisibleBarsFor document)
-                            timeline
-                            pending.StartEventTimeUtc
-                            pending.ObservationCount
-                            pending.QueryGeneration
-                            uiState.Value.PendingActionId.IsSome
-                            projection
+                        (if pending.Purpose = TaCoverageWindowPurpose.MainPlotPan then
+                            RendererModel.mainPlotEventRangeProjectionSettlement
+                                options.MinimumVisibleBars
+                                (maximumVisibleBarsFor document)
+                                timeline
+                                pending.StartEventTimeUtc
+                                pending.ObservationCount
+                                pending.QueryGeneration
+                                uiState.Value.PendingActionId.IsSome
+                                projection
+                         else
+                            RendererModel.navigatorEventRangeProjectionSettlement
+                                (maximumVisibleBarsFor document)
+                                timeline.Length
+                                pending.Purpose
+                                pending.ObservationCount
+                                pending.QueryGeneration
+                                uiState.Value.PendingActionId.IsSome
+                                projection)
                         |> RendererModel.eventRangeSettlementEffects pending.ViewportIntentGeneration viewportIntentGeneration
                     if completed then
                         pendingEventRangeSettlement <- None
+                        if pending.ViewportIntentGeneration = viewportIntentGeneration && finishNavigatorDrag.IsNone && queuedViewportIntent.IsNone then
+                            clearNavigatorPreview ()
                     window |> Option.iter (fun window ->
                         let followLatest = window.StartIndex = RendererModel.viewportMaximumStart timeline.Length window
                         setUiState
@@ -3650,7 +3789,7 @@ module TaWorkspaceRenderer =
                         else
                             match pendingBoundaryPan with
                             | Some pending ->
-                                match RendererModel.tryLoadedCoverageResolved document.DefaultView next.Data with
+                                match readLoadedCoverage document.DefaultView next.Data with
                                 | Some projection
                                     when projection.QueryGeneration >= pending.QueryGeneration ->
                                     match pending.TargetStartObservationOrdinal with
@@ -3817,7 +3956,7 @@ module TaWorkspaceRenderer =
             let previousCoverageProjection =
                 previousState.Document
                 |> Option.bind (fun document ->
-                    RendererModel.tryLoadedCoverageResolved document.DefaultView previous.RawData)
+                    readLoadedCoverage document.DefaultView previous.RawData)
             let previousReferenceLength =
                 previousState.Document
                 |> Option.map (fun document -> RendererModel.referenceTimelineForDocumentPrepared document previous |> Array.length)
@@ -3867,11 +4006,23 @@ module TaWorkspaceRenderer =
                     elif coverageChanged then
                         viewportDataReady.Value <- true
                         preparationPending.Value <- false
-            if coverageChanged then
-                // An active-detail page is a replacement, not an append-only patch. Reusing the
-                // previous prepared map would retain observations absent from the accepted page.
+            let reusedCoverageData =
+                if coverageChanged && previousState.Identity = next.Identity then
+                    match previousState.Document, next.Document with
+                    | Some previousDocument, Some nextDocument ->
+                        RendererModel.tryReuseCoverageOnlyPreparedData previousDocument.DefaultView nextDocument.DefaultView previous next.Data
+                    | _ -> None
+                else None
+            match reusedCoverageData with
+            | Some prepared ->
+                // Metadata-only navigation still completes through the guarded scheduled accept path.
+                let schedule = createPreparationSchedule generation (RendererModel.preparationWorkBudget false)
+                schedule (fun () -> accept prepared)
+            | None when coverageChanged ->
+                // A changed active-detail page is a replacement, not an append-only patch.
+                // Rebuild whenever any key or non-coverage raw reference changed.
                 RendererModel.prepareDataScheduled (createPreparationSchedule generation (RendererModel.preparationWorkBudget false)) next.Data accept
-            else
+            | None ->
                 RendererModel.prepareDataIncrementalScheduled (createPreparationSchedule generation (RendererModel.preparationWorkBudget false)) previous next.Data accept
 
         let clearGlobalResidentIntent intent =
@@ -3883,7 +4034,7 @@ module TaWorkspaceRenderer =
         let settleGlobalResidentProjection (next: RuntimeState) =
             match pendingGlobalResidentIntent, next.Document with
             | Some intent, Some document ->
-                match RendererModel.tryLoadedCoverageResolved document.DefaultView next.Data with
+                match readLoadedCoverage document.DefaultView next.Data with
                 | Some projection when RendererModel.globalResidentProjectionMatches intent projection ->
                     clearGlobalResidentIntent intent
                 | Some projection ->
@@ -3896,6 +4047,10 @@ module TaWorkspaceRenderer =
         runtimeState.View
         |> View.Sink (fun next ->
             let dataChanged = runtimeDataChanged observedDataState next
+            if publishedGlobalKey.IsSome then
+                retainOrResetGlobalContent next
+            if globalImageReadOnly.Value then
+                cancelGlobalResidentDrag |> Option.iter (fun cancel -> cancel ())
             if guideScope next <> guideScope observedDataState then
                 guides.Value <- []
                 guideTool.Value <- None
@@ -3932,13 +4087,8 @@ module TaWorkspaceRenderer =
                 residentNavigatorAuthority.Value <- None
                 queuedViewportIntent <- None
                 draftWindow.Value <- None
-                navigatorSelectionRatiosOverride.Value <- None
-                setUiState
-                    { uiState.Value with
-                        HiddenRows = Set.empty
-                        HiddenTraces = Set.empty
-                        RemovedTraces = Set.empty
-                        CursorIndex = None }
+                clearNavigatorPreview ()
+                setUiState (resetUiStateForIdentity uiState.Value)
                 cursorIndex.Value <- None
                 observedDataState <- next
                 scheduleFullPreparation ()
@@ -3997,7 +4147,7 @@ module TaWorkspaceRenderer =
             | None -> RendererModel.selectionRatios (referenceLength ()) window
             | Some document ->
                 let timeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
-                match RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
+                match readLoadedCoverage document.DefaultView runtimeState.Value.Data with
                 | Some projection ->
                     RendererModel.overviewSelectionRatios projection timeline window
                     |> Option.defaultWith (fun () ->
@@ -4025,7 +4175,7 @@ module TaWorkspaceRenderer =
             | Some pending, Some document ->
                 match
                     pending.TargetStartObservationOrdinal,
-                    RendererModel.tryLoadedCoverageResolved document.DefaultView preparedState.Data
+                    readLoadedCoverage document.DefaultView preparedState.Data
                 with
                 | Some targetStart, Some projection ->
                     let timeline = RendererModel.referenceTimelineForDocumentPrepared document preparedData
@@ -4127,10 +4277,12 @@ module TaWorkspaceRenderer =
             (expectedDocument: TaWorkspaceDocument)
             prepared
             projection
+            drag
+            activeCount
             followLatest
             window =
             let coverageIntent =
-                RendererModel.tryNavigatorEventRangeIntent projection window
+                RendererModel.tryNavigatorGestureEventRangeIntent drag activeCount (maximumVisibleBarsFor expectedDocument) projection window
             setWindowFromPreparedRange
                 expectedDocument
                 prepared
@@ -4143,6 +4295,34 @@ module TaWorkspaceRenderer =
                         currentPrepared
                         projection
                         currentWindow)
+
+        let setOverviewWindowFromPrepared document prepared projection drag activeCount window =
+            let maximumCount = maximumVisibleBarsFor document
+            match RendererModel.overviewVisibleEventRangePrepared document prepared projection window,
+                  RendererModel.tryNavigatorGestureEventRangeIntent drag activeCount maximumCount projection window with
+            | Some range, Some intent ->
+                let localPreview =
+                    if uiState.Value.PendingActionId.IsNone
+                       && pendingBoundaryPan.IsNone
+                       && queuedViewportIntent.IsNone
+                       && committedCoverageReady ()
+                       && not (remoteDisabled runtimeState.Value.Poll)
+                       && obj.ReferenceEquals(prepared, latestPreparedData) then
+                        RendererModel.tryOverviewLocalMovePreview maximumCount document prepared projection drag activeCount window
+                    else None
+                localPreview |> Option.iter (fun local ->
+                    let followLatest = local.StartIndex = RendererModel.viewportMaximumStart (referenceLength ()) local
+                    commitLocalWindow followLatest local |> ignore)
+                viewportIntentGeneration <- viewportIntentGeneration + 1
+                sendOrQueueVisibleRangeAction
+                    (SduiAction.VisibleRangeChanged(currentCanvasId (),
+                        { BaseRowId=range.BaseRowId; StartEventTimeUtc=range.StartEventTimeUtc
+                          EndEventTimeExclusiveUtc=range.EndEventTimeExclusiveUtc
+                          MaximumBasePoints=maximumCount; CoverageIntent=Some intent }))
+                localPreview.IsSome
+            | _ ->
+                rejectNavigatorDraft "Overview interval metadata is unavailable."
+                false
 
         let setWindow followLatest window =
             match runtimeState.Value.Document with
@@ -4170,7 +4350,7 @@ module TaWorkspaceRenderer =
                                 timeline.Length
                                 uiState.Value.FollowLatest
                                 uiState.Value.Window
-                        let projection = RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data
+                        let projection = readLoadedCoverage document.DefaultView runtimeState.Value.Data
                         let count = max 1 (min maximumVisibleBars window.Count)
                         let coverageIntent =
                             (match change.CoverageIntent with
@@ -4235,13 +4415,13 @@ module TaWorkspaceRenderer =
                             requestObservationCount
                             document
                             latestPreparedData,
-                        RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data
+                        readLoadedCoverage document.DefaultView runtimeState.Value.Data
                     with
                     | Some range, Some projection ->
                         match
                             RendererModel.tryNavigatorAdjacentEventRangeIntent
                                 direction
-                                requestObservationCount
+                                viewportObservationCount
                                 projection
                         with
                         | Some intent ->
@@ -4369,7 +4549,7 @@ module TaWorkspaceRenderer =
                     let pointerProjection =
                         pointerDocument
                         |> Option.bind (fun document ->
-                            RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data)
+                            readLoadedCoverage document.DefaultView runtimeState.Value.Data)
                     let drag =
                         RendererModel.mainPlotInteractionDrag
                             mainPlotInteractionMode.Value
@@ -4382,8 +4562,35 @@ module TaWorkspaceRenderer =
                     let mutable pendingDraft: TaVisibleWindow option = None
                     let mutable draftFrameScheduled = false
                     let rangePreview = plotRoot.QuerySelector("[data-testid='ta-main-plot-range-preview']")
+                    let pointerTimeline =
+                        pointerDocument
+                        |> Option.map (fun document -> RendererModel.referenceTimelineForDocumentPrepared document pointerPreparedData)
+                        |> Option.defaultValue [||]
+                    let publishBoundaryTimes preview =
+                        if not (isNull chartStackElement) then
+                            let rowId = plotRoot.GetAttribute("data-ptcs-ta-point-row-id")
+                            let labels = chartStackElement.QuerySelectorAll("[data-ta-main-boundary-row]")
+                            for index in 0 .. labels.Length - 1 do
+                                let label = labels[index] |> As<Element>
+                                if label.GetAttribute("data-ta-main-boundary-row") = rowId then
+                                    let first = label.QuerySelector("[data-time-boundary-start]")
+                                    let last = label.QuerySelector("[data-time-boundary-end]")
+                                    let firstText, lastText =
+                                        match preview with
+                                        | Some(startTime, endTime) ->
+                                            label.SetAttribute("data-preview", "true")
+                                            label.SetAttribute("data-preview-start", startTime)
+                                            label.SetAttribute("data-preview-end", endTime)
+                                            "選取起 " + TaDisplayTimeFormatter.fullOrOriginal (displayTime.Current()) startTime,
+                                            "選取迄 " + TaDisplayTimeFormatter.fullOrOriginal (displayTime.Current()) endTime
+                                        | None ->
+                                            label.SetAttribute("data-preview", "false")
+                                            label.GetAttribute("data-default-start-text"), label.GetAttribute("data-default-end-text")
+                                    if not (isNull first) then first.TextContent <- firstText
+                                    if not (isNull last) then last.TextContent <- lastText
 
                     let hideRangePreview () =
+                        publishBoundaryTimes None
                         if not (isNull rangePreview) then
                             rangePreview.SetAttribute("data-preview-visible", "false")
                             rangePreview.SetAttribute("data-preview-width", "0")
@@ -4471,6 +4678,7 @@ module TaWorkspaceRenderer =
                                         (maximumVisibleBarsNow ())
                                         total committed drag latestDelta)
                             latestRangeWindow <- draft
+                            draft |> Option.bind (RendererModel.visibleBoundaryTimes pointerTimeline) |> publishBoundaryTimes
                             draft |> Option.iter scheduleDraft
                             plotRoot.SetAttribute("data-main-plot-drag-outcome", "moving")
                             plotRoot.SetAttribute("data-main-plot-drag-delta", string latestDelta)
@@ -4609,7 +4817,7 @@ module TaWorkspaceRenderer =
             | Some document ->
                 let timeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
                 let currentWindow = resolvedWindow uiState.Value
-                match RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
+                match readLoadedCoverage document.DefaultView runtimeState.Value.Data with
                 | Some projection ->
                     match RendererModel.tryLoadedCoverageWindowIntentAt projection targetStart targetCount with
                     | Some intent ->
@@ -4625,7 +4833,7 @@ module TaWorkspaceRenderer =
             | Some document ->
                 let timeline = RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData
                 let currentWindow = resolvedWindow uiState.Value
-                match RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
+                match readLoadedCoverage document.DefaultView runtimeState.Value.Data with
                 | Some projection -> operation document timeline currentWindow projection
                 | None -> setWindowCount (maximumVisibleBarsFor document)
             | None -> ()
@@ -4696,6 +4904,8 @@ module TaWorkspaceRenderer =
                     let localCommitted =
                         RendererModel.resolveWindow options.MinimumVisibleBars (maximumVisibleBarsNow ()) localTotal uiState.Value.FollowLatest uiState.Value.Window
                     let publishedNavigatorDraft = draftWindow.Value
+                    let publishedNavigatorRatios = navigatorSelectionRatiosOverride.Value
+                    let publishedNavigatorTimes = navigatorBoundaryTimesOverride.Value
                     let loadedCoverageSnapshot =
                         dragCoverageProjection
                         |> Option.map (fun projection ->
@@ -4708,28 +4918,49 @@ module TaWorkspaceRenderer =
                         snapshotKey.Identity = runtimeState.Value.Identity
                         && (coverageProjection runtimeState.Value
                             |> Option.exists (RendererModel.residentGestureScopeMatches projection))
-                    let gestureDomain =
+                    let capturedNavigatorTimeline =
+                        loadedCoverageSnapshot
+                        |> Option.bind (fun (_, _, _, projection, _) ->
+                            RendererModel.tryOverviewTimeline projection
+                            |> Option.filter (Array.isEmpty >> not)
+                            |> Option.map (fun _ -> projection.OverviewAnchors |> Array.map _.EventTimeUtc))
+                        |> Option.defaultWith (fun () -> RendererModel.referenceTimelineForDocumentPrepared dragDocument dragPreparedData)
+                    let overviewDomain =
                         loadedCoverageSnapshot
                         |> Option.bind (fun (_, _, timeline, projection, _) ->
-                            RendererModel.resolveNavigatorGestureDomain
-                                options.MinimumVisibleBars
-                                (maximumVisibleBarsNow ())
-                                timeline.Length
-                                localCommitted
-                                residentNavigatorAuthority.Value
-                                projection
-                            |> Some)
+                            RendererModel.tryOverviewNavigatorGestureDomain projection timeline localCommitted)
+                    let usesOverviewTimeline = overviewDomain.IsSome
+                    let gestureDomain =
+                        overviewDomain
+                        |> Option.orElseWith (fun () ->
+                            loadedCoverageSnapshot
+                            |> Option.map (fun (_, _, timeline, projection, _) ->
+                                RendererModel.resolveNavigatorGestureDomain
+                                    options.MinimumVisibleBars
+                                    (maximumVisibleBarsNow ())
+                                    timeline.Length
+                                    localCommitted
+                                    residentNavigatorAuthority.Value
+                                    projection))
                         |> Option.defaultValue
                             { DomainCount = localTotal
                               CommittedWindow = localCommitted
                               UsesResidentAuthority = false }
                     let total = gestureDomain.DomainCount
+                    let gestureMinimum = if usesOverviewTimeline then 1 else options.MinimumVisibleBars
+                    let gestureMaximum =
+                        if usesOverviewTimeline then
+                            loadedCoverageSnapshot
+                            |> Option.map (fun (document, preparedData, timeline, projection, _) ->
+                                RendererModel.overviewNavigatorMaximumCount (maximumVisibleBarsNow ()) document preparedData timeline projection)
+                            |> Option.defaultValue total
+                        else maximumVisibleBarsNow ()
                     let authoritativeCommitted = gestureDomain.CommittedWindow
-                    let committed =
+                    let priorCommitted =
                         RendererModel.navigatorGestureBaseline
                             authoritativeCommitted
-                            renderedNavigatorDraft
-                            publishedNavigatorDraft
+                            (if usesOverviewTimeline then None else renderedNavigatorDraft)
+                            (if usesOverviewTimeline then None else publishedNavigatorDraft)
                     let pointerX = float event.ClientX - trackLeft
                     let renderedSelectionRatios =
                         match
@@ -4741,19 +4972,16 @@ module TaWorkspaceRenderer =
                     let ratios =
                         renderedSelectionRatios
                         |> Option.orElse navigatorSelectionRatiosOverride.Value
-                        |> Option.defaultValue (RendererModel.selectionRatios total committed)
-                    let eventTarget: Element = JS.Get "target" rawEvent
-                    let semanticDrag =
-                        if isNull eventTarget then None
-                        else
-                            match eventTarget.GetAttribute("data-window-drag-mode") with
-                            | TaWindowDrag.Move -> Some TaWindowDrag.Move
-                            | TaWindowDrag.ResizeLeft -> Some TaWindowDrag.ResizeLeft
-                            | TaWindowDrag.ResizeRight -> Some TaWindowDrag.ResizeRight
-                            | _ -> None
+                        |> Option.defaultValue (RendererModel.selectionRatios total priorCommitted)
+                    let committed =
+                        if usesOverviewTimeline then
+                            RendererModel.clampWindow 1 total total
+                                { StartIndex=int(Math.Round(fst ratios * float total))
+                                  Count=int(Math.Round((snd ratios-fst ratios) * float total)) }
+                        else priorCommitted
+                    // Overlapping SVG handle targets must not hide a narrow selection's move zone.
                     let resolvedDrag =
-                        semanticDrag
-                        |> Option.orElseWith (fun () -> RendererModel.navigatorDragMode trackWidth 24.0 ratios pointerX)
+                        RendererModel.navigatorDragMode trackWidth 24.0 ratios pointerX
                     setDragDiagnostic "data-drag-runtime-document-revision" (string runtimeState.Value.DocumentRevision)
                     setDragDiagnostic "data-drag-runtime-data-revision" (string runtimeState.Value.DataRevision)
                     setDragDiagnostic "data-drag-prepared-reference-count" (string localTotal)
@@ -4770,14 +4998,15 @@ module TaWorkspaceRenderer =
                         (if renderedSelectionRatios.IsSome then "rendered-selection"
                          elif navigatorSelectionRatiosOverride.Value.IsSome then "gesture-override"
                          else "committed-window")
-                    setDragDiagnostic "data-drag-hit-source" (if semanticDrag.IsSome then "semantic-target" else "geometry-fallback")
+                    setDragDiagnostic "data-drag-hit-source" "selection-geometry"
                     setDragDiagnostic
                         "data-drag-baseline-source"
                         (if renderedNavigatorDraft.IsSome then "rendered-draft"
                          elif publishedNavigatorDraft.IsSome then "published-draft"
                          else "authoritative")
-                    setDragDiagnostic "data-drag-domain" "resident-local"
+                    setDragDiagnostic "data-drag-domain" (if usesOverviewTimeline then "overview-event-time" else "resident-local")
                     setDragDiagnostic "data-drag-domain-count" (string total)
+                    setDragDiagnostic "data-drag-gesture-maximum" (string gestureMaximum)
 
                     match resolvedDrag with
                     | None ->
@@ -4801,6 +5030,7 @@ module TaWorkspaceRenderer =
                             clampRatio (fst frozenStartRatios + ratioDelta (draft.StartIndex - committed.StartIndex)),
                             clampRatio (snd frozenStartRatios + ratioDelta (draftEnd - committedEnd))
                         navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft committed)
+                        navigatorBoundaryTimesOverride.Value <- RendererModel.selectionBoundaryTimes capturedNavigatorTimeline (frozenRatiosForDraft committed)
                         (navigatorRoot |> As<HTMLElement>).Style.SetProperty("cursor", "grabbing")
                         let startClientX =
                             RendererModel.navigatorDragAnchorClientX
@@ -4811,11 +5041,7 @@ module TaWorkspaceRenderer =
                                 (float event.ClientX)
                         let frozenMoveSelectionBounds =
                             if drag = TaWindowDrag.Move then
-                                if semanticDrag = Some TaWindowDrag.Move && not (isNull eventTarget) then
-                                    let visualBounds = eventTarget.GetBoundingClientRect()
-                                    Some(visualBounds.Left - trackLeft, visualBounds.Width)
-                                else
-                                    Some(RendererModel.navigatorSelectionBounds trackWidth ratios)
+                                Some(RendererModel.navigatorSelectionBounds trackWidth ratios)
                             else
                                 None
                         let mutable latestRawDelta = 0
@@ -4835,7 +5061,8 @@ module TaWorkspaceRenderer =
                                 match pendingDraft with
                                 | Some draft ->
                                     navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft draft)
-                                    draftWindow.Value <- Some draft
+                                    navigatorBoundaryTimesOverride.Value <- RendererModel.selectionBoundaryTimes capturedNavigatorTimeline (frozenRatiosForDraft draft)
+                                    if not usesOverviewTimeline then draftWindow.Value <- Some draft
                                 | None -> ()
 
                         let scheduleDraft draft =
@@ -4855,7 +5082,7 @@ module TaWorkspaceRenderer =
                                         ((float mouse.ClientX - startClientX) / trackWidth)
                             latestRawDelta <- delta
                             let draft =
-                                RendererModel.previewWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total committed drag delta
+                                RendererModel.previewWindowBounds gestureMinimum gestureMaximum total committed drag delta
                             match frozenMoveSelectionBounds with
                             | Some(selectionLeft, selectionWidth) ->
                                 RendererModel.snapNavigatorMoveDraftToPhysicalEdges
@@ -4907,11 +5134,12 @@ module TaWorkspaceRenderer =
                                     RendererModel.releaseNavigatorDraft
                                         committed
                                         preferPendingBoundary
-                                        renderedNavigatorDraft
-                                        draftWindow.Value
+                                        (if usesOverviewTimeline then None else renderedNavigatorDraft)
+                                        (if usesOverviewTimeline then None else draftWindow.Value)
                                         pendingDraft
                                 navigatorSelectionRatiosOverride.Value <- Some(frozenRatiosForDraft draft)
-                                draftWindow.Value <- Some draft
+                                navigatorBoundaryTimesOverride.Value <- RendererModel.selectionBoundaryTimes capturedNavigatorTimeline (frozenRatiosForDraft draft)
+                                if not usesOverviewTimeline then draftWindow.Value <- Some draft
                                 let requestedStart = committed.StartIndex + latestRawDelta
                                 setDragDiagnostic "data-drag-last-delta" (string latestRawDelta)
                                 setDragDiagnostic "data-drag-committed-start" (string committed.StartIndex)
@@ -4919,12 +5147,17 @@ module TaWorkspaceRenderer =
                                 setDragDiagnostic "data-drag-requested-start" (string requestedStart)
                                 let commitLocalDraft () =
                                     let followLatest, next =
-                                        RendererModel.commitWindowBounds options.MinimumVisibleBars (maximumVisibleBarsNow ()) total draft
+                                        RendererModel.commitWindowBounds gestureMinimum gestureMaximum total draft
                                     let changed =
                                         next <> committed
                                         || (not gestureDomain.UsesResidentAuthority && followLatest <> uiState.Value.FollowLatest)
                                     if changed then
                                         match loadedCoverageSnapshot with
+                                        | Some(document, preparedData, _, projection, snapshotKey) when usesOverviewTimeline ->
+                                            if residentSnapshotCurrent snapshotKey projection && actionAllowed "visible-range-changed" then
+                                                let previewed = setOverviewWindowFromPrepared document preparedData projection drag localCommitted.Count next
+                                                setDragDiagnostic "data-drag-outcome" (if previewed then "commit-overview-local-preview" else "commit-overview-event-time")
+                                            else rejectNavigatorDraft "The overview changed before this drag completed."
                                         | Some(_, _, timeline, projection, snapshotKey) when gestureDomain.UsesResidentAuthority ->
                                             if not (residentSnapshotCurrent snapshotKey projection) then
                                                 setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
@@ -4961,7 +5194,7 @@ module TaWorkspaceRenderer =
                                         | Some(document, preparedData, _, projection, _) ->
                                             setDragDiagnostic "data-drag-outcome" "commit-local"
                                             navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
-                                            setNavigatorWindowFromPrepared document preparedData projection followLatest next
+                                            setNavigatorWindowFromPrepared document preparedData projection drag localCommitted.Count followLatest next
                                         | None ->
                                             setDragDiagnostic "data-drag-outcome" "commit-local"
                                             navigatorCursorAfterRender <- Some(if drag = TaWindowDrag.Move then "grab" else "ew-resize")
@@ -4998,11 +5231,11 @@ module TaWorkspaceRenderer =
                                     setDragDiagnostic
                                         "data-drag-outcome"
                                         (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "request-earlier" else "request-later")
-                                    draftWindow.Value <- Some draft
+                                    if not usesOverviewTimeline then draftWindow.Value <- Some draft
                                     sendOrQueueNavigatorAdjacentCoverage
                                         direction
-                                        latestRawDelta
-                                        committed.Count
+                                        (if usesOverviewTimeline then RendererModel.navigatorActiveEdgeDelta direction localTotal localCommitted else latestRawDelta)
+                                        (if usesOverviewTimeline then localCommitted.Count else committed.Count)
                                         "Loaded coverage requested."
                                 | Some _, Some(_, _, _, projection, snapshotKey)
                                     when projection.GlobalOverview.IsSome
@@ -5012,8 +5245,9 @@ module TaWorkspaceRenderer =
                                     setDragDiagnostic "data-drag-outcome" "stale-coverage-snapshot"
                                     draftWindow.Value <- None
                                 | _ -> commitLocalDraft ()
-                                if draftWindow.Value.IsNone then
-                                    navigatorSelectionRatiosOverride.Value <- None
+                                if draftWindow.Value.IsNone
+                                   && not (usesOverviewTimeline && (pendingEventRangeSettlement.IsSome || queuedViewportIntent.IsSome || uiState.Value.PendingActionId.IsSome)) then
+                                    clearNavigatorPreview ()
                                 cleanup ()
 
                         moveHandler <-
@@ -5029,8 +5263,9 @@ module TaWorkspaceRenderer =
                                     finishNavigatorDrag <- None
                                     activeNavigatorDragMode <- None
                                     activeNavigatorCursor <- None
-                                    draftWindow.Value <- publishedNavigatorDraft
-                                    navigatorSelectionRatiosOverride.Value <- publishedNavigatorDraft |> Option.map (fun _ -> ratios)
+                                    if not usesOverviewTimeline then draftWindow.Value <- publishedNavigatorDraft
+                                    navigatorSelectionRatiosOverride.Value <- publishedNavigatorRatios
+                                    navigatorBoundaryTimesOverride.Value <- publishedNavigatorTimes
                                     setDragDiagnostic "data-drag-outcome" "cancelled"
                                     cleanup ())
 
@@ -5052,6 +5287,7 @@ module TaWorkspaceRenderer =
                 if
                     finishGlobalResidentDrag.IsSome
                     || pendingGlobalResidentIntent.IsSome
+                    || globalImageReadOnly.Value
                     || commandsDisabledNow ()
                     || not preparedRowsReady.Value
                 then
@@ -5063,7 +5299,7 @@ module TaWorkspaceRenderer =
                         && eventTarget.GetAttribute("data-window-drag-mode") = TaWindowDrag.Move
                     match runtimeState.Value.Document with
                     | Some document when isMoveTarget && actionAllowed "resident-coverage-changed" ->
-                        match document.BaseRowId, RendererModel.tryLoadedCoverageResolved document.DefaultView runtimeState.Value.Data with
+                        match document.BaseRowId, readLoadedCoverage document.DefaultView runtimeState.Value.Data with
                         | Some baseRowId, Some projection ->
                             match projection.GlobalOverview, RendererModel.tryGlobalResidentWindow projection with
                             | Some overview, Some authoritativeCommitted ->
@@ -5618,37 +5854,13 @@ module TaWorkspaceRenderer =
                         Feedback = "This row's editor metadata is invalid; the row remains read-only." }
 
         let completeEditorMutation identity (document: TaWorkspaceDocument) documentRevision =
-            let bindingOf row =
-                TaRowEditorBinding.tryFind row
-                |> Result.toOption
-                |> Option.flatten
-
             match pendingEditorMutation with
-            | Some(baseIdentity, baseRevision, targetRowId, priorRowIds, expectedBinding) ->
-                let matched =
-                    match targetRowId with
-                    | Some rowId ->
-                        document.Rows
-                        |> Array.tryFind (fun row -> row.RowId = rowId)
-                        |> Option.bind bindingOf
-                        |> Option.exists ((=) expectedBinding)
-                    | None ->
-                        document.Rows
-                        |> Array.exists (fun row ->
-                            not (Set.contains row.RowId priorRowIds)
-                            && bindingOf row = Some expectedBinding)
-
-                if
-                    EditorMutationGate.authoritativeDocumentAdvanced
-                        baseIdentity
-                        baseRevision
-                        identity
-                        documentRevision
-                        matched
-                then
-                    let feedback = if targetRowId.IsSome then "Row updated." else "Row added."
+            | Some pending ->
+                match EditorMutationGate.completedFeedback pending identity document documentRevision with
+                | Some feedback ->
                     forceCloseRowEditor ()
                     setUiState { uiState.Value with Feedback = feedback }
+                | None -> ()
             | _ -> ()
 
         let editorTestId (path: string) =
@@ -5959,18 +6171,23 @@ module TaWorkspaceRenderer =
                     let binding =
                         { TemplateKey = schema.TemplateKey
                           Values = Array.copy editorValues.Value }
-                    pendingEditorMutation <-
-                        Some(
-                            runtimeState.Value.Identity,
-                            runtimeState.Value.DocumentRevision,
-                            editingRowId,
-                            currentRows |> Array.map _.RowId |> Set.ofArray,
-                            binding)
-                    startActionWith
+                    let pending =
+                        runtimeState.Value.Identity,
+                        runtimeState.Value.DocumentRevision,
+                        editingRowId,
+                        currentRows |> Array.map _.RowId |> Set.ofArray,
+                        binding
+                    pendingEditorMutation <- Some pending
+                    startActionWithFeedback
                         (SduiAction.ApplyTemplate(currentCanvasId (), editingRowId, schema.TemplateKey, editorValues.Value))
                         (schema.DisplayName + " accepted; awaiting authoritative document.")
-                        ignore
+                        (fun () ->
+                            let current = runtimeState.Value
+                            current.Document
+                            |> Option.bind (fun document ->
+                                EditorMutationGate.completedFeedback pending current.Identity document current.DocumentRevision))
                         (fun () -> pendingEditorMutation <- None)
+                        ignore
 
         let viewportControls (document: TaWorkspaceDocument) =
             let currentViewport =
@@ -5988,7 +6205,7 @@ module TaWorkspaceRenderer =
                                 ui.FollowLatest
                                 ui.Window
                         let loadedObservationCount, globalCurrentWindow =
-                            RendererModel.tryLoadedCoverageResolved document.DefaultView prepared.RawData
+                            readLoadedCoverage document.DefaultView prepared.RawData
                             |> Option.bind (
                                 RendererModel.coverageNavigatorWindowWithAuthority
                                     referenceLength
@@ -6043,263 +6260,295 @@ module TaWorkspaceRenderer =
                 |> Doc.EmbedView
             ]
 
+        let emptyViewportControls () =
+            let disabled = View.Const true
+            let preset testId label title = compactRemoteButton testId label title disabled (fun () -> true) ignore
+            div [
+                Attr.Create "data-testid" "ta-viewport-panel"
+                attr.style "display:grid; grid-template-columns:minmax(220px,1fr) auto; gap:6px 10px; align-items:center; margin:0 12px; padding:8px; border-bottom:1px solid #d4deea; background:#f8fafc;"
+            ] [
+                span [ Attr.Create "data-testid" "ta-viewport-range"; attr.style "font-family:Consolas,monospace; font-size:11px; color:#344a65; white-space:nowrap;" ] [ text "Waiting for workspace data" ]
+                div [ Attr.Create "data-testid" "ta-viewport-presets"; attr.style "display:flex; gap:4px; align-items:center;" ] [
+                    preset "ta-jump-loaded-start" "|←" "Jump to the first loaded bars"
+                    preset "ta-view-48" "48" "Show latest 48 bars"
+                    preset "ta-view-200" "200" "Show latest 200 bars"
+                    preset "ta-view-all" "All" "Show loaded bars"
+                    preset "ta-jump-loaded-end" "→|" "Jump to the latest loaded bars"
+                ]
+            ]
+
+        let renderChrome (state: RuntimeState) =
+            let pending = RendererModel.workspaceBootstrapPresentation state
+            match state.Document with
+            | None -> ()
+            | Some document ->
+                let currentDocumentKey = state.Identity, state.DocumentRevision
+                if synchronizedDocumentKey <> Some currentDocumentKey then
+                    let query = RendererModel.queryDraft document.DefaultView
+                    instrumentDraft <- query.Instrument
+                    intervalDraft <- query.IntervalMinutes
+                    fromDateDraft <- query.FromUtc
+                    toDateDraft <- query.ToUtcExclusive
+                    let currentSchemas = editorSchemasNow ()
+                    if currentSchemas |> Array.exists (fun schema -> schema.TemplateKey = selectedTemplate.Value) |> not then
+                        match currentSchemas |> Array.tryHead with
+                        | Some schema -> resetEditorFor schema.TemplateKey
+                        | None -> closeRowEditor ()
+                    match pendingAddRowId with
+                    | Some rowId when document.Rows |> Array.exists (fun row -> row.RowId = rowId) ->
+                        pendingAddRowId <- None
+                        setUiState { uiState.Value with AddRowOpen = false; Feedback = "Row added." }
+                    | _ -> ()
+                    completeEditorMutation state.Identity document state.DocumentRevision
+                    synchronizedDocumentKey <- Some currentDocumentKey
+            div [ attr.style "display:contents;" ] [
+                header [ attr.style "display:flex; flex-direction:column; gap:7px; padding:10px 12px 8px; background:#fff; border-bottom:1px solid #dbe3ee;" ] [
+                    div [ attr.style "display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;" ] [
+                        div [ attr.style "min-width:0;" ] [
+                            h2 [ Attr.Create "data-testid" "ta-workspace-title"; attr.style "margin:0; font-size:17px; line-height:22px; font-weight:700; color:#152944;" ] [ text (state.Document |> Option.map _.Title |> Option.defaultValue pending.Title) ]
+                            div [ Attr.Create "data-testid" "ta-canvas-identity"; attr.style "font-size:11px; color:#667891; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" ] [
+                                runtimeState.View
+                                |> View.Map (fun current -> "canvas " + canvasIdText current.Identity.CanvasInstanceId + " / revision " + string current.DataRevision)
+                                |> textView
+                            ]
+                        ]
+                        View.Map2 (fun current zone -> current, zone) runtimeState.View displayTime.Zone
+                        |> View.Map (fun (current, zone) ->
+                            let status = RendererModel.statusPresentation (current.Document |> Option.map _.StatusRef |> Option.defaultValue "") current
+                            div [ attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:flex-end;" ] [
+                                div [ Attr.Create "data-testid" "ta-freshness"; Attr.Create "data-freshness" (freshnessClass status.Freshness); attr.style "border:1px solid #9fb0c6; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:650; color:#27415f; background:#f8fafc;" ] [ text status.Label ]
+                                div [ Attr.Create "data-testid" "ta-poll-state"; Attr.Create "data-poll-state" (pollText current.Poll); attr.style "border:1px solid #c3cfdd; border-radius:4px; padding:3px 7px; font-size:10px; color:#53667d; background:#fff;" ] [ text (pollText current.Poll) ]
+                            ] :> Doc)
+                        |> Doc.EmbedView
+                    ]
+                    View.Map2 (fun current zone -> current, zone) runtimeState.View displayTime.Zone
+                    |> View.Map (fun (current, zone) ->
+                        let status = RendererModel.statusPresentation (current.Document |> Option.map _.StatusRef |> Option.defaultValue "") current
+                        div [ Attr.Create "data-testid" "ta-status-detail"; Attr.Create "data-display-time-zone" (SduiDisplayTimeZone.id zone); attr.style "display:flex; gap:10px; flex-wrap:wrap; min-height:16px; font-size:10px; color:#60738b;" ] [
+                            if current.Document.IsNone then
+                                let bootstrap = RendererModel.workspaceBootstrapPresentation current
+                                yield span [ Attr.Create "data-testid" "ta-workspace-bootstrap"; Attr.Create "data-state" bootstrap.State ] [ text bootstrap.Detail ]
+                            match status.Watermark with
+                            | Some value -> yield span [ Attr.Create "data-canonical-event-time" value ] [ text ("watermark " + TaDisplayTimeFormatter.fullOrOriginal zone value) ]
+                            | None -> ()
+                            match status.Quality with
+                            | Some value -> yield span [] [ text ("quality " + value) ]
+                            | None -> ()
+                            match status.Error with
+                            | Some value -> yield span [ Attr.Create "data-testid" "ta-last-good-error"; attr.style "color:#a33b43; font-weight:600;" ] [ text value ]
+                            | None -> ()
+                        ] :> Doc)
+                    |> Doc.EmbedView
+                    div [ Attr.Create "data-testid" "ta-query-toolbar"; attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end;" ] [
+                        label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Instrument"; inputText "ta-instrument" "Instrument" instrumentDraft (fun value -> instrumentDraft <- value) ]
+                        label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Interval"; selectInput "ta-interval" intervalDraft [ "1", "1m"; "5", "5m"; "30", "30m"; "60", "60m"; "930", "Session" ] (fun value -> intervalDraft <- value) ]
+                        label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "From"; inputText "ta-from" "YYYY-MM-DD" fromDateDraft (fun value -> fromDateDraft <- value) ]
+                        label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "To"; inputText "ta-to" "YYYY-MM-DD" toDateDraft (fun value -> toDateDraft <- value) ]
+                        primaryButtonView
+                            "ta-apply-query"
+                            "Load / Apply"
+                            commandsDisabledView
+                            commandsDisabledNow
+                            applyQuery
+                    ]
+                    div [ Attr.Create "data-testid" "ta-local-toolbar"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ]
+                        ([ compactRemoteButton "ta-pan-left" "←" "Pan earlier" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () ->
+                               let visible = resolvedWindow uiState.Value
+                               panWindow (-max 1 visible.Count))
+                           compactRemoteButton "ta-pan-right" "→" "Pan later" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () ->
+                               let visible = resolvedWindow uiState.Value
+                               panWindow (max 1 visible.Count))
+                           compactRemoteButton "ta-zoom-in" "+" "Show fewer bars" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () -> zoomWindow -8)
+                           compactRemoteButton "ta-zoom-out" "−" "Show more bars" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () -> zoomWindow 8)
+                           compactRemoteButton "ta-reset-view" "Reset View" "Reset local viewport to the latest bars" viewportCommandsDisabledView viewportCommandsDisabledNow resetWindow
+                           compactRemoteButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" commandsDisabledView commandsDisabledNow (fun () ->
+                               startAction
+                                   (SduiAction.ResetCanvas(currentCanvasId ()))
+                                   "Canvas reset accepted."
+                                   (fun () ->
+                                       setUiState
+                                           { uiState.Value with
+                                               HiddenRows = Set.empty
+                                               HiddenTraces = Set.empty
+                                               RemovedTraces = Set.empty })) ]
+                         @ (if (editorSchemasNow ()).Length > 0 then
+                                [ compactButton "ta-add-row-toggle" "Add Row" "Open row request editor" (fun () ->
+                                      if uiState.Value.AddRowOpen then closeRowEditor ()
+                                      else openNewRowEditor ()) ]
+                            else
+                                [])
+                          @ [ span [ attr.style "margin-left:auto; color:#60738b; font-size:11px;" ] [ text "viewport changes request the selected event-time range when enabled" ] ])
+                    uiState.View
+                    |> View.Map (fun ui ->
+                        div [ Attr.Create "data-testid" "ta-row-toggles"; attr.style "display:flex; flex-direction:column; align-items:stretch; gap:4px; width:100%; min-width:0;" ] [
+                            for row in state.Document |> Option.map _.Rows |> Option.defaultValue [||] do
+                                let hidden = Set.contains row.RowId ui.HiddenRows
+                                let displayLabel = rowDisplayLabelWithEditor (editorSchemasNow ()) row
+                                let editable =
+                                    match TaRowEditorBinding.tryResolve (editorSchemasNow ()) row with
+                                    | Ok(Some _) -> true
+                                    | _ -> false
+                                let controllableTraces =
+                                    RendererModel.effectiveTraces row
+                                    |> Array.filter (fun trace ->
+                                        trace.Visible
+                                        && trace.Kind <> TaTraceKind.Marker
+                                        && trace.Kind <> TaTraceKind.OverviewStripe
+                                        && not (Set.contains (row.RowId, trace.TraceId) ui.RemovedTraces))
+                                yield
+                                    div [
+                                        Attr.Create "data-testid" ("ta-row-control-line-" + row.RowId)
+                                        Attr.Create "data-row-id" row.RowId
+                                        attr.style "display:flex; align-items:center; gap:5px; width:100%; min-width:0; height:40px; max-height:40px; overflow:hidden; box-sizing:border-box;"
+                                    ] [
+                                        yield div [
+                                            Attr.Create "data-testid" ("ta-row-controls-" + row.RowId)
+                                            attr.style "display:inline-flex; align-items:stretch; flex:0 1 auto; min-width:0; max-width:100%; height:26px; white-space:nowrap;"
+                                        ] [
+                                            yield button [
+                                                attr.``type`` "button"
+                                                Attr.Create "data-testid" ("ta-toggle-row-" + row.RowId)
+                                                Attr.Create "aria-pressed" (if hidden then "false" else "true")
+                                                attr.title displayLabel
+                                                attr.style (if hidden then "height:26px; min-width:0; max-width:360px; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid #c8d2df; border-right:0; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:11px; cursor:pointer;" else "height:26px; min-width:0; max-width:360px; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid #7da39d; border-right:0; border-radius:4px 0 0 4px; background:#edf8f6; color:#155d55; padding:2px 7px; font-size:11px; cursor:pointer;")
+                                                on.click (fun _ _ ->
+                                                    let nextHidden =
+                                                        if hidden then Set.remove row.RowId uiState.Value.HiddenRows
+                                                        else Set.add row.RowId uiState.Value.HiddenRows
+
+                                                    setUiState { uiState.Value with HiddenRows = nextHidden })
+                                            ] [ text displayLabel ]
+                                            if editable then
+                                                yield button [
+                                                    attr.``type`` "button"
+                                                    Attr.Create "data-testid" ("ta-edit-row-" + row.RowId)
+                                                    attr.title ("Edit " + displayLabel + " parameters")
+                                                    attr.disabledBool commandsDisabledView
+                                                    Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
+                                                        if disabled then "width:52px; min-width:52px; height:26px; flex:0 0 52px; border:1px solid #c8d2df; border-right:0; background:#edf1f5; color:#8b98a8; padding:2px 7px; font-size:11px; font-weight:600; cursor:not-allowed;"
+                                                        else "width:52px; min-width:52px; height:26px; flex:0 0 52px; border:1px solid #7f9fbe; border-right:0; background:#e8f2ff; color:#174f82; padding:2px 7px; font-size:11px; font-weight:600; cursor:pointer;"))
+                                                    on.click (fun _ _ ->
+                                                        if not (commandsDisabledNow ()) then openRowEditor row)
+                                                ] [ text "Edit" ]
+                                            if not (actionAllowed "remove-trace") then
+                                                yield button [
+                                                    attr.``type`` "button"
+                                                    Attr.Create "data-testid" ("ta-remove-row-" + row.RowId)
+                                                    attr.title ("Remove " + displayLabel + " row")
+                                                    attr.disabledBool commandsDisabledView
+                                                    Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
+                                                        if disabled then "width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;"
+                                                        else "width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;"))
+                                                    on.click (fun _ _ ->
+                                                        if not (commandsDisabledNow ()) then
+                                                            startAction (SduiAction.RemoveTaRow(currentCanvasId (), row.RowId)) (displayLabel + " row removal accepted.") ignore)
+                                                ] [ text "×" ]
+                                        ]
+                                        if controllableTraces.Length > 0 then
+                                            yield div [
+                                                Attr.Create "data-testid" ("ta-trace-toggles-" + row.RowId)
+                                                attr.style "display:flex; align-items:center; flex:1 1 auto; min-width:0; height:38px; gap:3px; padding:0 0 2px 3px; border-left:1px solid #d7e0eb; box-sizing:border-box; overflow-x:auto; overflow-y:hidden; flex-wrap:nowrap; white-space:nowrap;"
+                                            ] [
+                                                for trace in controllableTraces do
+                                                    let traceHidden = Set.contains (row.RowId, trace.TraceId) ui.HiddenTraces
+                                                    let traceLabel = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
+                                                    yield div [ attr.style "display:inline-flex; align-items:stretch; flex:0 0 auto; height:24px;" ] [
+                                                        yield button [
+                                                            attr.``type`` "button"
+                                                            Attr.Create "data-testid" ("ta-toggle-trace-" + row.RowId + "-" + trace.TraceId)
+                                                            Attr.Create "data-row-id" row.RowId
+                                                            Attr.Create "data-trace-id" trace.TraceId
+                                                            Attr.Create "aria-pressed" (if traceHidden then "false" else "true")
+                                                            attr.title ((if traceHidden then "Show " else "Hide ") + traceLabel + " trace")
+                                                            attr.style (if traceHidden then "height:24px; border:1px solid #c8d2df; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:10px; cursor:pointer;" else "height:24px; border:1px solid #9cb3cc; border-radius:4px 0 0 4px; background:#f4f8fc; color:#315d88; padding:2px 7px; font-size:10px; cursor:pointer;")
+                                                            on.click (fun _ _ ->
+                                                                let key = row.RowId, trace.TraceId
+                                                                let nextHidden =
+                                                                    if traceHidden then Set.remove key uiState.Value.HiddenTraces
+                                                                    else Set.add key uiState.Value.HiddenTraces
+                                                                setUiState { uiState.Value with HiddenTraces = nextHidden })
+                                                        ] [ text traceLabel ]
+                                                        if actionAllowed "remove-trace" then
+                                                            yield button [
+                                                                attr.``type`` "button"
+                                                                Attr.Create "data-testid" ("ta-remove-trace-" + row.RowId + "-" + trace.TraceId)
+                                                                attr.title ("Remove " + traceLabel + " trace until Reset Canvas")
+                                                                attr.disabledBool commandsDisabledView
+                                                                Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
+                                                                    if disabled then "width:24px; height:24px; border:1px solid #c8d2df; border-left:0; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:13px; cursor:not-allowed;"
+                                                                    else "width:24px; height:24px; border:1px solid #c8a7ab; border-left:0; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:13px; cursor:pointer;"))
+                                                                on.click (fun _ _ ->
+                                                                    if not (commandsDisabledNow ()) then
+                                                                        let key = row.RowId, trace.TraceId
+                                                                        startAction
+                                                                            (SduiAction.RemoveTaTrace(currentCanvasId (), row.RowId, trace.TraceId))
+                                                                            (traceLabel + " trace removal accepted.")
+                                                                            (fun () ->
+                                                                                setUiState
+                                                                                    { uiState.Value with
+                                                                                        HiddenTraces = Set.remove key uiState.Value.HiddenTraces
+                                                                                        RemovedTraces = Set.add key uiState.Value.RemovedTraces }))
+                                                            ] [ text "×" ]
+                                                    ]
+                                            ]
+                                    ]
+                        ] :> Doc)
+                    |> Doc.EmbedView
+                    uiState.View
+                    |> View.Map (fun ui ->
+                        if not ui.AddRowOpen then Doc.Empty
+                        else
+                            div [ Attr.Create "data-testid" "ta-add-row-editor"; attr.style "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;" ] [
+                                genericEditor ()
+                                div [ attr.style "display:flex; align-items:center; justify-content:flex-end; gap:6px;" ] [
+                                    match editingRowId with
+                                    | Some rowId ->
+                                        yield span [ Attr.Create "data-testid" "ta-row-editor-mode"; attr.style "margin-right:auto; font-size:11px; color:#40536d;" ] [ text ("Editing " + rowId) ]
+                                    | None -> ()
+                                    yield compactButton "ta-add-row-cancel" "Cancel" "Close without submitting" closeRowEditor
+                                    yield primaryButtonView "ta-add-row-submit" (if editingRowId.IsSome then "Apply" else "Add") commandsDisabledView commandsDisabledNow addRow
+                                ]
+                            ] :> Doc)
+                    |> Doc.EmbedView
+                    uiState.View
+                    |> View.Map (fun ui ->
+                        if String.IsNullOrWhiteSpace ui.Feedback then Doc.Empty
+                        else div [ Attr.Create "data-testid" "ta-feedback"; attr.style "font-size:11px; color:#40536d; min-height:15px;" ] [ text ui.Feedback ] :> Doc)
+                    |> Doc.EmbedView
+                ]
+                match state.Document with
+                | Some document -> viewportControls document
+                | None -> emptyViewportControls ()
+            ] :> Doc
+
         div [
             attr.``class`` "ptcs-ta-workspace"
             Attr.Create "data-testid" "ta-workspace"
+            Attr.Dynamic "data-document-present" (runtimeState.View |> View.Map (fun state -> if state.Document.IsSome then "true" else "false"))
             Attr.Dynamic "data-display-time-zone" (displayTime.Zone |> View.Map SduiDisplayTimeZone.id)
             attr.style "display:flex; flex-direction:column; min-width:0; width:100%; min-height:640px; color:#142033; background:#f4f7fb; font-family:Segoe UI, Arial, sans-serif; letter-spacing:0;"
         ] [
+            div [ Attr.Create "data-testid" "ta-workspace-chrome"; attr.style "min-width:0;" ] [
+                runtimeState.View
+                |> View.MapCachedBy sameDocumentShell renderChrome
+                |> Doc.EmbedView
+            ]
+            div [
+                Attr.Create "data-testid" "ta-global-overview-slot"
+                Attr.Dynamic "data-global-read-only" (globalImageReadOnly.View |> View.Map (fun value -> if value then "true" else "false"))
+                Attr.Dynamic "aria-disabled" (globalImageReadOnly.View |> View.Map (fun value -> if value then "true" else "false"))
+                Attr.Dynamic "style" (globalImageReadOnly.View |> View.Map (fun readOnly ->
+                    "min-width:0; padding:0 8px 8px; background:#f8fafc;" + (if readOnly then " pointer-events:none;" else "")))
+            ] [ globalContent.View |> Doc.EmbedView ]
             runtimeState.View
             |> View.MapCachedBy sameDocumentShell (fun state ->
                 match state.Document with
-                | None ->
-                    let pending = RendererModel.workspaceBootstrapPresentation state
-                    let color = if pending.IsError then "#9a2f2f" else "#5d6d83"
-
-                    div [
-                        Attr.Create "data-testid" "ta-workspace-bootstrap"
-                        Attr.Create "data-state" pending.State
-                        attr.style ("display:flex; flex-direction:column; gap:4px; padding:18px; color:" + color + ";")
-                    ] [
-                        strong [] [ text pending.Title ]
-                        span [ attr.style "font-size:12px;" ] [ text pending.Detail ]
-                    ] :> Doc
+                | None -> Doc.Empty
                 | Some document ->
                     let currentPlotPalette = plotPalette document.DefaultView
-                    let currentDocumentKey = state.Identity, state.DocumentRevision
-                    if synchronizedDocumentKey <> Some currentDocumentKey then
-                        let query = RendererModel.queryDraft document.DefaultView
-                        instrumentDraft <- query.Instrument
-                        intervalDraft <- query.IntervalMinutes
-                        fromDateDraft <- query.FromUtc
-                        toDateDraft <- query.ToUtcExclusive
-                        let currentSchemas = editorSchemasNow ()
-                        if currentSchemas |> Array.exists (fun schema -> schema.TemplateKey = selectedTemplate.Value) |> not then
-                            match currentSchemas |> Array.tryHead with
-                            | Some schema -> resetEditorFor schema.TemplateKey
-                            | None -> closeRowEditor ()
-                        match pendingAddRowId with
-                        | Some rowId when document.Rows |> Array.exists (fun row -> row.RowId = rowId) ->
-                            pendingAddRowId <- None
-                            setUiState { uiState.Value with AddRowOpen = false; Feedback = "Row added." }
-                        | _ -> ()
-                        completeEditorMutation state.Identity document state.DocumentRevision
-                        synchronizedDocumentKey <- Some currentDocumentKey
-
                     div [ attr.style "display:flex; flex-direction:column; min-width:0;" ] [
-                        header [ attr.style "display:flex; flex-direction:column; gap:7px; padding:10px 12px 8px; background:#fff; border-bottom:1px solid #dbe3ee;" ] [
-                            div [ attr.style "display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;" ] [
-                                div [ attr.style "min-width:0;" ] [
-                                    h2 [ Attr.Create "data-testid" "ta-workspace-title"; attr.style "margin:0; font-size:17px; line-height:22px; font-weight:700; color:#152944;" ] [ text document.Title ]
-                                    div [ Attr.Create "data-testid" "ta-canvas-identity"; attr.style "font-size:11px; color:#667891; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" ] [
-                                        runtimeState.View
-                                        |> View.Map (fun current -> "canvas " + canvasIdText current.Identity.CanvasInstanceId + " / revision " + string current.DataRevision)
-                                        |> textView
-                                    ]
-                                ]
-                                View.Map2 (fun current zone -> current, zone) runtimeState.View displayTime.Zone
-                                |> View.Map (fun (current, zone) ->
-                                    let status = RendererModel.statusPresentation document.StatusRef current
-                                    div [ attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap; justify-content:flex-end;" ] [
-                                        div [ Attr.Create "data-testid" "ta-freshness"; Attr.Create "data-freshness" (freshnessClass status.Freshness); attr.style "border:1px solid #9fb0c6; border-radius:4px; padding:3px 7px; font-size:11px; font-weight:650; color:#27415f; background:#f8fafc;" ] [ text status.Label ]
-                                        div [ Attr.Create "data-testid" "ta-poll-state"; Attr.Create "data-poll-state" (pollText current.Poll); attr.style "border:1px solid #c3cfdd; border-radius:4px; padding:3px 7px; font-size:10px; color:#53667d; background:#fff;" ] [ text (pollText current.Poll) ]
-                                    ] :> Doc)
-                                |> Doc.EmbedView
-                            ]
-                            View.Map2 (fun current zone -> current, zone) runtimeState.View displayTime.Zone
-                            |> View.Map (fun (current, zone) ->
-                                let status = RendererModel.statusPresentation document.StatusRef current
-                                div [ Attr.Create "data-testid" "ta-status-detail"; Attr.Create "data-display-time-zone" (SduiDisplayTimeZone.id zone); attr.style "display:flex; gap:10px; flex-wrap:wrap; min-height:16px; font-size:10px; color:#60738b;" ] [
-                                    match status.Watermark with
-                                    | Some value -> yield span [ Attr.Create "data-canonical-event-time" value ] [ text ("watermark " + TaDisplayTimeFormatter.fullOrOriginal zone value) ]
-                                    | None -> ()
-                                    match status.Quality with
-                                    | Some value -> yield span [] [ text ("quality " + value) ]
-                                    | None -> ()
-                                    match status.Error with
-                                    | Some value -> yield span [ Attr.Create "data-testid" "ta-last-good-error"; attr.style "color:#a33b43; font-weight:600;" ] [ text value ]
-                                    | None -> ()
-                                ] :> Doc)
-                            |> Doc.EmbedView
-                            div [ Attr.Create "data-testid" "ta-query-toolbar"; attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end;" ] [
-                                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Instrument"; inputText "ta-instrument" "Instrument" instrumentDraft (fun value -> instrumentDraft <- value) ]
-                                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Interval"; selectInput "ta-interval" intervalDraft [ "1", "1m"; "5", "5m"; "30", "30m"; "60", "60m"; "930", "Session" ] (fun value -> intervalDraft <- value) ]
-                                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "From"; inputText "ta-from" "YYYY-MM-DD" fromDateDraft (fun value -> fromDateDraft <- value) ]
-                                label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "To"; inputText "ta-to" "YYYY-MM-DD" toDateDraft (fun value -> toDateDraft <- value) ]
-                                primaryButtonView
-                                    "ta-apply-query"
-                                    "Load / Apply"
-                                    commandsDisabledView
-                                    commandsDisabledNow
-                                    applyQuery
-                            ]
-                            div [ Attr.Create "data-testid" "ta-local-toolbar"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ]
-                                ([ compactRemoteButton "ta-pan-left" "←" "Pan earlier" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () ->
-                                       let visible = resolvedWindow uiState.Value
-                                       panWindow (-max 1 visible.Count))
-                                   compactRemoteButton "ta-pan-right" "→" "Pan later" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () ->
-                                       let visible = resolvedWindow uiState.Value
-                                       panWindow (max 1 visible.Count))
-                                   compactRemoteButton "ta-zoom-in" "+" "Show fewer bars" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () -> zoomWindow -8)
-                                   compactRemoteButton "ta-zoom-out" "−" "Show more bars" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () -> zoomWindow 8)
-                                   compactRemoteButton "ta-reset-view" "Reset View" "Reset local viewport to the latest bars" viewportCommandsDisabledView viewportCommandsDisabledNow resetWindow
-                                   compactRemoteButton "ta-reset-canvas" "Reset Canvas" "Request server canvas reset" commandsDisabledView commandsDisabledNow (fun () ->
-                                       startAction
-                                           (SduiAction.ResetCanvas(currentCanvasId ()))
-                                           "Canvas reset accepted."
-                                           (fun () ->
-                                               setUiState
-                                                   { uiState.Value with
-                                                       HiddenRows = Set.empty
-                                                       HiddenTraces = Set.empty
-                                                       RemovedTraces = Set.empty })) ]
-                                 @ (if (editorSchemasNow ()).Length > 0 then
-                                        [ compactButton "ta-add-row-toggle" "Add Row" "Open row request editor" (fun () ->
-                                              if uiState.Value.AddRowOpen then closeRowEditor ()
-                                              else openNewRowEditor ()) ]
-                                    else
-                                        [])
-                                  @ [ span [ attr.style "margin-left:auto; color:#60738b; font-size:11px;" ] [ text "viewport changes request the selected event-time range when enabled" ] ])
-                            uiState.View
-                            |> View.Map (fun ui ->
-                                div [ Attr.Create "data-testid" "ta-row-toggles"; attr.style "display:flex; flex-direction:column; align-items:stretch; gap:4px; width:100%; min-width:0;" ] [
-                                    for row in document.Rows do
-                                        let hidden = Set.contains row.RowId ui.HiddenRows
-                                        let displayLabel = rowDisplayLabelWithEditor (editorSchemasNow ()) row
-                                        let editable =
-                                            match TaRowEditorBinding.tryResolve (editorSchemasNow ()) row with
-                                            | Ok(Some _) -> true
-                                            | _ -> false
-                                        let controllableTraces =
-                                            RendererModel.effectiveTraces row
-                                            |> Array.filter (fun trace ->
-                                                trace.Visible
-                                                && trace.Kind <> TaTraceKind.Marker
-                                                && trace.Kind <> TaTraceKind.OverviewStripe
-                                                && not (Set.contains (row.RowId, trace.TraceId) ui.RemovedTraces))
-                                        yield
-                                            div [
-                                                Attr.Create "data-testid" ("ta-row-control-line-" + row.RowId)
-                                                Attr.Create "data-row-id" row.RowId
-                                                attr.style "display:flex; align-items:center; gap:5px; width:100%; min-width:0; height:40px; max-height:40px; overflow:hidden; box-sizing:border-box;"
-                                            ] [
-                                                yield div [
-                                                    Attr.Create "data-testid" ("ta-row-controls-" + row.RowId)
-                                                    attr.style "display:inline-flex; align-items:stretch; flex:0 1 auto; min-width:0; max-width:100%; height:26px; white-space:nowrap;"
-                                                ] [
-                                                    yield button [
-                                                        attr.``type`` "button"
-                                                        Attr.Create "data-testid" ("ta-toggle-row-" + row.RowId)
-                                                        Attr.Create "aria-pressed" (if hidden then "false" else "true")
-                                                        attr.title displayLabel
-                                                        attr.style (if hidden then "height:26px; min-width:0; max-width:360px; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid #c8d2df; border-right:0; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:11px; cursor:pointer;" else "height:26px; min-width:0; max-width:360px; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid #7da39d; border-right:0; border-radius:4px 0 0 4px; background:#edf8f6; color:#155d55; padding:2px 7px; font-size:11px; cursor:pointer;")
-                                                        on.click (fun _ _ ->
-                                                            let nextHidden =
-                                                                if hidden then Set.remove row.RowId uiState.Value.HiddenRows
-                                                                else Set.add row.RowId uiState.Value.HiddenRows
-
-                                                            setUiState { uiState.Value with HiddenRows = nextHidden })
-                                                    ] [ text displayLabel ]
-                                                    if editable then
-                                                        yield button [
-                                                            attr.``type`` "button"
-                                                            Attr.Create "data-testid" ("ta-edit-row-" + row.RowId)
-                                                            attr.title ("Edit " + displayLabel + " parameters")
-                                                            attr.disabledBool commandsDisabledView
-                                                            Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
-                                                                if disabled then "width:52px; min-width:52px; height:26px; flex:0 0 52px; border:1px solid #c8d2df; border-right:0; background:#edf1f5; color:#8b98a8; padding:2px 7px; font-size:11px; font-weight:600; cursor:not-allowed;"
-                                                                else "width:52px; min-width:52px; height:26px; flex:0 0 52px; border:1px solid #7f9fbe; border-right:0; background:#e8f2ff; color:#174f82; padding:2px 7px; font-size:11px; font-weight:600; cursor:pointer;"))
-                                                            on.click (fun _ _ ->
-                                                                if not (commandsDisabledNow ()) then openRowEditor row)
-                                                        ] [ text "Edit" ]
-                                                    if not (actionAllowed "remove-trace") then
-                                                        yield button [
-                                                            attr.``type`` "button"
-                                                            Attr.Create "data-testid" ("ta-remove-row-" + row.RowId)
-                                                            attr.title ("Remove " + displayLabel + " row")
-                                                            attr.disabledBool commandsDisabledView
-                                                            Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
-                                                                if disabled then "width:26px; height:26px; border:1px solid #c8d2df; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:14px; cursor:not-allowed;"
-                                                                else "width:26px; height:26px; border:1px solid #c8a7ab; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:14px; cursor:pointer;"))
-                                                            on.click (fun _ _ ->
-                                                                if not (commandsDisabledNow ()) then
-                                                                    startAction (SduiAction.RemoveTaRow(currentCanvasId (), row.RowId)) (displayLabel + " row removal accepted.") ignore)
-                                                        ] [ text "×" ]
-                                                ]
-                                                if controllableTraces.Length > 0 then
-                                                    yield div [
-                                                        Attr.Create "data-testid" ("ta-trace-toggles-" + row.RowId)
-                                                        attr.style "display:flex; align-items:center; flex:1 1 auto; min-width:0; height:38px; gap:3px; padding:0 0 2px 3px; border-left:1px solid #d7e0eb; box-sizing:border-box; overflow-x:auto; overflow-y:hidden; flex-wrap:nowrap; white-space:nowrap;"
-                                                    ] [
-                                                        for trace in controllableTraces do
-                                                            let traceHidden = Set.contains (row.RowId, trace.TraceId) ui.HiddenTraces
-                                                            let traceLabel = if String.IsNullOrWhiteSpace trace.Label then trace.TraceId else trace.Label
-                                                            yield div [ attr.style "display:inline-flex; align-items:stretch; flex:0 0 auto; height:24px;" ] [
-                                                                yield button [
-                                                                    attr.``type`` "button"
-                                                                    Attr.Create "data-testid" ("ta-toggle-trace-" + row.RowId + "-" + trace.TraceId)
-                                                                    Attr.Create "data-row-id" row.RowId
-                                                                    Attr.Create "data-trace-id" trace.TraceId
-                                                                    Attr.Create "aria-pressed" (if traceHidden then "false" else "true")
-                                                                    attr.title ((if traceHidden then "Show " else "Hide ") + traceLabel + " trace")
-                                                                    attr.style (if traceHidden then "height:24px; border:1px solid #c8d2df; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:10px; cursor:pointer;" else "height:24px; border:1px solid #9cb3cc; border-radius:4px 0 0 4px; background:#f4f8fc; color:#315d88; padding:2px 7px; font-size:10px; cursor:pointer;")
-                                                                    on.click (fun _ _ ->
-                                                                        let key = row.RowId, trace.TraceId
-                                                                        let nextHidden =
-                                                                            if traceHidden then Set.remove key uiState.Value.HiddenTraces
-                                                                            else Set.add key uiState.Value.HiddenTraces
-                                                                        setUiState { uiState.Value with HiddenTraces = nextHidden })
-                                                                ] [ text traceLabel ]
-                                                                if actionAllowed "remove-trace" then
-                                                                    yield button [
-                                                                        attr.``type`` "button"
-                                                                        Attr.Create "data-testid" ("ta-remove-trace-" + row.RowId + "-" + trace.TraceId)
-                                                                        attr.title ("Remove " + traceLabel + " trace until Reset Canvas")
-                                                                        attr.disabledBool commandsDisabledView
-                                                                        Attr.Dynamic "style" (commandsDisabledView |> View.Map (fun disabled ->
-                                                                            if disabled then "width:24px; height:24px; border:1px solid #c8d2df; border-left:0; border-radius:0 4px 4px 0; background:#edf1f5; color:#8b98a8; padding:0; font-size:13px; cursor:not-allowed;"
-                                                                            else "width:24px; height:24px; border:1px solid #c8a7ab; border-left:0; border-radius:0 4px 4px 0; background:#fff; color:#8d3039; padding:0; font-size:13px; cursor:pointer;"))
-                                                                        on.click (fun _ _ ->
-                                                                            if not (commandsDisabledNow ()) then
-                                                                                let key = row.RowId, trace.TraceId
-                                                                                startAction
-                                                                                    (SduiAction.RemoveTaTrace(currentCanvasId (), row.RowId, trace.TraceId))
-                                                                                    (traceLabel + " trace removal accepted.")
-                                                                                    (fun () ->
-                                                                                        setUiState
-                                                                                            { uiState.Value with
-                                                                                                HiddenTraces = Set.remove key uiState.Value.HiddenTraces
-                                                                                                RemovedTraces = Set.add key uiState.Value.RemovedTraces }))
-                                                                    ] [ text "×" ]
-                                                            ]
-                                                    ]
-                                            ]
-                                ] :> Doc)
-                            |> Doc.EmbedView
-                            uiState.View
-                            |> View.Map (fun ui ->
-                                if not ui.AddRowOpen then Doc.Empty
-                                else
-                                    div [ Attr.Create "data-testid" "ta-add-row-editor"; attr.style "display:flex; flex-direction:column; gap:7px; padding:7px; border:1px solid #cbd6e5; border-radius:5px; background:#f8fafc;" ] [
-                                        genericEditor ()
-                                        div [ attr.style "display:flex; align-items:center; justify-content:flex-end; gap:6px;" ] [
-                                            match editingRowId with
-                                            | Some rowId ->
-                                                yield span [ Attr.Create "data-testid" "ta-row-editor-mode"; attr.style "margin-right:auto; font-size:11px; color:#40536d;" ] [ text ("Editing " + rowId) ]
-                                            | None -> ()
-                                            yield compactButton "ta-add-row-cancel" "Cancel" "Close without submitting" closeRowEditor
-                                            yield primaryButtonView "ta-add-row-submit" (if editingRowId.IsSome then "Apply" else "Add") commandsDisabledView commandsDisabledNow addRow
-                                        ]
-                                    ] :> Doc)
-                            |> Doc.EmbedView
-                            uiState.View
-                            |> View.Map (fun ui ->
-                                if String.IsNullOrWhiteSpace ui.Feedback then Doc.Empty
-                                else div [ Attr.Create "data-testid" "ta-feedback"; attr.style "font-size:11px; color:#40536d; min-height:15px;" ] [ text ui.Feedback ] :> Doc)
-                            |> Doc.EmbedView
-                        ]
-                        viewportControls document
                         View.Map2 (fun ((state, preparedDataForShell): RuntimeState * TaPreparedRendererData) ui ->
+                            let evaluationStarted = Date.Now()
                             chartRenderSequence <- chartRenderSequence + 1
                             let renderSequence = chartRenderSequence
                             chartWorkGeneration <- chartWorkGeneration + 1
@@ -6341,7 +6590,7 @@ module TaWorkspaceRenderer =
                                     referenceLength
                                     ui.FollowLatest
                                     ui.Window
-                            let coverageProjection = RendererModel.tryLoadedCoverageResolved document.DefaultView preparedDataForShell.RawData
+                            let coverageProjection = readLoadedCoverage document.DefaultView preparedDataForShell.RawData
                             let navigatorWindow window =
                                 RendererModel.tryCoverageNavigatorWindowResolved referenceLength window document.DefaultView preparedDataForShell.RawData
                                 |> Option.map (fun (_, total, globalWindow) -> total, globalWindow)
@@ -6408,9 +6657,12 @@ module TaWorkspaceRenderer =
                                     |> Map.ofArray
                                 applyCursorIndex (displayedCursorIndex |> Option.orElse cursorIndex.Value)
 
+                            let rowBuildTimings = ResizeArray<string>()
+                            let rowsStarted = Date.Now()
                             let prepareRows () =
                                 if workGeneration = chartWorkGeneration then
                                     for index in 0 .. visibleRows.Length - 1 do
+                                        let rowStarted = Date.Now()
                                         let prepared = rowDataStates[index].Value
                                         let rowDoc, cursorReaders, legendReaders, latestLegendReadersForRow, markerCursorReader =
                                             renderRowReactivePreparedLiveWithGuides
@@ -6442,6 +6694,7 @@ module TaWorkspaceRenderer =
                                                     document.BaseRowId
                                                     |> Option.iter (fun baseRowId -> publishPointActivation target state baseRowId hit candidates))
                                                 visibleRows[index]
+                                        if rowBuildTimings.Count < 16 then rowBuildTimings.Add(visibleRows[index].RowId + ":" + string (Date.Now() - rowStarted))
                                         stagedCursorReaders[index] <- Some cursorReaders
                                         stagedLegendReaders[index] <- Some legendReaders
                                         stagedLegendValueReaders[index] <- Some latestLegendReadersForRow
@@ -6454,6 +6707,12 @@ module TaWorkspaceRenderer =
                                     projectionCandidateGeneration
                                     |> Option.iter (fun generation -> completeProjection generation state)
                             prepareRows ()
+                            let diagnosticRoot = JS.Document.DocumentElement
+                            if not (isNull diagnosticRoot) then
+                                diagnosticRoot.SetAttribute("data-renderer-chart-evaluation-sequence", string renderSequence)
+                                diagnosticRoot.SetAttribute("data-renderer-chart-pre-row-ms", string (rowsStarted - evaluationStarted))
+                                diagnosticRoot.SetAttribute("data-renderer-chart-row-build-ms", string (Date.Now() - rowsStarted))
+                                diagnosticRoot.SetAttribute("data-renderer-chart-row-build-detail", rowBuildTimings |> Seq.truncate 16 |> String.concat "|")
 
                             let visibleStart = if globalVisibleWindow.Count = 0 then 0 else globalVisibleWindow.StartIndex + 1
                             let visibleEnd = globalVisibleWindow.StartIndex + globalVisibleWindow.Count
@@ -6475,8 +6734,8 @@ module TaWorkspaceRenderer =
                                 Attr.Create "data-visible-end" (string visibleEnd)
                                 Attr.Create "data-maximum-visible-bars" (string maximumVisibleBars)
                                 Attr.Create "data-coverage-identity" (coverageProjection |> Option.map _.CoverageIdentity |> Option.defaultValue "")
-                                Attr.Dynamic "data-coverage-revision" (runtimeState.View |> View.Map (fun current -> current.Document |> Option.bind (fun value -> RendererModel.tryLoadedCoverageResolved value.DefaultView current.Data) |> Option.map (fun value -> string value.CoverageRevision) |> Option.defaultValue ""))
-                                Attr.Dynamic "data-query-generation" (runtimeState.View |> View.Map (fun current -> current.Document |> Option.bind (fun value -> RendererModel.tryLoadedCoverageResolved value.DefaultView current.Data) |> Option.map (fun value -> string value.QueryGeneration) |> Option.defaultValue ""))
+                                Attr.Dynamic "data-coverage-revision" (runtimeState.View |> View.Map (fun current -> current.Document |> Option.bind (fun value -> readLoadedCoverage value.DefaultView current.Data) |> Option.map (fun value -> string value.CoverageRevision) |> Option.defaultValue ""))
+                                Attr.Dynamic "data-query-generation" (runtimeState.View |> View.Map (fun current -> current.Document |> Option.bind (fun value -> readLoadedCoverage value.DefaultView current.Data) |> Option.map (fun value -> string value.QueryGeneration) |> Option.defaultValue ""))
                                 Attr.Dynamic "data-preparation-pending" (preparationPending.View |> View.Map (fun pending -> if pending then "true" else "false"))
                                 Attr.Create "data-follow-latest" (if ui.FollowLatest then "true" else "false")
                                 Attr.Create "data-row-count" (string visibleRows.Length)
@@ -6560,7 +6819,7 @@ module TaWorkspaceRenderer =
                                                 RendererModel.referenceTimelineForDocumentPrepared currentDocument currentPreparedData
                                             let currentReferenceLength = currentReferenceTimeline.Length
                                             let currentCoverageProjection =
-                                                RendererModel.tryLoadedCoverageResolved currentDocument.DefaultView currentPreparedData.RawData
+                                                readLoadedCoverage currentDocument.DefaultView currentPreparedData.RawData
                                             navigatorGestureFramePublicationSequence <- navigatorGestureFramePublicationSequence + 1
                                             publishNavigatorGestureTelemetry
                                                 "publish"
@@ -6574,6 +6833,14 @@ module TaWorkspaceRenderer =
                                             let overviewReferenceTimeline =
                                                 currentCoverageProjection
                                                 |> Option.bind RendererModel.tryOverviewTimeline
+                                                |> Option.filter (Array.isEmpty >> not)
+                                                |> Option.defaultValue currentReferenceTimeline
+                                            let overviewDisplayTimeline =
+                                                currentCoverageProjection
+                                                |> Option.bind (fun projection ->
+                                                    RendererModel.tryOverviewTimeline projection
+                                                    |> Option.filter (Array.isEmpty >> not)
+                                                    |> Option.map (fun _ -> projection.OverviewAnchors |> Array.map _.EventTimeUtc))
                                                 |> Option.defaultValue currentReferenceTimeline
                                             let overviewPoints =
                                                 let projected =
@@ -6626,7 +6893,7 @@ module TaWorkspaceRenderer =
                                                     selectionWindowInputs
                                                     residentNavigatorAuthority.View
                                             let residentOverview =
-                                                div [ Attr.Create "data-testid" "ta-overview-with-axis"; attr.style "min-width:0;" ] [
+                                                div [ Attr.Create "data-testid" "ta-overview-with-axis"; Attr.Create "data-resident-document-revision" (string renderedState.DocumentRevision); Attr.Create "data-resident-data-revision" (string renderedState.DataRevision); attr.style "min-width:0;" ] [
                                                     overviewSvgWithPalette
                                                         currentPlotPalette
                                                         overviewPoints
@@ -6634,6 +6901,7 @@ module TaWorkspaceRenderer =
                                                         overviewReferenceTimeline.Length
                                                         selectionWindow
                                                         (fun element ->
+                                                            recordResidentMount renderedState element
                                                             activeNavigatorDragMode
                                                             |> Option.iter (fun drag -> element.SetAttribute("data-drag-mode", drag))
                                                             match activeNavigatorCursor with
@@ -6664,12 +6932,13 @@ module TaWorkspaceRenderer =
                                                                     rawEvent
                                                             | None -> ())
                                                         finishNavigatorDragFromElement
-                                                    residentTimeAxisForTradingDatesWithPalette
-                                                        currentPlotPalette
-                                                        displayTime
-                                                        (RendererModel.residentCalendarScale currentReferenceTimeline)
-                                                        currentReferenceTimeline
-                                                        (RendererModel.referenceTradingDatesForDocumentPrepared currentDocument currentPreparedData)
+                                                    // Keep the axis next to its SVG: the boundary labels may wrap.
+                                                    residentTimeAxisForCoverageWithPalette
+                                                        currentPlotPalette displayTime currentDocument currentPreparedData currentCoverageProjection
+                                                    boundaryTimeLabels currentPlotPalette displayTime "ta-resident-boundary-times" ""
+                                                        (View.Map2 (fun frozen current -> frozen |> Option.orElse current)
+                                                            navigatorBoundaryTimesOverride.View
+                                                            (selectionWindow |> View.Map (RendererModel.selectionBoundaryTimes overviewDisplayTimeline)))
                                                 ]
                                             let residentOverview =
                                                 div [
@@ -6681,19 +6950,16 @@ module TaWorkspaceRenderer =
                                                 ] [ residentOverview ]
                                             match currentCoverageProjection |> Option.bind _.GlobalOverview with
                                             | None ->
-                                                initialGlobalPhase.View
-                                                |> View.Map (fun isInitialGlobalPhase ->
-                                                    if isInitialGlobalPhase then
-                                                        div [
-                                                            Attr.Create "data-testid" "ta-global-overview-loading"
-                                                            Attr.Create "data-global-phase" "phase-1"
-                                                            attr.style "display:flex; align-items:center; gap:8px; min-width:0; height:40px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px; white-space:nowrap;"
-                                                        ] [
-                                                            strong [] [ text "GLOBAL" ]
-                                                            span [] [ text "Loading authoritative overview…" ]
-                                                        ] :> Doc
+                                                if ProjectionCommitGate.sameProjectionState runtimeState.Value renderedState then
+                                                    if bootstrapMayShow || hasAuthoritativeGlobal then
+                                                        retainOrResetGlobalContent renderedState
                                                     else
-                                                        residentOverview :> Doc)
+                                                        globalContent.Value <-
+                                                            initialGlobalPhase.View
+                                                            |> View.Map (fun initial -> if initial then loadingGlobalContent () else Doc.Empty)
+                                                            |> Doc.EmbedView
+                                                initialGlobalPhase.View
+                                                |> View.Map (fun initial -> if initial then Doc.Empty else residentOverview :> Doc)
                                                 |> Doc.EmbedView
                                             | Some globalOverview ->
                                                 let authoritativeResident: TaResidentCoverageWindow =
@@ -6707,6 +6973,16 @@ module TaWorkspaceRenderer =
                                                         |> RendererModel.globalResidentSelectionRatios globalOverview)
                                                 let globalPoints = RendererModel.overviewPointsForAnchors globalOverview.Anchors
                                                 let globalTimeline = globalOverview.Anchors |> Array.map _.EventTimeUtc
+                                                let globalBoundaryTimes =
+                                                    View.Map2 (fun draft ready ->
+                                                        match draft with
+                                                        | Some target ->
+                                                            RendererModel.globalResidentBoundaryTimes globalOverview.Anchors target
+                                                            |> Option.map (fun (first,last) -> first,last,true)
+                                                        | None when ready ->
+                                                            RendererModel.visibleBoundaryTimes currentReferenceTimeline {StartIndex=0;Count=currentReferenceTimeline.Length}
+                                                            |> Option.map (fun (first,last) -> first,last,false)
+                                                        | None -> None) globalResidentDraft.View preparedRowsReady.View
                                                 let globalRangeText =
                                                     displayTime.Zone
                                                     |> View.Map (fun zone ->
@@ -6716,74 +6992,100 @@ module TaWorkspaceRenderer =
                                                             TaDisplayTimeFormatter.fullOrOriginal zone globalTimeline[0]
                                                             + " – "
                                                             + TaDisplayTimeFormatter.fullOrOriginal zone globalTimeline[globalTimeline.Length - 1])
-                                                let visibleObservationCount = visibleWindow.Count
-                                                div [ Attr.Create "data-testid" "ta-overview-stack"; attr.style "display:grid; gap:8px; min-width:0;" ] [
-                                                    div [
-                                                        Attr.Create "data-testid" "ta-global-overview-with-axis"
-                                                        Attr.Create "data-total-observation-count" (string globalOverview.TotalObservationCount)
-                                                        Attr.Create "data-resident-start-observation-ordinal" (string globalOverview.ResidentStartObservationOrdinal)
-                                                        Attr.Create "data-resident-observation-count" (string globalOverview.ResidentObservationCount)
-                                                        attr.style "min-width:0;"
-                                                    ] [
+                                                let currentVisibleWindow =
+                                                    RendererModel.resolveWindow options.MinimumVisibleBars
+                                                        (maximumVisibleBarsFor currentDocument) currentReferenceLength
+                                                        ui.FollowLatest ui.Window
+                                                let residentDomain =
+                                                    currentCoverageProjection
+                                                    |> Option.map (RendererModel.resolveNavigatorGestureDomain
+                                                        options.MinimumVisibleBars (maximumVisibleBarsFor currentDocument)
+                                                        currentReferenceLength currentVisibleWindow residentNavigatorAuthority.Value)
+                                                let residentObservationCount =
+                                                    residentDomain |> Option.map _.DomainCount |> Option.defaultValue currentReferenceLength
+                                                let visibleObservationCount =
+                                                    residentDomain |> Option.map (fun domain -> domain.CommittedWindow.Count)
+                                                    |> Option.defaultValue currentVisibleWindow.Count
+                                                if ProjectionCommitGate.sameProjectionState runtimeState.Value renderedState then
+                                                    bootstrapMayShow <- false
+                                                    hasAuthoritativeGlobal <- true
+                                                    publishedGlobalKey <- Some(ProjectionCommitGate.key renderedState)
+                                                    publishedGlobalSource <- ProjectionCommitGate.globalDataSourceFingerprint renderedState
+                                                    globalContent.Value <-
                                                         div [
-                                                            Attr.Create "data-testid" "ta-global-overview-label"
+                                                            Attr.Create "data-testid" "ta-global-overview-with-axis"
+                                                            Attr.Create "data-global-document-revision" (string renderedState.DocumentRevision)
+                                                            Attr.Create "data-global-data-revision" (string renderedState.DataRevision)
+                                                            Attr.Create "data-global-coverage-identity" (currentCoverageProjection |> Option.map _.CoverageIdentity |> Option.defaultValue "")
+                                                            Attr.Create "data-global-query-generation" (currentCoverageProjection |> Option.map (fun projection -> string projection.QueryGeneration) |> Option.defaultValue "")
                                                             Attr.Create "data-total-observation-count" (string globalOverview.TotalObservationCount)
+                                                            Attr.Create "data-resident-start-observation-ordinal" (string globalOverview.ResidentStartObservationOrdinal)
                                                             Attr.Create "data-resident-observation-count" (string globalOverview.ResidentObservationCount)
-                                                            attr.style "display:flex; align-items:center; gap:8px; min-width:0; height:18px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px; white-space:nowrap;"
+                                                            attr.style "min-width:0;"
                                                         ] [
-                                                            strong [] [ text "GLOBAL" ]
-                                                            span [] [
-                                                                textView (
-                                                                    globalRangeText
-                                                                    |> View.Map (fun rangeText ->
-                                                                        rangeText
-                                                                        + " / "
-                                                                        + string globalOverview.TotalObservationCount
-                                                                        + " total / "
-                                                                        + string globalOverview.ResidentObservationCount
-                                                                        + " resident"))
-                                                            ]
-                                                        ]
-                                                        globalOverviewSvgWithPalette
-                                                            currentPlotPalette
-                                                            globalPoints
-                                                            globalSelectionWindow
-                                                            (fun element ->
-                                                                // Runtime receipt is not a rendered-frame handoff. Keep the
-                                                                // optimistic GLOBAL position until this replacement navigator
-                                                                // is actually mounted; the outgoing shell still owns old geometry.
-                                                                settleGlobalResidentProjection renderedState
-                                                                activeGlobalResidentCursor
-                                                                |> Option.iter (fun cursor ->
-                                                                    element.SetAttribute("data-drag-outcome", "tracking")
-                                                                    (element |> As<HTMLElement>).Style.SetProperty("cursor", cursor)))
-                                                            startGlobalResidentDrag
-                                                            finishGlobalResidentDragFromElement
-                                                        globalCalendarAxisWithPalette
-                                                            currentPlotPalette
-                                                            "ta-global-overview-time-axis"
-                                                            "global-overview"
-                                                            globalOverview.Anchors
-                                                    ]
-                                                    initialGlobalPhase.View
-                                                    |> View.Map (fun isInitialGlobalPhase ->
-                                                        if isInitialGlobalPhase then
-                                                            Doc.Empty
-                                                        else
-                                                            div [ Attr.Create "data-testid" "ta-resident-overview-shell"; attr.style "min-width:0;" ] [
-                                                                div [
-                                                                    Attr.Create "data-testid" "ta-resident-overview-label"
-                                                                    Attr.Create "data-resident-observation-count" (string globalOverview.ResidentObservationCount)
-                                                                    Attr.Create "data-visible-observation-count" (string visibleObservationCount)
-                                                                    attr.style "display:flex; align-items:center; gap:8px; min-width:0; height:18px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px; white-space:nowrap;"
-                                                                ] [
-                                                                    strong [] [ text "RESIDENT" ]
-                                                                    span [] [ text (string globalOverview.ResidentObservationCount + " loaded / " + string visibleObservationCount + " visible") ]
+                                                            div [
+                                                                Attr.Create "data-testid" "ta-global-overview-label"
+                                                                Attr.Create "data-total-observation-count" (string globalOverview.TotalObservationCount)
+                                                                Attr.Create "data-resident-observation-count" (string globalOverview.ResidentObservationCount)
+                                                                attr.style "display:flex; align-items:center; gap:8px; min-width:0; height:18px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px; white-space:nowrap;"
+                                                            ] [
+                                                                strong [] [ text "GLOBAL" ]
+                                                                span [] [
+                                                                    textView (
+                                                                        globalRangeText
+                                                                        |> View.Map (fun rangeText ->
+                                                                            rangeText
+                                                                            + " / "
+                                                                            + string globalOverview.TotalObservationCount
+                                                                            + " total / "
+                                                                            + string globalOverview.ResidentObservationCount
+                                                                            + " resident"))
                                                                 ]
-                                                                residentOverview
-                                                            ] :> Doc)
-                                                    |> Doc.EmbedView
-                                                ] :> Doc)
+                                                            ]
+                                                            globalOverviewSvgWithPalette
+                                                                currentPlotPalette
+                                                                globalPoints
+                                                                globalSelectionWindow
+                                                                (fun element ->
+                                                                    // Runtime receipt is not a rendered-frame handoff. Keep the
+                                                                    // optimistic GLOBAL position until this replacement navigator
+                                                                    // is actually mounted; the outgoing shell still owns old geometry.
+                                                                    if element.IsConnected && ProjectionCommitGate.sameProjectionState runtimeState.Value renderedState then
+                                                                        globalImageReadOnly.Value <- false
+                                                                        recordGlobalMount renderedState element
+                                                                        settleGlobalResidentProjection renderedState
+                                                                    activeGlobalResidentCursor
+                                                                    |> Option.iter (fun cursor ->
+                                                                        element.SetAttribute("data-drag-outcome", "tracking")
+                                                                        (element |> As<HTMLElement>).Style.SetProperty("cursor", cursor)))
+                                                                startGlobalResidentDrag
+                                                                finishGlobalResidentDragFromElement
+                                                            boundaryTimeLabelsWithApproximation currentPlotPalette displayTime "ta-global-boundary-times" ""
+                                                                ("載入首根 ","載入末根 ") globalBoundaryTimes
+                                                            globalCalendarAxisWithPalette
+                                                                currentPlotPalette
+                                                                "ta-global-overview-time-axis"
+                                                                "global-overview"
+                                                                globalOverview.Anchors
+                                                        ] :> Doc
+                                                initialGlobalPhase.View
+                                                |> View.Map (fun isInitialGlobalPhase ->
+                                                    if isInitialGlobalPhase then
+                                                        Doc.Empty
+                                                    else
+                                                        div [ Attr.Create "data-testid" "ta-resident-overview-shell"; attr.style "min-width:0;" ] [
+                                                            div [
+                                                                Attr.Create "data-testid" "ta-resident-overview-label"
+                                                                Attr.Create "data-resident-observation-count" (string residentObservationCount)
+                                                                Attr.Create "data-visible-observation-count" (string visibleObservationCount)
+                                                                attr.style "display:flex; align-items:center; gap:8px; min-width:0; height:18px; color:#40536d; font-family:Consolas,monospace; font-size:10px; line-height:18px; white-space:nowrap;"
+                                                            ] [
+                                                                strong [] [ text "RESIDENT" ]
+                                                                span [] [ text (string residentObservationCount + " loaded / " + string visibleObservationCount + " visible") ]
+                                                            ]
+                                                            residentOverview
+                                                        ] :> Doc)
+                                                |> Doc.EmbedView)
                                         |> Doc.EmbedView
                                     ]
                                 ]
@@ -6793,6 +7095,15 @@ module TaWorkspaceRenderer =
             |> Doc.EmbedView
         ]
 
+    let renderWithProjectionCommitAndDisplayTimeZone
+        (options: TaRendererOptions)
+        (callbacks: TaRendererCallbacks)
+        (onProjectionCommitted: RuntimeState -> unit)
+        (displayTimeZone: View<SduiDisplayTimeZone>)
+        (runtimeState: Var<RuntimeState>) =
+        renderWithProjectionCommitAndDisplayTimeZoneAndBootstrapContent
+            options callbacks onProjectionCommitted displayTimeZone None runtimeState
+
     let renderWithProjectionCommitAndDisplayTimeZoneAndGlobalOverviewBootstrap
         (options: TaRendererOptions)
         (callbacks: TaRendererCallbacks)
@@ -6800,30 +7111,11 @@ module TaWorkspaceRenderer =
         (displayTimeZone: View<SduiDisplayTimeZone>)
         (loader: unit -> Async<TaGlobalCoverageOverview option>)
         (runtimeState: Var<RuntimeState>) =
-        let authoritativeReady =
-            Var.Create(RendererModel.authoritativeGlobalOverviewReady true runtimeState.Value)
-        runtimeState.View
-        |> View.Sink (fun state ->
-            if
-                not authoritativeReady.Value
-                && RendererModel.authoritativeGlobalOverviewReady true state
-            then
-                authoritativeReady.Value <- true)
-        let authoritativeDoc =
-            renderWithProjectionCommitAndDisplayTimeZone
-                options
-                callbacks
-                onProjectionCommitted
-                displayTimeZone
-                runtimeState
-        let bootstrapDoc =
-            if authoritativeReady.Value then
-                Doc.Empty
-            else
-                renderGlobalOverviewBootstrapWithDisplayTimeZone displayTimeZone loader
-        authoritativeReady.View
-        |> View.Map (fun ready -> if ready then authoritativeDoc else bootstrapDoc)
-        |> Doc.EmbedView
+        let bootstrapContent =
+            if RendererModel.authoritativeGlobalOverviewReady true runtimeState.Value then None
+            else Some(renderGlobalOverviewBootstrapWithDisplayTimeZone displayTimeZone loader)
+        renderWithProjectionCommitAndDisplayTimeZoneAndBootstrapContent
+            options callbacks onProjectionCommitted displayTimeZone bootstrapContent runtimeState
 
     let renderWithProjectionCommit
         (options: TaRendererOptions)

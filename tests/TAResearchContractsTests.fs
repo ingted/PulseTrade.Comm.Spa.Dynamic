@@ -67,6 +67,54 @@ let sourceEvent sequence baseRevision newRevision payload : SourceEventEnvelope 
 
 let tests =
     testList "Dynamic TA Contracts" [
+        let capacityDocument traceCounts =
+            let rows =
+                traceCounts |> Array.mapi (fun rowIndex count ->
+                    let rowId = $"capacity-row-{rowIndex}"
+                    let traces = Array.init count (fun traceIndex ->
+                        { TraceId = $"{rowId}-trace-{traceIndex}"
+                          Kind = if traceIndex = 0 then TaTraceKind.Candlestick else TaTraceKind.Line
+                          DataRef = $"series.{rowId}.{traceIndex}"
+                          Label = $"trace-{traceIndex}"
+                          Color = "#334155"
+                          Width = 1.0
+                          Visible = true
+                          CandleDataRefs = None
+                          Options = Map.empty })
+                    { row with RowId = rowId; DataRef = traces[0].DataRef; Traces = traces })
+            { document with Rows = rows; BaseRowId = Some rows[0].RowId }
+
+        testList "DYN-T-798 bounded public11 document capacity" [
+            for name, counts, expectedTotal in
+                [ "public11 includes candle overlays", Array.init 11 (fun i -> if i = 0 then 7 else 6), 67
+                  "both canvas bounds are inclusive", Array.create 16 8, 128
+                  "per-row bound stays inclusive", [| 32 |], 32 ] do
+                testCase name <| fun _ ->
+                    let candidate = capacityDocument counts
+                    Expect.equal (candidate.Rows |> Array.sumBy (TaRowSpec.effectiveTraces >> Array.length)) expectedTotal "The input includes every effective trace."
+                    Expect.isOk
+                        (RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits { documentFrame with Payload = RuntimePayload.Document candidate })
+                        "A valid bounded document must pass the shared wire validator."
+        ]
+
+        testList "DYN-T-799 capacity overflow rejects the exact independent boundary" [
+            for name, counts, expectedCode in
+                [ "seventeenth row", Array.create 17 4, "limit-rows"
+                  "129th trace", Array.init 16 (fun i -> if i = 0 then 9 else 8), "limit-total-traces"
+                  "33rd trace in one row", [| 33 |], "limit-traces-per-row" ] do
+                testCase name <| fun _ ->
+                    let errors = RuntimeValidation.documentErrors DynamicRuntimeDefaults.limits (capacityDocument counts)
+                    Expect.equal (errors |> List.map _.Code) [ expectedCode ] "Only the named capacity is exceeded; identity and other limits remain valid."
+        ]
+
+        testCase "DYN-T-800 public11 capacity keeps all other runtime bounds unchanged" <| fun _ ->
+            let limits = DynamicRuntimeDefaults.limits
+            Expect.equal
+                (limits.MaxTracesPerRow, limits.MaxInitialBarsPerSeries, limits.MaxRetainedBarsPerSeries,
+                 limits.MaxPatchOperations, limits.MaxPatchItems, limits.MaxFrameBytes, limits.MinimumPollInterval)
+                (32, 5000, 4500, 64, 500, 16 * 1024 * 1024, TimeSpan.FromSeconds 5.0)
+                "Only the canvas row and total trace capacities may expand."
+
         testCase "DYN-T-684 document accepts the global resident relocation capability" <| fun _ ->
             let candidate =
                 { document with
@@ -1879,12 +1927,12 @@ let tests =
             Expect.equal disposeEffect RuntimeEffect.CancelPoll "Dispose cancels poll resources."
 
         testCase "DYN-TA-T-011 hard row and patch item limits fail" <| fun _ ->
-            let tooManyRows = { document with Rows = Array.init 9 (fun index -> { row with RowId = $"r{index}"; DataRef = $"d{index}" }) }
+            let tooManyRows = { document with BaseRowId = Some "r0"; Rows = Array.init 17 (fun index -> { row with RowId = $"r{index}"; DataRef = $"d{index}" }) }
             let tooManyItems =
                 Array.init 501 (fun index -> Map [ "x", SduiValue.Number(float index) ])
                 |> fun items -> { Operations = [| PatchOperation.UpsertSeriesPoints("series.price", "x", items) |] }
 
-            Expect.isError (RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits { documentFrame with Payload = RuntimePayload.Document tooManyRows }) "Rows hard limit must fail."
+            Expect.equal (RuntimeValidation.documentErrors DynamicRuntimeDefaults.limits tooManyRows |> List.map _.Code) [ "limit-rows" ] "Rows hard limit must fail without an unrelated missing-base-row error."
             Expect.isError (RuntimeValidation.validateFrame DynamicRuntimeDefaults.limits (frame RuntimeFrameKind.Patch 2L (Some 0L) 1L (RuntimePayload.Patch tooManyItems))) "Patch item hard limit must fail."
 
             let tooManyBars = Array.create 5001 SduiValue.Null |> SduiValue.Array
