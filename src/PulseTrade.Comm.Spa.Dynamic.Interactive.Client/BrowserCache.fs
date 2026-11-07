@@ -77,6 +77,12 @@ type BrowserRuntimeCachePhasedRehydrateOutcome =
     | Unavailable of reasonCode: string
     | Superseded
 
+[<JavaScript>]
+type BrowserRuntimeCachePreparedWrite =
+    { RuntimeState: RuntimeState
+      Entry: RuntimeCacheEntry
+      Record: BrowserRuntimeCacheRecord }
+
 /// Bounded, non-authoritative browser persistence for accepted Dynamic runtime projections.
 /// Every returned entry still has to pass the runtime reducer before it may be rendered.
 [<JavaScript; RequireQualifiedAccess>]
@@ -465,7 +471,7 @@ module BrowserRuntimeCache =
             "|",
             nowTicks)
 
-    let recordForEntry key touchedAtTicks (entry: RuntimeCacheEntry) =
+    let recordForEntryWith encodeHeader encodeValue reused key touchedAtTicks (entry: RuntimeCacheEntry) =
         let header =
             { entry with
                 Snapshot =
@@ -474,14 +480,110 @@ module BrowserRuntimeCache =
 
         { Key = key
           LookupKey = lookupKeyFor entry.CacheIdentity entry.WorkspaceId
-          EntryHeaderJson = BrowserRuntimeCodec.encodeCacheEntry header
+          EntryHeaderJson = encodeHeader header
           DataItems =
-            entry.Snapshot.Data
-            |> Map.toArray
-            |> Array.map (fun (dataRef, value) ->
-                { DataRef = dataRef
-                  ValueJson = Json.Serialize value })
+            match reused with
+            | Some(coverageRef, (previous: BrowserRuntimeCacheRecord)) ->
+                previous.DataItems |> Array.map (fun item ->
+                    if item.DataRef = coverageRef then
+                        { DataRef = coverageRef; ValueJson = encodeValue entry.Snapshot.Data[coverageRef] }
+                    else item)
+            | None ->
+                entry.Snapshot.Data
+                |> Map.toArray
+                |> Array.map (fun (dataRef, value) -> { DataRef = dataRef; ValueJson = encodeValue value })
           TouchedAtTicks = touchedAtTicks }
+
+    let recordForEntry key touchedAtTicks entry =
+        recordForEntryWith BrowserRuntimeCodec.encodeCacheEntry Json.Serialize None key touchedAtTicks entry
+
+    let samePreparedScope cacheIdentity (state: RuntimeState) (previous: BrowserRuntimeCachePreparedWrite) =
+        match state.Document with
+        | Some document ->
+            state.Identity = previous.RuntimeState.Identity
+            && cacheIdentity = previous.Entry.CacheIdentity
+            && document.WorkspaceId = previous.Entry.WorkspaceId
+            && state.DocumentRevision = previous.Entry.DocumentRevision
+            && Object.ReferenceEquals(document, previous.Entry.Document)
+        | None -> false
+
+    let tryPrepareEntry project (previous: BrowserRuntimeCachePreparedWrite option) capturedAtUtc cacheIdentity state
+        : Result<RuntimeCacheEntry * (string * BrowserRuntimeCacheRecord) option, DynamicValidationError list> =
+        let reused =
+            match previous with
+            | Some previous when samePreparedScope cacheIdentity state previous ->
+                let document = previous.Entry.Document
+                match TaLoadedCoverageCodec.tryDataRef document.DefaultView,
+                      TaLoadedCoverageCodec.tryDecodeResolved document.DefaultView previous.RuntimeState.Data,
+                      TaLoadedCoverageCodec.tryDecodeResolved document.DefaultView state.Data with
+                | Ok(Some coverageRef), Ok(Some before), Ok(Some current)
+                    when state.Data.Count = previous.RuntimeState.Data.Count
+                         && Map.forall (fun key value ->
+                             key = coverageRef
+                             || (Map.tryFind key previous.RuntimeState.Data
+                                 |> Option.exists (fun old -> Object.ReferenceEquals(old, value)))) state.Data
+                         && current.ActiveDetail.BaseAxisRef = before.ActiveDetail.BaseAxisRef
+                         && { current with CoverageRevision = before.CoverageRevision
+                                           QueryGeneration = before.QueryGeneration
+                                           ActiveDetail = before.ActiveDetail } = before ->
+                    // Raw data may still contain previews. Reuse only the previous finalized
+                    // projection; replacing the whole raw map would silently restore previews.
+                    let projected =
+                        { state with Data = Map.add coverageRef state.Data[coverageRef] previous.Entry.Snapshot.Data }
+                    RuntimeCacheProjection.tryCreateEntryWithCoverage capturedAtUtc cacheIdentity previous.Entry.Coverage projected
+                    |> Result.map (fun entry -> entry, Some(coverageRef, previous.Record))
+                    |> Some
+                | _ -> None
+            | _ -> None
+        match reused with
+        | Some result -> result
+        | None -> project capturedAtUtc cacheIdentity state |> Result.map (fun entry -> entry, None)
+
+    /// One successful write is retained. Scheduling and persistence are injected so cancellation
+    /// and out-of-order IndexedDB completion share the same state machine in browser and tests.
+    let createPhasedWriter schedule (utcNow: unit -> DateTimeOffset) prepareEntry prepareRecord persistRecord =
+        let mutable sequence = 0L
+        let mutable lastSuccessful: BrowserRuntimeCachePreparedWrite option = None
+        fun cacheIdentity runtimeState isCurrent continuation ->
+            sequence <- sequence + 1L
+            let requestSequence = sequence
+            let complete = once continuation
+            match lastSuccessful with
+            | Some previous when not (samePreparedScope cacheIdentity runtimeState previous) -> lastSuccessful <- None
+            | _ -> ()
+            schedule (fun () ->
+                if not (isCurrent ()) then
+                    complete BrowserRuntimeCachePhasedWriteOutcome.CancelledBeforeWrite
+                else
+                    match prepareEntry lastSuccessful (utcNow ()) cacheIdentity runtimeState with
+                    | Error errors ->
+                        complete (BrowserRuntimeCachePhasedWriteOutcome.Completed(BrowserRuntimeCacheAcceptedStateWriteResult.Rejected errors))
+                    | Ok(entry, reused) ->
+                        schedule (fun () ->
+                            if not (isCurrent ()) then
+                                complete BrowserRuntimeCachePhasedWriteOutcome.CancelledBeforeWrite
+                            else
+                                let ticks = string (utcNow ()).UtcDateTime.Ticks
+                                let record = prepareRecord reused (keyFor entry ticks) ticks entry
+                                persistRecord record (once (fun result ->
+                                    let acceptedResult =
+                                        match result with
+                                        | BrowserRuntimeCacheWriteResult.Written ->
+                                            if requestSequence = sequence && isCurrent () then
+                                                lastSuccessful <- Some { RuntimeState = runtimeState; Entry = entry; Record = record }
+                                            BrowserRuntimeCacheAcceptedStateWriteResult.Written
+                                        | BrowserRuntimeCacheWriteResult.Unavailable reason -> BrowserRuntimeCacheAcceptedStateWriteResult.Unavailable reason
+                                    complete (BrowserRuntimeCachePhasedWriteOutcome.Completed acceptedResult)))))
+
+    let publishWriteMetric name value =
+        let root = JS.Document.DocumentElement
+        if not (isNull root) then root.SetAttribute(name, string value)
+
+    let measureWriteStage name work =
+        let started = Date.Now()
+        let result = work ()
+        publishWriteMetric name (Date.Now() - started)
+        result
 
     let decodeDataItemsPhased schedule (record: BrowserRuntimeCacheRecord) (header: RuntimeCacheEntry) continuation =
         let values = ResizeArray<string * SduiValue>()
@@ -513,12 +615,8 @@ module BrowserRuntimeCache =
 
         decode 0
 
-    let write entry continuation =
+    let writeRecord record continuation =
         let complete = once continuation
-
-        let nowTicks = string System.DateTime.UtcNow.Ticks
-        let key = keyFor entry nowTicks
-        let record = recordForEntry key nowTicks entry
 
         withStore
             "readwrite"
@@ -533,10 +631,18 @@ module BrowserRuntimeCache =
                 JS.Set tx "onerror" (System.Action<obj>(fun _ -> complete (BrowserRuntimeCacheWriteResult.Unavailable "indexeddb-write-failed")))
 
                 try
-                    JS.Apply<obj> store "put" [| box record |] |> ignore
+                    measureWriteStage "data-runtime-cache-put-sync-ms" (fun () ->
+                        JS.Apply<obj> store "put" [| box record |] |> ignore)
                 with _ ->
                     complete (BrowserRuntimeCacheWriteResult.Unavailable "indexeddb-write-exception"))
             (fun reason -> complete (BrowserRuntimeCacheWriteResult.Unavailable reason))
+
+    let write entry continuation =
+        let nowTicks = string System.DateTime.UtcNow.Ticks
+        let record =
+            measureWriteStage "data-runtime-cache-record-ms" (fun () ->
+                recordForEntry (keyFor entry nowTicks) nowTicks entry)
+        writeRecord record continuation
 
     /// Validate and persist one accepted runtime projection without making browser storage authoritative.
     /// Rejected contains canonical contract validation failures; Unavailable is limited to IndexedDB failures.
@@ -550,36 +656,23 @@ module BrowserRuntimeCache =
                     | BrowserRuntimeCacheWriteResult.Written -> continuation BrowserRuntimeCacheAcceptedStateWriteResult.Written
                     | BrowserRuntimeCacheWriteResult.Unavailable reason -> continuation (BrowserRuntimeCacheAcceptedStateWriteResult.Unavailable reason))
 
+    let acceptedStatePhasedWriter =
+        createPhasedWriter
+            (fun work -> JS.RequestAnimationFrame(fun _ -> work ()) |> ignore)
+            (fun () -> DateTimeOffset.UtcNow)
+            (fun previous capturedAtUtc cacheIdentity state ->
+                measureWriteStage "data-runtime-cache-project-ms" (fun () ->
+                    tryPrepareEntry RuntimeCacheProjection.tryCreateEntry previous capturedAtUtc cacheIdentity state))
+            (fun reused key ticks entry ->
+                publishWriteMetric "data-runtime-cache-reuse-hit" (if Option.isSome reused then 1 else 0)
+                measureWriteStage "data-runtime-cache-record-ms" (fun () ->
+                    recordForEntryWith BrowserRuntimeCodec.encodeCacheEntry Json.Serialize reused key ticks entry))
+            writeRecord
+
     /// Project and persist an accepted state in separate browser tasks. The supplied generation
     /// guard is checked before projection and again before IndexedDB encoding/write begins.
     let writeAcceptedStatePhased cacheIdentity runtimeState isCurrent continuation =
-        let complete = once continuation
-        let schedule work = JS.RequestAnimationFrame(fun _ -> work ()) |> ignore
-
-        schedule (fun () ->
-            if not (isCurrent ()) then
-                complete BrowserRuntimeCachePhasedWriteOutcome.CancelledBeforeWrite
-            else
-                match RuntimeCacheProjection.tryCreateEntry System.DateTimeOffset.UtcNow cacheIdentity runtimeState with
-                | Error errors ->
-                    complete(
-                        BrowserRuntimeCachePhasedWriteOutcome.Completed(
-                            BrowserRuntimeCacheAcceptedStateWriteResult.Rejected errors))
-                | Ok entry ->
-                    schedule (fun () ->
-                        if not (isCurrent ()) then
-                            complete BrowserRuntimeCachePhasedWriteOutcome.CancelledBeforeWrite
-                        else
-                            write
-                                entry
-                                (fun result ->
-                                    let acceptedResult =
-                                        match result with
-                                        | BrowserRuntimeCacheWriteResult.Written -> BrowserRuntimeCacheAcceptedStateWriteResult.Written
-                                        | BrowserRuntimeCacheWriteResult.Unavailable reason ->
-                                            BrowserRuntimeCacheAcceptedStateWriteResult.Unavailable reason
-
-                                    complete (BrowserRuntimeCachePhasedWriteOutcome.Completed acceptedResult))))
+        acceptedStatePhasedWriter cacheIdentity runtimeState isCurrent continuation
 
     /// Rebase a validated cache entry onto the current authoritative document and pause remote commands until resync.
     let tryRehydrate cacheIdentity currentState entry =
