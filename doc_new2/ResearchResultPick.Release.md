@@ -7,3 +7,9 @@ Interactive.Client 0.3.50 → 0.3.51 僅同步必要的 Renderer 0.3.53 相依�
 2026-11-08 發布前 exact package consumer 驗證：Renderer 343/343、Client 59/59 通過。命令與結果在 `log/20261108/release-renderer-0353-tests.log`、`release-client-0351-tests.log`；同輪測試與升版 evidence 已複製納管於 Symbolics repo 的 `log/20261108/dynamic-release-00013/`。版本與相依由既有 `bumpVersion.fsx --apply` 管理；尚未存在的新 Client 套件先以 producer-only scope 建置本機產物，再同步直接 consumer，沒有以舊版本覆寫公開套件。
 
 Research 的 native UI 驗收範圍與排除項見 Symbolics repo 的 `doc_new2/ResearchResultPick.Acceptance.md`。完整歷史回測仍依人類決定待驗；這次 package tests 不代替該驗收。正式 NuGet 發布結果與 source checkpoint 待驗證後追加。
+
+## 發布完成（2026-11-08）
+
+Source checkpoint `0b4c1b31fc9aedfaaaab422e1bd498fdeb0660b5` 已推送。Renderer 0.3.53 與 Interactive.Client 0.3.51 已由 opt-in Release Pack hook 發布並同步 SDK library-packs，來源與本機 feed 的 SHA-256 相同。NuGet 回下載的每個原始 entry 均相符，新增的 repository signature 也已通過 `dotnet nuget verify --all`；因簽章而不同的 archive hash 分別留存於 Symbolics repo `log/20261108/00013-nuget-download-verification.json`。
+
+兩個 package 內的 DLL 與 18883 的 Research 0.1.85 實際載入產物相同。該服務已重新驗證真 CSV 的14列與48根可視範圍；18884正式0.1.61仍隔離保留。
