@@ -2788,6 +2788,15 @@ module RendererModel =
             if total<=0 || active.ObservationCount<=0 || offset<0L || offset+int64 active.ObservationCount>int64 total then None
             else Some {StartIndex=int offset;Count=active.ObservationCount})
 
+    let viewportScopeKey canvasKey coverageIdentity (defaultView: Map<string, SduiValue>) =
+        let authority = canvasKey + "|" + (coverageIdentity |> Option.defaultValue "legacy")
+        // A host focus can select another window without changing its market
+        // authority. Ordinary data/query revisions keep this explicit id.
+        match Map.tryFind "viewportCommitId" defaultView with
+        | Some(SduiValue.Text commitId) when not(String.IsNullOrWhiteSpace commitId) ->
+            authority + "|viewport:" + commitId
+        | _ -> authority
+
     let initialViewportWindow minimumCount fallbackCount maximumCount total (defaultView: Map<string, SduiValue>) =
         let requestedCount =
             match Map.tryFind "visibleBars" defaultView with
@@ -4349,8 +4358,11 @@ module RendererModel =
         let bound key =
             row.Options |> Map.tryFind key
             |> Option.bind (function SduiValue.Number value when finiteNumber value -> Some value | _ -> None)
+        let hasVisibleDerivedScalar =
+            TaRowSpec.effectiveTraces row
+            |> Array.exists (fun trace -> trace.Visible && Map.tryFind "derivedScalar" trace.Options = Some(SduiValue.Bool true))
         match bound "yStart", bound "yEnd" with
-        | None, None when row.Kind = TaRowKind.Dmi || row.Kind = TaRowKind.Adx -> Some 0.0, Some 100.0
+        | None, None when (row.Kind = TaRowKind.Dmi || row.Kind = TaRowKind.Adx) && not hasVisibleDerivedScalar -> Some 0.0, Some 100.0
         | authored -> authored
 
     let constrainYAxis (yStart, yEnd) (automaticLow, automaticHigh) =

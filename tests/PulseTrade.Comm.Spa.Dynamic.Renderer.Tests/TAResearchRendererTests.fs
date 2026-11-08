@@ -1070,6 +1070,22 @@ let tests =
             Expect.equal high -100.0 "An empty/out-of-range series cannot move the fixed top."
             Expect.isLessThan low high "The automatic end must leave a usable domain."
 
+        testCase "derived DMI expressions use automatic Y bounds while native DMI remains fixed" <| fun _ ->
+            let trace = { TraceId = "ratio"; Kind = TaTraceKind.Line; DataRef = "ratio"; Label = "R"; Color = "#ef4444"
+                          Width = 1.3; Visible = true; CandleDataRefs = None; Options = Map [ "derivedScalar", SduiValue.Bool true ] }
+            let row = { RowId = "ratio"; Kind = TaRowKind.Dmi; DataRef = "ratio"; HeightWeight = 1.0; Visible = true
+                        Options = Map.empty; Traces = [| trace |] }
+            Expect.equal (RendererModel.rowYAxisBounds row) (None, None) "R=G/L is unbounded even though its source is DMI."
+            Expect.equal (RendererModel.constrainYAxis (RendererModel.rowYAxisBounds row) (-3.0, 220.0)) (-3.0, 220.0) "A legitimate derived value above 100 remains in range."
+            let authored = { row with Options = Map [ "yStart", SduiValue.Number -5.0 ] }
+            Expect.equal (RendererModel.rowYAxisBounds authored) (Some -5.0, None) "An authored one-sided range still wins."
+            let fixedRow = { row with Options = Map [ "yStart", SduiValue.Number -5.0; "yEnd", SduiValue.Number 100.0 ] }
+            Expect.equal (RendererModel.rowYAxisBounds fixedRow) (Some -5.0, Some 100.0) "Explicit two-sided range is preserved."
+            let native = { row with Traces = [| { trace with Options = Map.empty } |] }
+            Expect.equal (RendererModel.rowYAxisBounds native) (Some 0.0, Some 100.0) "Raw DMI is unchanged."
+            let hidden = { row with Traces = [| { trace with Visible = false } |] }
+            Expect.equal (RendererModel.rowYAxisBounds hidden) (Some 0.0, Some 100.0) "Hidden derived output does not change the visible native domain."
+
         testCase "DYN-T-750 superseded range completion cannot undo the latest resize" <| fun _ ->
             let oldReply = TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 1202; Count = 1500 }
             let latestReply = TaCoverageIntentProjectionSettlement.Reanchor { StartIndex = 1202; Count = 356 }
@@ -5969,7 +5985,7 @@ let tests =
         testCase "DYN-T-691 GLOBAL and RESIDENT use their separate calendar axes" <| fun _ ->
             let source =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
-            let authoritativeStart = source.IndexOf("let renderWithProjectionCommitAndDisplayTimeZone", StringComparison.Ordinal)
+            let authoritativeStart = source.IndexOf("let renderWithViewportIntentAndBootstrapContent", StringComparison.Ordinal)
             let globalStart = source.IndexOf("Attr.Create \"data-testid\" \"ta-global-overview-with-axis\"", authoritativeStart, StringComparison.Ordinal)
             let globalEnd = source.IndexOf("Attr.Create \"data-testid\" \"ta-resident-overview-shell\"", globalStart, StringComparison.Ordinal)
             Expect.isGreaterThan globalStart -1 "The GLOBAL overview source block must remain explicit."
@@ -5998,7 +6014,7 @@ let tests =
                 IO.File.ReadAllText(IO.Path.Combine(__SOURCE_DIRECTORY__, "..", "..", "src", "PulseTrade.Comm.Spa.Dynamic.Renderer", "Renderer.fs"))
             let bootstrapStateStart = source.IndexOf("let renderGlobalOverviewBootstrapStateWithDisplayTimeZone", StringComparison.Ordinal)
             let loaderStart = source.IndexOf("let renderGlobalOverviewBootstrapWithDisplayTimeZone", bootstrapStateStart, StringComparison.Ordinal)
-            let authoritativeStart = source.IndexOf("let renderWithProjectionCommitAndDisplayTimeZone", loaderStart, StringComparison.Ordinal)
+            let authoritativeStart = source.IndexOf("let renderWithViewportIntentAndBootstrapContent", loaderStart, StringComparison.Ordinal)
             Expect.isGreaterThan bootstrapStateStart -1 "The standalone bootstrap renderer must be explicit."
             Expect.isGreaterThan loaderStart bootstrapStateStart "The typed loader must be separate from the presentation state."
             Expect.isGreaterThan authoritativeStart loaderStart "The bootstrap must remain separate from authoritative RuntimeState rendering."
@@ -6024,13 +6040,14 @@ let tests =
             for forbidden in [ "CustomEvent"; "AddEventListener"; "fetch("; "IndexedDB" ] do
                 Expect.isFalse (loaderBody.Contains(forbidden, StringComparison.Ordinal)) ("Bootstrap cannot own transport or cache: " + forbidden)
 
-            let replacementStart = source.IndexOf("let renderWithProjectionCommitAndDisplayTimeZoneAndGlobalOverviewBootstrap", authoritativeStart, StringComparison.Ordinal)
+            let replacementStart = source.IndexOf("let renderWithHostViewportIntent", authoritativeStart, StringComparison.Ordinal)
             let replacementEnd = source.IndexOf("let renderWithProjectionCommit", replacementStart + 10, StringComparison.Ordinal)
             Expect.isGreaterThan replacementStart authoritativeStart "The additive authoritative replacement overload must exist."
             Expect.isGreaterThan replacementEnd replacementStart "The replacement overload must have a bounded source range."
             let replacementBody = source.Substring(replacementStart, replacementEnd - replacementStart)
             Expect.stringContains replacementBody "RendererModel.authoritativeGlobalOverviewReady true runtimeState.Value" "An already-authoritative workspace does not reload the bootstrap."
-            Expect.stringContains replacementBody "displayTimeZone bootstrapContent runtimeState" "Bootstrap is content supplied to the same workspace renderer, never a replacement workspace."
+            Expect.stringContains replacementBody "displayTimeZone bootstrapContent registerHostViewportIntent onLocalViewportIntent None runtimeState" "Bootstrap is content supplied to the same workspace renderer, never a replacement workspace."
+            Expect.stringContains replacementBody "displayTimeZone bootstrapContent registerHostViewportIntent onLocalViewportIntent (Some onRowVisibility) runtimeState" "Host-managed visibility uses the same GLOBAL slot and authoritative renderer."
             Expect.stringContains source "\"ta-global-overview-slot\"" "00011 requires a renderer-owned GLOBAL slot outside document-specific content."
             Expect.stringContains source "\"ta-workspace-chrome\"" "The real toolbar and row region must exist in the common workspace shell."
             Expect.isFalse (replacementBody.Contains("if ready then authoritativeDoc else bootstrapDoc", StringComparison.Ordinal)) "00011: switching a standalone GLOBAL into the entire workspace changes its position relative to the toolbar."
@@ -6610,6 +6627,108 @@ let tests =
                 (TaWorkspaceRenderer.navigatorDocumentForRenderedFrame cachedDocument (RuntimeReducer.initial identity))
                 cachedDocument
                 "A cached shell document is only the explicit fallback while no frame document exists."
+
+        testCase "00013 same-axis explicit focus adopts 100 selected bars instead of retaining 1500 tail bars" <| fun _ ->
+            let original = Map ["visibleBars",SduiValue.Number 1500.0]
+            let requested = Map.add "viewportCommitId" (SduiValue.Text "signal-march22") original
+            let scope view = RendererModel.viewportScopeKey "same-canvas" (Some "same-5k-authority") view
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity="same-5k-authority";CoverageRevision=3L;QueryGeneration=1L
+                  Completeness=TaCoverageCompleteness.Partial;TotalObservationCount=None
+                  Segments=[|{SegmentId="resident";StartEventTimeUtc="2026-02-06T15:05:00Z";EndEventTimeExclusiveUtc="2026-07-24T04:16:00Z"
+                              StartObservationOrdinal=0L;ObservationCount=4500L}|]
+                  OverviewAxisRef="overview.5k";OverviewAnchors=[||]
+                  ActiveDetail={BaseAxisRef="axis.5k";StartObservationOrdinal=1518L;ObservationCount=100}
+                  GlobalOverview=Some {TotalObservationCount=78846L;AxisRef="axis.1k";Anchors=[||]
+                                       ResidentStartObservationOrdinal=1L;ResidentObservationCount=7644} }
+            let selected =
+                if scope original <> scope requested then
+                    RendererModel.initialViewportWindowForCoverage 12 1500 1500 4500 requested (Some projection)
+                else {StartIndex=3000;Count=1500}
+            Expect.equal selected {StartIndex=1518;Count=100} "A new explicit focus owns the requested native interval even with the same canvas and data authority."
+
+        testCase "00013 ordinary data and query revisions do not create a new viewport intent" <| fun _ ->
+            let original = Map ["viewportCommitId",SduiValue.Text "focus-a";"visibleBars",SduiValue.Number 100.0]
+            let updated = original |> Map.add "queryGeneration" (SduiValue.Number 9.0) |> Map.add "visibleBars" (SduiValue.Number 800.0)
+            let scope view = RendererModel.viewportScopeKey "canvas" (Some "authority") view
+            Expect.equal (scope original) (scope updated) "Background data, local drag and EDIT cannot reset the viewport just because their revision changed."
+            Expect.notEqual (scope original) (scope (Map.add "viewportCommitId" (SduiValue.Text "focus-b") updated)) "A second user focus in the same authority must still navigate."
+
+        testCase "00013 explicit focus preserves a newer pending event-range gesture" <| fun _ ->
+            let scopeChanged =
+                RendererModel.viewportScopeKey "canvas" (Some "authority") Map.empty <>
+                RendererModel.viewportScopeKey "canvas" (Some "authority") (Map ["viewportCommitId",SduiValue.Text "focus-a"])
+            Expect.isTrue scopeChanged "The host focus is a distinct intent."
+            Expect.isTrue (RendererModel.eventRangeSettlementOwnsViewportScope scopeChanged true false true) "A pending gesture for the same document remains in control while accepted frames reconcile."
+            Expect.isFalse (RendererModel.eventRangeSettlementOwnsViewportScope scopeChanged false false false) "Without a newer gesture, apply the host's selected window."
+
+        testCase "00013 a local pan without coverage intent retains its selected width while focus is in flight" <| fun _ ->
+            let action = SduiAction.VisibleRangeChanged(CanvasInstanceId "canvas",
+                { BaseRowId="price-5k"; StartEventTimeUtc="2026-04-01T13:05:00Z"
+                  EndEventTimeExclusiveUtc="2026-04-01T21:25:00Z"
+                  MaximumBasePoints=1500; CoverageIntent=None })
+            let pending = TaWorkspaceRenderer.pendingEventRangeForAction None 100 2 action
+            Expect.isSome pending "The native local-pan path must participate in viewport settlement, even without a backend coverage intent."
+            pending |> Option.iter (fun value ->
+                Expect.equal value.ObservationCount 100 "The requested viewport is 100 bars, not its allowed maximum of 1500."
+                Expect.equal value.StartEventTimeUtc "2026-04-01T13:05:00Z" "Reconcile by the user's time anchor."
+                Expect.equal value.ViewportIntentGeneration 2 "The newer gesture owns the viewport."
+                let completed, window, rejected =
+                    RendererModel.eventRangeSettlementEffects value.ViewportIntentGeneration 3
+                        (TaCoverageIntentProjectionSettlement.Reanchor {StartIndex=20;Count=100})
+                Expect.isTrue completed "A completed old action releases its dispatch gate."
+                Expect.isNone window "Another zoom after this pan cannot be overwritten."
+                Expect.isFalse rejected "Supersession is not a failed user gesture.")
+
+        testCase "00013 queued local zoom survives late focus only in its own axis authority" <| fun _ ->
+            let action = SduiAction.VisibleRangeChanged(CanvasInstanceId "canvas",
+                { BaseRowId="price-5k"; StartEventTimeUtc="2026-04-01T13:05:00Z"
+                  EndEventTimeExclusiveUtc="2026-04-01T21:25:00Z"
+                  MaximumBasePoints=1500; CoverageIntent=None })
+            let queued = Some(TaQueuedViewportIntent.LocalRange(action, Some "csv-5k"))
+            let matches authority row = TaWorkspaceRenderer.queuedLocalRangeMatchesDocument authority row queued
+            Expect.isTrue (matches (Some "csv-5k") (Some "price-5k")) "A queued zoom must not be discarded by a same-axis focus response."
+            Expect.isFalse (matches (Some "other-source") (Some "price-5k")) "Do not replay coordinates into a different source."
+            Expect.isFalse (matches (Some "csv-5k") (Some "price-60k")) "Do not replay native 5K coordinates into a 60K row."
+            Expect.isFalse (TaWorkspaceRenderer.queuedLocalRangeMatchesDocument (Some "csv-5k") (Some "price-5k") None) "No pending action means the explicit focus can navigate."
+
+        testCase "00013 late focus cannot discard newer resident-boundary or GLOBAL navigation" <| fun _ ->
+            Expect.isTrue (TaWorkspaceRenderer.pendingCoverageOwnsViewportScope true true None) "A dispatched boundary pan remains in control after host focus has started."
+            for queued in
+                [ TaQueuedViewportIntent.CoverageWindow(5000L,100,"GLOBAL")
+                  TaQueuedViewportIntent.AdjacentCoverage(TaCoverageDirection.Earlier,-100)
+                  TaQueuedViewportIntent.NavigatorAdjacentCoverage(TaCoverageDirection.Earlier,-100,100,"RESIDENT") ] do
+                Expect.isTrue (TaWorkspaceRenderer.pendingCoverageOwnsViewportScope true false (Some queued)) "Every queued coverage navigation uses the same ordering rule."
+                Expect.isFalse (TaWorkspaceRenderer.pendingCoverageOwnsViewportScope false true (Some queued)) "Pending coordinates do not carry over to a different workspace, authority or base row."
+            Expect.isFalse (TaWorkspaceRenderer.pendingCoverageOwnsViewportScope true false None) "A focus-start clears older navigation; the new focus is then free to navigate."
+
+        testCase "00013 queued adjacent navigation retains native 9900 after another focus moves the resident to 20000" <| fun _ ->
+            let intent =
+                TaLoadedCoverageCodec.tryWindowIntent (Some PulseTrade.Comm.Spa.Dynamic.Contracts.TaCoverageDirection.Earlier)
+                    (Some 1L) 2L (Some 9900L) 100 |> Option.get
+            let action = SduiAction.VisibleRangeChanged(CanvasInstanceId "canvas",
+                {BaseRowId="price-5k";StartEventTimeUtc="2026-04-01T13:05:00Z";EndEventTimeExclusiveUtc="2026-04-01T21:25:00Z"
+                 MaximumBasePoints=100;CoverageIntent=Some intent})
+            let pending : TaPendingBoundaryPan =
+                {Direction=TaCoverageDirection.Earlier;LegacyDelta= -100;IntentTimeline=[|"2026-04-01T21:25:00Z"|]
+                 IntentWindow={StartIndex=0;Count=100};TargetStartObservationOrdinal=Some 9900L;ObservationCount=100;QueryGeneration=2L}
+            let afterFocus : TaLoadedCoverageProjection =
+                {CoverageIdentity="native-5k";CoverageRevision=8L;QueryGeneration=9L;Completeness=TaCoverageCompleteness.Partial
+                 TotalObservationCount=Some 30000L;OverviewAxisRef="axis.5k";OverviewAnchors=[||];GlobalOverview=None
+                 Segments=[|{SegmentId="resident";StartEventTimeUtc="2026-06-01T00:00:00Z";EndEventTimeExclusiveUtc="2026-07-01T00:00:00Z"
+                             StartObservationOrdinal=20000L;ObservationCount=4500L}|]
+                 ActiveDetail={BaseAxisRef="axis.5k";StartObservationOrdinal=20000L;ObservationCount=100}}
+            match TaWorkspaceRenderer.refreshPreparedCoverageAction (Some "native-5k") (Some afterFocus) action pending with
+            | Some(SduiAction.VisibleRangeChanged(_, change), refreshed) ->
+                let actual=change.CoverageIntent.Value
+                Expect.equal actual.StartObservationOrdinal (Some 9900L) "The user's old-axis target must not become 19900."
+                Expect.equal change.StartEventTimeUtc "2026-04-01T13:05:00Z" "Keep the captured event-time anchor too."
+                Expect.equal (actual.ExpectedCoverageRevision,actual.QueryGeneration) (Some 8L,10L) "Refresh only the optimistic concurrency fields."
+                Expect.equal refreshed.IntentTimeline pending.IntentTimeline "Settlement must use the gesture's original axis."
+                Expect.equal refreshed.TargetStartObservationOrdinal (Some 9900L) "HTTP and renderer settlement share the same captured target."
+                Expect.equal refreshed.QueryGeneration 10L "Wait for the refreshed request's projection."
+            | _ -> failtest "A valid same-authority captured request should remain dispatchable."
+            Expect.isNone (TaWorkspaceRenderer.refreshPreparedCoverageAction (Some "other-source") (Some afterFocus) action pending) "Source changes reject the queued request instead of guessing a new origin."
     ]
 
 [<EntryPoint>]

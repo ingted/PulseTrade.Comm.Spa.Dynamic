@@ -72,6 +72,7 @@ type TaQueryViewportSettlementDiagnostics =
 [<RequireQualifiedAccess>]
 type TaQueuedViewportIntent =
     | LocalRange of SduiAction * string option
+    | PreparedCoverage of SduiAction * TaPendingBoundaryPan * string option * string
     | AdjacentCoverage of PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection * int
     | NavigatorAdjacentCoverage of PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection * int * int * string
     | CoverageWindow of int64 * int * string
@@ -82,6 +83,63 @@ type TaRendererDisplayTime =
 
 [<JavaScript>]
 module TaWorkspaceRenderer =
+    let pendingEventRangeForAction (projection: TaLoadedCoverageProjection option) visibleCount generation action =
+        match action with
+        | SduiAction.VisibleRangeChanged(_, change) ->
+            let pending count purpose queryGeneration =
+                Some
+                    { BaseRowId = change.BaseRowId
+                      StartEventTimeUtc = change.StartEventTimeUtc
+                      EndEventTimeExclusiveUtc = change.EndEventTimeExclusiveUtc
+                      ObservationCount = count
+                      Purpose = purpose
+                      QueryGeneration = queryGeneration
+                      ViewportIntentGeneration = generation }
+            match change.CoverageIntent with
+            | Some intent
+                when intent.RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds
+                     && intent.StartObservationOrdinal.IsNone
+                     && intent.Direction.IsNone ->
+                pending intent.ObservationCount intent.Purpose intent.QueryGeneration
+            | None when visibleCount > 0 ->
+                // Plain local pan/zoom has no backend coverage intent, but its
+                // selected time anchor still owns presentation while HTTP waits.
+                pending visibleCount TaCoverageWindowPurpose.MainPlotPan
+                    (projection |> Option.map _.QueryGeneration |> Option.defaultValue 0L)
+            | _ -> None
+        | _ -> None
+
+    let queuedLocalRangeMatchesDocument coverageIdentity baseRowId queued =
+        match queued with
+        | Some(TaQueuedViewportIntent.LocalRange(SduiAction.VisibleRangeChanged(_, change), capturedIdentity)) ->
+            capturedIdentity = coverageIdentity && baseRowId = Some change.BaseRowId
+        | _ -> false
+
+    let pendingCoverageOwnsViewportScope sameAuthorityAndRow boundaryPending queued =
+        sameAuthorityAndRow
+        && (boundaryPending
+            || match queued with
+               | Some(TaQueuedViewportIntent.PreparedCoverage _)
+               | Some(TaQueuedViewportIntent.CoverageWindow _)
+               | Some(TaQueuedViewportIntent.AdjacentCoverage _)
+               | Some(TaQueuedViewportIntent.NavigatorAdjacentCoverage _) -> true
+               | _ -> false)
+
+    let refreshPreparedCoverageAction capturedIdentity (projection: TaLoadedCoverageProjection option) action (pending: TaPendingBoundaryPan) =
+        if capturedIdentity <> (projection |> Option.map _.CoverageIdentity) then None
+        else
+            match action, projection with
+            | SduiAction.VisibleRangeChanged(canvasId, change), Some current ->
+                match change.CoverageIntent with
+                | Some intent ->
+                    let refreshed =
+                        { intent with ExpectedCoverageRevision=Some current.CoverageRevision; QueryGeneration=current.QueryGeneration+1L }
+                    Some(SduiAction.VisibleRangeChanged(canvasId, {change with CoverageIntent=Some refreshed}),
+                         {pending with QueryGeneration=refreshed.QueryGeneration})
+                | None -> Some(action, pending)
+            | SduiAction.VisibleRangeChanged _, None -> Some(action, pending)
+            | _ -> None
+
     let applyResolvedViewportWindow total window (current: TaRendererUiState) =
         { current with
             Window = window
@@ -2925,12 +2983,15 @@ module TaWorkspaceRenderer =
         |> Async.StartImmediate
         renderGlobalOverviewBootstrapStateWithDisplayTimeZone displayTimeZone overview.View
 
-    let renderWithProjectionCommitAndDisplayTimeZoneAndBootstrapContent
+    let renderWithViewportIntentAndBootstrapContent
         (options: TaRendererOptions)
         (callbacks: TaRendererCallbacks)
         (onProjectionCommitted: RuntimeState -> unit)
         (displayTimeZone: View<SduiDisplayTimeZone>)
         (bootstrapContent: Doc option)
+        (registerHostViewportIntent: (unit -> unit) -> unit)
+        (onLocalViewportIntent: unit -> unit)
+        (onRowVisibility: (string -> bool -> string -> int -> (Result<unit, string> -> unit) -> unit) option)
         (runtimeState: Var<RuntimeState>) =
         ensureAxisResizeTracking ()
         let globalContent = Var.Create(bootstrapContent |> Option.defaultValue Doc.Empty)
@@ -3015,6 +3076,7 @@ module TaWorkspaceRenderer =
         let mutable renderedNavigatorDraft: TaVisibleWindow option = None
         let globalResidentDraft = Var.Create<TaResidentCoverageWindow option> None
         let mutable pendingGlobalResidentIntent: TaCoverageWindowIntent option = None
+        let mutable pendingGlobalResidentGeneration = 0
         let mutable addRowSequence = 0
         let mutable pendingAddRowId: string option = None
         let mutable editingRowId: string option = None
@@ -3252,7 +3314,7 @@ module TaWorkspaceRenderer =
 
         let viewportScopeKey (state: RuntimeState) (document: TaWorkspaceDocument) =
             let canvasKey = canvasIdText state.Identity.CanvasInstanceId
-            canvasKey + "|" + (coverageIdentity state document |> Option.defaultValue "legacy")
+            RendererModel.viewportScopeKey canvasKey (coverageIdentity state document) document.DefaultView
 
         let guideScope (state: RuntimeState) =
             state.Document
@@ -3290,6 +3352,9 @@ module TaWorkspaceRenderer =
         let mutable queuedQuery: (TaQueryChange * int) option = None
         let mutable pendingBoundaryPan: TaPendingBoundaryPan option = None
         let mutable viewportIntentGeneration = 0
+        let beginLocalViewportIntent () =
+            viewportIntentGeneration <- viewportIntentGeneration + 1
+            onLocalViewportIntent ()
         let mutable pendingEventRangeSettlement: TaPendingEventRangeSettlement option = None
         let mutable pendingQueryViewportSettlement: TaPendingQueryViewportSettlement option = None
         let mutable queryViewportSettlementDiagnostics =
@@ -3330,6 +3395,21 @@ module TaWorkspaceRenderer =
         let mutable dispatchCoverageWindow = fun (_: int64) (_: int) (_: string) -> ()
         let mutable settlePendingCoverageProjection = fun () -> false
         let mutable settlePendingEventRangeProjection = fun () -> false
+        registerHostViewportIntent (fun () ->
+            // Focus-start is synchronous with the user's click, independent of
+            // reactive rendering and HTTP completion order. Keep the old chart.
+            viewportIntentGeneration <- viewportIntentGeneration + 1
+            cancelGlobalResidentDrag |> Option.iter (fun cancel -> cancel ())
+            cancelMainPlotDrag |> Option.iter (fun cancel -> cancel ())
+            pendingBoundaryPan <- None
+            pendingEventRangeSettlement <- None
+            pendingQueryViewportSettlement <- None
+            pendingGlobalResidentIntent <- None
+            globalResidentDraft.Value <- None
+            queuedViewportIntent <- None
+            residentNavigatorAuthority.Value <- None
+            draftWindow.Value <- None
+            clearNavigatorPreview ())
         let preparedRowsReady = Var.Create false
         let viewportDataReady = Var.Create false
         let commandsDisabledView =
@@ -3421,50 +3501,53 @@ module TaWorkspaceRenderer =
         let startAction action successText onAccepted =
             startActionWith action successText onAccepted ignore
         let pendingEventRangeSettlementForAction action =
-            match action with
-            | SduiAction.VisibleRangeChanged(_, change) ->
-                match change.CoverageIntent with
-                | Some intent
-                    when intent.RangeAuthority = TaCoverageRangeAuthority.ExplicitBounds
-                         && intent.StartObservationOrdinal.IsNone
-                         && intent.Direction.IsNone ->
-                    Some
-                        { BaseRowId = change.BaseRowId
-                          StartEventTimeUtc = change.StartEventTimeUtc
-                          EndEventTimeExclusiveUtc = change.EndEventTimeExclusiveUtc
-                          ObservationCount = intent.ObservationCount
-                          Purpose = intent.Purpose
-                          QueryGeneration = intent.QueryGeneration
-                          ViewportIntentGeneration = viewportIntentGeneration }
-                | _ -> None
-            | _ -> None
+            pendingEventRangeForAction
+                (coverageProjection runtimeState.Value)
+                uiState.Value.Window.Count
+                viewportIntentGeneration
+                action
         let pendingEventRangeMatchesDocument (document: TaWorkspaceDocument) =
             match pendingEventRangeSettlement with
             | Some pending -> document.BaseRowId = Some pending.BaseRowId
             | None -> false
         let startVisibleRangeAction action =
+            let actionIntentGeneration = viewportIntentGeneration
             pendingEventRangeSettlement <- pendingEventRangeSettlementForAction action
+            let ownsPending () =
+                pendingEventRangeSettlement
+                |> Option.exists (fun pending -> pending.ViewportIntentGeneration = actionIntentGeneration)
             startActionWithFeedback
                 action
                 "Visible range synchronized."
                 (fun () -> None)
                 (fun () ->
-                    pendingEventRangeSettlement <- None
-                    settleVisibleRangeDraft ())
+                    if ownsPending () then
+                        pendingEventRangeSettlement <- None
+                    if actionIntentGeneration = viewportIntentGeneration then
+                        settleVisibleRangeDraft ())
                 (fun () ->
-                    if settlePendingEventRangeProjection () || pendingEventRangeSettlement.IsNone then
+                    if ownsPending () then settlePendingEventRangeProjection () |> ignore
+                    if actionIntentGeneration = viewportIntentGeneration && pendingEventRangeSettlement.IsNone then
                         settleVisibleRangeDraft ())
         let startCoverageWindowAction action pending successText =
+            let actionIntentGeneration = viewportIntentGeneration
             pendingBoundaryPan <- Some pending
+            let ownsPending () =
+                pendingBoundaryPan |> Option.exists (fun current -> obj.ReferenceEquals(current, pending))
             startActionWithFeedback
                 action
                 successText
                 (fun () -> None)
                 (fun () ->
-                    pendingBoundaryPan <- None
-                    settleVisibleRangeDraft ())
+                    if ownsPending () then
+                        pendingBoundaryPan <- None
+                    if actionIntentGeneration = viewportIntentGeneration then
+                        settleVisibleRangeDraft ())
                 (fun () ->
-                    if settlePendingCoverageProjection () || pendingBoundaryPan.IsNone then
+                    if ownsPending () then
+                        if actionIntentGeneration = viewportIntentGeneration then settlePendingCoverageProjection () |> ignore
+                        else pendingBoundaryPan <- None
+                    if actionIntentGeneration = viewportIntentGeneration && pendingBoundaryPan.IsNone then
                         settleVisibleRangeDraft ())
         let sendOrQueueVisibleRangeAction action =
             if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
@@ -3472,8 +3555,14 @@ module TaWorkspaceRenderer =
                 queuedViewportIntent <- Some(TaQueuedViewportIntent.LocalRange(action, identity))
             else
                 startVisibleRangeAction action
+        let sendOrQueuePreparedCoverageAction action pending successText =
+            if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
+                let identity = coverageProjection runtimeState.Value |> Option.map _.CoverageIdentity
+                queuedViewportIntent <- Some(TaQueuedViewportIntent.PreparedCoverage(action, pending, identity, successText))
+                setUiState {uiState.Value with Feedback="Coverage navigation queued."}
+            else startCoverageWindowAction action pending successText
         let sendOrQueueCoverageWindowAction targetStart targetCount successText =
-            viewportIntentGeneration <- viewportIntentGeneration + 1
+            beginLocalViewportIntent ()
             recordViewportDispatch "coverage-window" (Some targetStart) (Some targetCount) None
             if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
                 queuedViewportIntent <- Some(TaQueuedViewportIntent.CoverageWindow(targetStart, targetCount, successText))
@@ -3481,19 +3570,24 @@ module TaWorkspaceRenderer =
             else
                 dispatchCoverageWindow targetStart targetCount successText
         let sendOrQueueNavigatorAdjacentCoverage direction delta observationCount successText =
-            viewportIntentGeneration <- viewportIntentGeneration + 1
+            beginLocalViewportIntent ()
             recordViewportDispatch "navigator-adjacent" None (Some observationCount) None
-            if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
-                queuedViewportIntent <-
-                    Some(TaQueuedViewportIntent.NavigatorAdjacentCoverage(direction, delta, observationCount, successText))
-                setUiState { uiState.Value with Feedback = "Adjacent navigator coverage request queued." }
-            else
-                dispatchNavigatorAdjacentCoverage direction delta observationCount successText
+            dispatchNavigatorAdjacentCoverage direction delta observationCount successText
         flushQueuedViewportIntent <- fun () ->
             match queuedViewportIntent with
             | Some intent when uiState.Value.PendingActionId.IsNone && pendingBoundaryPan.IsNone && committedCoverageReady () && not (remoteDisabled runtimeState.Value.Poll) ->
                 queuedViewportIntent <- None
                 match intent with
+                | TaQueuedViewportIntent.PreparedCoverage(action, pending, capturedIdentity, successText) ->
+                    let sameRow =
+                        match action, runtimeState.Value.Document with
+                        | SduiAction.VisibleRangeChanged(_, change), Some document -> document.BaseRowId=Some change.BaseRowId
+                        | _ -> false
+                    if sameRow then
+                        match refreshPreparedCoverageAction capturedIdentity (coverageProjection runtimeState.Value) action pending with
+                        | Some(refreshed, refreshedPending) -> startCoverageWindowAction refreshed refreshedPending successText
+                        | None -> rejectNavigatorDraft "Queued coverage authority changed before dispatch."
+                    else rejectNavigatorDraft "Queued coverage base row changed before dispatch."
                 | TaQueuedViewportIntent.LocalRange(action, capturedIdentity) ->
                     match RendererModel.tryRefreshQueuedEventRangeAction capturedIdentity (coverageProjection runtimeState.Value) action with
                     | Some refreshed -> startVisibleRangeAction refreshed
@@ -3721,6 +3815,18 @@ module TaWorkspaceRenderer =
             |> Option.iter (fun feedback ->
                 setUiState { uiState.Value with Feedback = feedback })
 
+        let pendingNavigationMatchesNextDocument (state: RuntimeState) (document: TaWorkspaceDocument) =
+            let committedState, _ = chartCommittedFrame.Value
+            let sameAuthorityAndRow =
+                committedState.Identity = state.Identity
+                && (committedState.Document
+                    |> Option.exists (fun previous ->
+                        previous.BaseRowId = document.BaseRowId
+                        && coverageIdentity committedState previous = coverageIdentity state document))
+            queuedLocalRangeMatchesDocument (coverageIdentity state document) document.BaseRowId queuedViewportIntent
+            || pendingCoverageOwnsViewportScope sameAuthorityAndRow
+                (pendingBoundaryPan.IsSome || pendingGlobalResidentIntent.IsSome) queuedViewportIntent
+
         let acceptPreparedDataCore refreshRows (next: RuntimeState) nextPreparedData =
             let committedState, _ = chartCommittedFrame.Value
             let nextChartTopology = chartTopologySignaturePrepared next nextPreparedData
@@ -3730,6 +3836,8 @@ module TaWorkspaceRenderer =
                 |> Option.defaultValue false
             let pendingEventRangeMatchesNextDocument =
                 next.Document |> Option.exists pendingEventRangeMatchesDocument
+            let pendingNavigationMatches =
+                next.Document |> Option.exists (pendingNavigationMatchesNextDocument next)
             let eventRangeSettlementConsumed =
                 if viewportScopeChanged && not pendingEventRangeMatchesNextDocument then
                     pendingEventRangeSettlement <- None
@@ -3739,10 +3847,10 @@ module TaWorkspaceRenderer =
             let eventRangeSettlementOwnsViewportScope =
                 RendererModel.eventRangeSettlementOwnsViewportScope
                     viewportScopeChanged
-                    pendingEventRangeMatchesNextDocument
+                    (pendingEventRangeMatchesNextDocument || pendingNavigationMatches)
                     eventRangeSettlementConsumed
-                    pendingEventRangeSettlement.IsSome
-            if eventRangeSettlementOwnsViewportScope && eventRangeSettlementConsumed then
+                    (pendingEventRangeSettlement.IsSome || pendingNavigationMatches)
+            if eventRangeSettlementOwnsViewportScope && (eventRangeSettlementConsumed || pendingNavigationMatches) then
                 next.Document
                 |> Option.iter (fun document ->
                     defaultViewportAppliedToCanvas <- Some(viewportScopeKey next document))
@@ -4020,22 +4128,23 @@ module TaWorkspaceRenderer =
             | None ->
                 RendererModel.prepareDataIncrementalScheduled (createPreparationSchedule generation (RendererModel.preparationWorkBudget false)) previous next.Data accept
 
-        let clearGlobalResidentIntent intent =
-            if pendingGlobalResidentIntent = Some intent then
+        let clearGlobalResidentIntent generation intent =
+            if pendingGlobalResidentGeneration = generation && pendingGlobalResidentIntent = Some intent then
                 pendingGlobalResidentIntent <- None
                 globalResidentDraft.Value <- None
-                draftWindow.Value <- None
+                if generation = viewportIntentGeneration then draftWindow.Value <- None
 
         let settleGlobalResidentProjection (next: RuntimeState) =
             match pendingGlobalResidentIntent, next.Document with
             | Some intent, Some document ->
                 match readLoadedCoverage document.DefaultView next.Data with
                 | Some projection when RendererModel.globalResidentProjectionMatches intent projection ->
-                    clearGlobalResidentIntent intent
+                    clearGlobalResidentIntent pendingGlobalResidentGeneration intent
                 | Some projection ->
                     let expectedRevision = intent.ExpectedCoverageRevision |> Option.defaultValue -1L
-                    if projection.QueryGeneration >= intent.QueryGeneration && projection.CoverageRevision > expectedRevision then
-                        clearGlobalResidentIntent intent
+                    if uiState.Value.PendingActionId.IsNone
+                       && projection.QueryGeneration >= intent.QueryGeneration && projection.CoverageRevision > expectedRevision then
+                        clearGlobalResidentIntent pendingGlobalResidentGeneration intent
                 | None -> ()
             | _ -> ()
 
@@ -4055,12 +4164,14 @@ module TaWorkspaceRenderer =
                 |> Option.defaultValue false
             let pendingEventRangeMatchesNextDocument =
                 next.Document |> Option.exists pendingEventRangeMatchesDocument
+            let pendingNavigationMatches =
+                next.Document |> Option.exists (pendingNavigationMatchesNextDocument next)
             let eventRangeSettlementOwnsPreparation =
                 RendererModel.eventRangeSettlementOwnsViewportScope
                     viewportScopeChanged
-                    pendingEventRangeMatchesNextDocument
+                    (pendingEventRangeMatchesNextDocument || pendingNavigationMatches)
                     false
-                    pendingEventRangeSettlement.IsSome
+                    (pendingEventRangeSettlement.IsSome || pendingNavigationMatches)
             if next.Identity <> observedDataState.Identity then
                 cancelMainPlotDrag |> Option.iter (fun cancel -> cancel ())
                 cancelGlobalResidentDrag |> Option.iter (fun cancel -> cancel ())
@@ -4096,10 +4207,10 @@ module TaWorkspaceRenderer =
             else
                 if dataChanged then
                     if viewportScopeChanged then
-                        queuedViewportIntent <- None
-                        pendingBoundaryPan <- None
-                        residentNavigatorAuthority.Value <- None
                         if not eventRangeSettlementOwnsPreparation then
+                            queuedViewportIntent <- None
+                            pendingBoundaryPan <- None
+                            residentNavigatorAuthority.Value <- None
                             pendingEventRangeSettlement <- None
                             if finishNavigatorDrag.IsNone then
                                 draftWindow.Value <- None
@@ -4242,7 +4353,7 @@ module TaWorkspaceRenderer =
                          && document.BaseRowId = expectedDocument.BaseRowId ->
                     let changed, bounded = commitLocalWindow followLatest window
                     if changed then
-                        viewportIntentGeneration <- viewportIntentGeneration + 1
+                        beginLocalViewportIntent ()
                     if changed && actionAllowed "visible-range-changed" then
                         match rangeFor expectedDocument prepared bounded with
                         | Some range ->
@@ -4308,7 +4419,7 @@ module TaWorkspaceRenderer =
                 localPreview |> Option.iter (fun local ->
                     let followLatest = local.StartIndex = RendererModel.viewportMaximumStart (referenceLength ()) local
                     commitLocalWindow followLatest local |> ignore)
-                viewportIntentGeneration <- viewportIntentGeneration + 1
+                beginLocalViewportIntent ()
                 sendOrQueueVisibleRangeAction
                     (SduiAction.VisibleRangeChanged(currentCanvasId (),
                         { BaseRowId=range.BaseRowId; StartEventTimeUtc=range.StartEventTimeUtc
@@ -4323,6 +4434,41 @@ module TaWorkspaceRenderer =
             match runtimeState.Value.Document with
             | Some document -> setWindowFromPrepared document latestPreparedData None followLatest window
             | None -> draftWindow.Value <- None
+
+        let mutable rowVisibilitySequence = 0
+        let mutable lastHostVisibilityAnchor: (CanvasInstanceId * string * int) option = None
+        let setRowVisibility rowId visible =
+            match onRowVisibility with
+            | None ->
+                let hidden =
+                    if visible then Set.remove rowId uiState.Value.HiddenRows
+                    else Set.add rowId uiState.Value.HiddenRows
+                setUiState { uiState.Value with HiddenRows = hidden }
+            | Some change when not (commandsDisabledNow ()) ->
+                match runtimeState.Value.Document with
+                | None -> ()
+                | Some document ->
+                    let window = resolvedWindow uiState.Value
+                    let anchor =
+                        RendererModel.visibleEventRangePrepared document latestPreparedData window
+                        |> Option.map (fun range -> range.EndEventTimeExclusiveUtc, window.Count)
+                        |> Option.orElseWith (fun () ->
+                            lastHostVisibilityAnchor |> Option.bind (fun (canvas, rightEdge, count) ->
+                                if canvas = currentCanvasId () then Some(rightEdge, count) else None))
+                    match anchor with
+                    | None -> setUiState { uiState.Value with Feedback = "The committed chart range is still loading." }
+                    | Some(rightEdge, count) ->
+                        lastHostVisibilityAnchor <- Some(currentCanvasId (), rightEdge, count)
+                        beginLocalViewportIntent ()
+                        rowVisibilitySequence <- rowVisibilitySequence + 1
+                        let requestId = "row-visibility-" + rowId + "-" + string rowVisibilitySequence
+                        setUiState { uiState.Value with PendingActionId = Some requestId; Feedback = "Updating visible scales…" }
+                        change rowId visible rightEdge count (fun result ->
+                            if uiState.Value.PendingActionId = Some requestId then
+                                match result with
+                                | Ok () -> setUiState { uiState.Value with PendingActionId = None; HiddenRows = Set.empty; Feedback = "" }
+                                | Error issue -> setUiState { uiState.Value with PendingActionId = None; Feedback = issue })
+            | Some _ -> ()
 
         let dispatchAdjacentCoverageNow direction delta =
             if actionAllowed "visible-range-changed" && preparedRowsReady.Value && not (localViewportDisabled runtimeState.Value.Poll) then
@@ -4371,20 +4517,18 @@ module TaWorkspaceRenderer =
                             { change with
                                 MaximumBasePoints = count
                                 CoverageIntent = coverageIntent }
-                        pendingBoundaryPan <-
-                            Some
-                                { Direction = direction
-                                  LegacyDelta = delta
-                                  IntentTimeline = timeline
-                                  IntentWindow = window
-                                  TargetStartObservationOrdinal = targetStart
-                                  ObservationCount = count
-                                  QueryGeneration = queryGeneration }
-                        startActionWith
+                        let pending =
+                            { Direction = direction
+                              LegacyDelta = delta
+                              IntentTimeline = timeline
+                              IntentWindow = window
+                              TargetStartObservationOrdinal = targetStart
+                              ObservationCount = count
+                              QueryGeneration = queryGeneration }
+                        sendOrQueuePreparedCoverageAction
                             (SduiAction.VisibleRangeChanged(currentCanvasId (), request))
+                            pending
                             (if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then "Earlier coverage requested." else "Later coverage requested.")
-                            ignore
-                            (fun () -> pendingBoundaryPan <- None)
                     | None ->
                         setUiState
                             { uiState.Value with
@@ -4445,7 +4589,7 @@ module TaWorkspaceRenderer =
                                     { range with
                                         MaximumBasePoints = requestObservationCount
                                         CoverageIntent = Some effectiveIntent })
-                            startCoverageWindowAction action pending successText
+                            sendOrQueuePreparedCoverageAction action pending successText
                         | None -> rejectNavigatorDraft "Adjacent navigator coverage intent is invalid."
                     | _ ->
                         rejectNavigatorDraft
@@ -4459,17 +4603,8 @@ module TaWorkspaceRenderer =
 
         let requestAdjacentCoverage direction delta =
             if actionAllowed "visible-range-changed" && preparedRowsReady.Value && not (localViewportDisabled runtimeState.Value.Poll) then
-                if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
-                    queuedViewportIntent <- Some(TaQueuedViewportIntent.AdjacentCoverage(direction, delta))
-                    setUiState
-                        { uiState.Value with
-                            Feedback =
-                                if direction = PulseTrade.Comm.Spa.Dynamic.Renderer.TaCoverageDirection.Earlier then
-                                    "Earlier coverage queued."
-                                else
-                                    "Later coverage queued." }
-                else
-                    dispatchAdjacentCoverage direction delta
+                beginLocalViewportIntent ()
+                dispatchAdjacentCoverage direction delta
 
         let panWindow delta =
             let current = uiState.Value
@@ -5365,14 +5500,17 @@ module TaWorkspaceRenderer =
                                             else
                                                 match RendererModel.tryGlobalResidentRelocationIntent projection draft with
                                                 | Some intent ->
+                                                    beginLocalViewportIntent ()
+                                                    let intentGeneration = viewportIntentGeneration
                                                     globalResidentDraft.Value <- Some draft
                                                     pendingGlobalResidentIntent <- Some intent
+                                                    pendingGlobalResidentGeneration <- intentGeneration
                                                     navigatorRoot.SetAttribute("data-drag-outcome", "request-resident-relocation")
                                                     startActionWith
                                                         (SduiAction.ResidentCoverageChanged(currentCanvasId (), baseRowId, intent))
                                                         "Resident coverage relocation requested."
                                                         ignore
-                                                        (fun () -> clearGlobalResidentIntent intent)
+                                                        (fun () -> clearGlobalResidentIntent intentGeneration intent)
                                                 | None ->
                                                     globalResidentDraft.Value <- None
                                                     navigatorRoot.SetAttribute("data-drag-outcome", "invalid-resident-draft")
@@ -6377,7 +6515,7 @@ module TaWorkspaceRenderer =
                     |> View.Map (fun ui ->
                         div [ Attr.Create "data-testid" "ta-row-toggles"; attr.style "display:flex; flex-direction:column; align-items:stretch; gap:4px; width:100%; min-width:0;" ] [
                             for row in state.Document |> Option.map _.Rows |> Option.defaultValue [||] do
-                                let hidden = Set.contains row.RowId ui.HiddenRows
+                                let hidden = not row.Visible || Set.contains row.RowId ui.HiddenRows
                                 let displayLabel = rowDisplayLabelWithEditor (editorSchemasNow ()) row
                                 let editable =
                                     match TaRowEditorBinding.tryResolve (editorSchemasNow ()) row with
@@ -6406,12 +6544,9 @@ module TaWorkspaceRenderer =
                                                 Attr.Create "aria-pressed" (if hidden then "false" else "true")
                                                 attr.title displayLabel
                                                 attr.style (if hidden then "height:26px; min-width:0; max-width:360px; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid #c8d2df; border-right:0; border-radius:4px 0 0 4px; background:#fff; color:#7a8798; padding:2px 7px; font-size:11px; cursor:pointer;" else "height:26px; min-width:0; max-width:360px; flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid #7da39d; border-right:0; border-radius:4px 0 0 4px; background:#edf8f6; color:#155d55; padding:2px 7px; font-size:11px; cursor:pointer;")
-                                                on.click (fun _ _ ->
-                                                    let nextHidden =
-                                                        if hidden then Set.remove row.RowId uiState.Value.HiddenRows
-                                                        else Set.add row.RowId uiState.Value.HiddenRows
-
-                                                    setUiState { uiState.Value with HiddenRows = nextHidden })
+                                                if onRowVisibility.IsSome then
+                                                    attr.disabledBool commandsDisabledView
+                                                on.click (fun _ _ -> setRowVisibility row.RowId hidden)
                                             ] [ text displayLabel ]
                                             if editable then
                                                 yield button [
@@ -7091,6 +7226,11 @@ module TaWorkspaceRenderer =
             |> Doc.EmbedView
         ]
 
+    let renderWithProjectionCommitAndDisplayTimeZoneAndBootstrapContent
+        options callbacks onProjectionCommitted displayTimeZone bootstrapContent runtimeState =
+        renderWithViewportIntentAndBootstrapContent
+            options callbacks onProjectionCommitted displayTimeZone bootstrapContent ignore ignore None runtimeState
+
     let renderWithProjectionCommitAndDisplayTimeZone
         (options: TaRendererOptions)
         (callbacks: TaRendererCallbacks)
@@ -7100,18 +7240,33 @@ module TaWorkspaceRenderer =
         renderWithProjectionCommitAndDisplayTimeZoneAndBootstrapContent
             options callbacks onProjectionCommitted displayTimeZone None runtimeState
 
-    let renderWithProjectionCommitAndDisplayTimeZoneAndGlobalOverviewBootstrap
+    let renderWithHostViewportIntent
         (options: TaRendererOptions)
         (callbacks: TaRendererCallbacks)
         (onProjectionCommitted: RuntimeState -> unit)
         (displayTimeZone: View<SduiDisplayTimeZone>)
         (loader: unit -> Async<TaGlobalCoverageOverview option>)
+        (registerHostViewportIntent: (unit -> unit) -> unit)
+        (onLocalViewportIntent: unit -> unit)
         (runtimeState: Var<RuntimeState>) =
         let bootstrapContent =
             if RendererModel.authoritativeGlobalOverviewReady true runtimeState.Value then None
             else Some(renderGlobalOverviewBootstrapWithDisplayTimeZone displayTimeZone loader)
-        renderWithProjectionCommitAndDisplayTimeZoneAndBootstrapContent
-            options callbacks onProjectionCommitted displayTimeZone bootstrapContent runtimeState
+        renderWithViewportIntentAndBootstrapContent
+            options callbacks onProjectionCommitted displayTimeZone bootstrapContent registerHostViewportIntent onLocalViewportIntent None runtimeState
+
+    let renderWithHostViewportIntentAndRowVisibility
+        options callbacks onProjectionCommitted displayTimeZone loader registerHostViewportIntent onLocalViewportIntent onRowVisibility (runtimeState: Var<RuntimeState>) =
+        let bootstrapContent =
+            if RendererModel.authoritativeGlobalOverviewReady true runtimeState.Value then None
+            else Some(renderGlobalOverviewBootstrapWithDisplayTimeZone displayTimeZone loader)
+        renderWithViewportIntentAndBootstrapContent
+            options callbacks onProjectionCommitted displayTimeZone bootstrapContent registerHostViewportIntent onLocalViewportIntent (Some onRowVisibility) runtimeState
+
+    let renderWithProjectionCommitAndDisplayTimeZoneAndGlobalOverviewBootstrap
+        options callbacks onProjectionCommitted displayTimeZone loader runtimeState =
+        renderWithHostViewportIntent
+            options callbacks onProjectionCommitted displayTimeZone loader ignore ignore runtimeState
 
     let renderWithProjectionCommit
         (options: TaRendererOptions)
