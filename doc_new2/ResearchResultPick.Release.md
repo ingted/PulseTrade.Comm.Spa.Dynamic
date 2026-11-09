@@ -13,3 +13,9 @@ Research 的 native UI 驗收範圍與排除項見 Symbolics repo 的 `doc_new2/
 Source checkpoint `0b4c1b31fc9aedfaaaab422e1bd498fdeb0660b5` 已推送。Renderer 0.3.53 與 Interactive.Client 0.3.51 已由 opt-in Release Pack hook 發布並同步 SDK library-packs，來源與本機 feed 的 SHA-256 相同。NuGet 回下載的每個原始 entry 均相符，新增的 repository signature 也已通過 `dotnet nuget verify --all`；因簽章而不同的 archive hash 分別留存於 Symbolics repo `log/20261108/00013-nuget-download-verification.json`。
 
 兩個 package 內的 DLL 與 18883 的 Research 0.1.85 實際載入產物相同。該服務已重新驗證真 CSV 的14列與48根可視範圍；18884正式0.1.61仍隔離保留。
+
+## 2026-11-10 Interactive.Client 0.3.53 source checkpoint（PARTIAL）
+
+0.3.51→0.3.53；0.3.52 為未發布的中間候選。FramePump 將非視覺資料分批工作交給 MessageChannel，維持 8ms budget、取消/generation fence、驗證與 atomic commit。已解析的 JSON snapshot 直接交給既有 WebSharper Json.Decode，不再逐批 stringify/parse。沒有修改 Renderer 或 Contracts，FSharp.Core 保持10.1.402。新版 exact local package consumer 59/59，Research完整WebSharper建置0 errors。
+
+18883 的 Research 0.1.86 候選042637已實測原30K GLOBAL最左端→2020、1500與48根保留及延後5秒無回跳；服務與served bundle hash一致。原30K全流程仍8.565秒（decode pump2.199秒），不宣告GLOBAL延遲完全解決。本輪00005策略完成不搶選擇及00013原生930K alias Tagging真資料證據，集中於Symbolics的doc_new2/ResearchResultPick.Acceptance.md與log/20261110。完整歷史回測依使用者決議待驗。發布結果後續追加。

@@ -108,6 +108,12 @@ module BrowserRuntimeFramePump =
 
     let mutable browserScheduleSequence = 0
 
+    // Decoding is bounded computation, not a paint. A posted task yields to input
+    // without waiting for a display frame (or a throttled background animation).
+    // Close both ports before invoking work, including when the work throws.
+    [<Inline """(function(work){var c=new MessageChannel();c.port1.onmessage=function(){c.port1.close();c.port2.close();work();};c.port2.postMessage(null);})($work)""">]
+    let requestBrowserWorkTurn (work: unit -> unit) : unit = X<unit>
+
     let scheduleBrowserStages onStageCompleted =
         browserScheduleSequence <- browserScheduleSequence + 1
         let sequence = string browserScheduleSequence
@@ -120,7 +126,7 @@ module BrowserRuntimeFramePump =
             RendererModel.createBudgetedWorkScheduler
                 BrowserWorkBudgetMilliseconds
                 RendererModel.ScheduledWorkMaximumCount
-                (fun work -> JS.RequestAnimationFrame(fun _ -> work ()) |> ignore)
+                requestBrowserWorkTurn
                 now
                 (fun metrics ->
                     if not (isNull root) && root.GetAttribute("data-frame-pump-sequence") = sequence then
@@ -171,7 +177,9 @@ module BrowserRuntimeFramePump =
                             let rawBatch = rawItems[offset .. offset + count - 1]
                             let rawArray = New [ "$" => box 4; "Item" => box rawBatch ]
 
-                            match Json.Deserialize<SduiValue>(JSON.Stringify rawArray) with
+                            // These objects already came from JSON.Parse; reuse the typed decoder
+                            // without serializing and parsing every point batch a second time.
+                            match Json.Decode<SduiValue> rawArray with
                             | SduiValue.Array values ->
                                 match validateDecodedValue dataRef (SduiValue.Array values) with
                                 | [] ->
@@ -225,7 +233,7 @@ module BrowserRuntimeFramePump =
                     else JS.Get<obj> "points" rawFields
 
                 if isMissing rawPoints || JS.Get<int> "$" rawPoints <> 4 then
-                    let value = Json.Deserialize<SduiValue>(JSON.Stringify rawValue)
+                    let value = Json.Decode<SduiValue> rawValue
                     match validateDecodedValue dataRef value with
                     | [] -> onDecoded value
                     | errors -> rejectValidation onRejected errors
@@ -237,7 +245,7 @@ module BrowserRuntimeFramePump =
                     else
                         JS.Set rawPoints "Item" [||]
 
-                        match Json.Deserialize<SduiValue>(JSON.Stringify rawValue) with
+                        match Json.Decode<SduiValue> rawValue with
                         | SduiValue.Object fields ->
                             match validateDecodedValue dataRef (SduiValue.Object fields) with
                             | [] ->
@@ -259,7 +267,7 @@ module BrowserRuntimeFramePump =
                                 "runtime-snapshot-data-decode-failed"
                                 "A phased temporal value decoded to an unexpected shape."
             else
-                let value = Json.Deserialize<SduiValue>(JSON.Stringify rawValue)
+                let value = Json.Decode<SduiValue> rawValue
                 match validateDecodedValue dataRef value with
                 | [] -> onDecoded value
                 | errors -> rejectValidation onRejected errors
