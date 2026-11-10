@@ -3365,11 +3365,14 @@ module RendererModel =
         let local = clampWindow 1 maximumVisibleBars activeReferenceLength activeWindow
         let count = max 1 (min maximumVisibleBars local.Count)
         let currentStart =
-            match projection.GlobalOverview with
-            | Some overview when overview.AxisRef <> projection.ActiveDetail.BaseAxisRef ->
-                projection.ActiveDetail.StartObservationOrdinal
-            | _ ->
-                projection.ActiveDetail.StartObservationOrdinal + int64 local.StartIndex
+            match tryCoverageActiveLocalWindow activeReferenceLength projection with
+            | Some activeLocal ->
+                projection.ActiveDetail.StartObservationOrdinal + int64 (local.StartIndex - activeLocal.StartIndex)
+            | None ->
+                match projection.GlobalOverview with
+                | Some overview when overview.AxisRef <> projection.ActiveDetail.BaseAxisRef ->
+                    projection.ActiveDetail.StartObservationOrdinal
+                | _ -> projection.ActiveDetail.StartObservationOrdinal + int64 local.StartIndex
         let domainCount = navigationDomainCount projection
         let maximumStart = max 0L (domainCount - int64 count)
         let targetStart = max 0L (min maximumStart (currentStart + int64 delta))
@@ -3420,12 +3423,13 @@ module RendererModel =
         then
             None
         elif targetCoveredByCrossAxisResident then
-            Some(
+            tryCoverageActiveLocalWindow activeReferenceLength projection
+            |> Option.map (fun activeLocal ->
                 clampWindow
                     minimumVisibleBars
                     maximumVisibleBars
-                    activeCount
-                    { StartIndex = 0
+                    activeReferenceLength
+                    { StartIndex = activeLocal.StartIndex
                       Count = min observationCount activeCount })
         elif
             targetStartObservationOrdinal < activeStart
@@ -3437,12 +3441,13 @@ module RendererModel =
             if localStart < 0L || localStart > int64 Int32.MaxValue then
                 None
             else
-                Some(
+                tryCoverageActiveLocalWindow activeReferenceLength projection
+                |> Option.map (fun activeLocal ->
                     clampWindow
                         minimumVisibleBars
                         maximumVisibleBars
-                        activeCount
-                        { StartIndex = int localStart
+                        activeReferenceLength
+                        { StartIndex = activeLocal.StartIndex + int localStart
                           Count = observationCount })
 
     let coverageIntentProjectionSettlement
@@ -4163,6 +4168,23 @@ module RendererModel =
         && pendingMatchesDocument
         && (settlementConsumed || settlementStillPending)
 
+    let tryMainPlotWindowAtEventTime (timeline: string array) startEventTimeUtc observationCount =
+        if observationCount <= 0 || observationCount > timeline.Length then None
+        else
+            tryUtcTimestamp startEventTimeUtc
+            |> Option.bind (fun target ->
+                timeline |> Array.tryFindIndex (fun candidate -> tryUtcTimestamp candidate = Some target))
+            |> Option.bind (fun startIndex ->
+                if startIndex + observationCount <= timeline.Length then
+                    Some { StartIndex = startIndex; Count = observationCount }
+                else None)
+
+    let tryRebaseMainPlotWindow (capturedTimeline: string array) currentTimeline capturedWindow =
+        if capturedWindow.StartIndex < 0 || capturedWindow.Count <= 0
+           || capturedWindow.StartIndex + capturedWindow.Count > capturedTimeline.Length then None
+        else
+            tryMainPlotWindowAtEventTime currentTimeline capturedTimeline[capturedWindow.StartIndex] capturedWindow.Count
+
     let mainPlotEventRangeProjectionSettlement
         minimumVisibleBars
         maximumVisibleBars
@@ -4175,21 +4197,11 @@ module RendererModel =
         if projection.QueryGeneration < pendingQueryGeneration then
             TaCoverageIntentProjectionSettlement.Await
         else
-            let exactStart =
-                tryUtcTimestamp startEventTimeUtc
-                |> Option.bind (fun target ->
-                    timeline
-                    |> Array.tryFindIndex (fun candidate ->
-                        tryUtcTimestamp candidate
-                        |> Option.exists ((=) target)))
-            match exactStart with
-            | Some startIndex
+            match tryMainPlotWindowAtEventTime timeline startEventTimeUtc observationCount with
+            | Some window
                 when observationCount >= minimumVisibleBars
-                     && observationCount <= maximumVisibleBars
-                     && startIndex + observationCount <= timeline.Length ->
-                TaCoverageIntentProjectionSettlement.Reanchor
-                    { StartIndex = startIndex
-                      Count = observationCount }
+                     && observationCount <= maximumVisibleBars ->
+                TaCoverageIntentProjectionSettlement.Reanchor window
             | _ when actionPending -> TaCoverageIntentProjectionSettlement.Await
             | _ -> TaCoverageIntentProjectionSettlement.Reject
 

@@ -3781,6 +3781,51 @@ let tests =
                 (RendererModel.tryMainPlotPanWindow formalBaseTimeline.Length committed -6)
                 "A target outside the captured formal-base range must fail closed instead of using sampled GLOBAL anchors."
 
+        testCase "00014 captured main-plot drop rebases after the previous reply replaces the resident" <| fun _ ->
+            let origin = DateTimeOffset(2026,11,3,0,0,0,TimeSpan.Zero)
+            let timeline offset = Array.init 4500 (fun i -> origin.AddMinutes(float(i+offset)).ToString("O"))
+            let captured = timeline 730
+            let replacement = timeline 0
+            let desired = RendererModel.tryMainPlotPanWindow 4500 {StartIndex=2270;Count=1500} -408 |> Option.get
+            Expect.equal desired {StartIndex=1862;Count=1500} "The second gesture is measured on its pointerdown frame."
+            let rebased = RendererModel.tryRebaseMainPlotWindow captured replacement desired |> Option.get
+            Expect.equal rebased {StartIndex=2592;Count=1500} "A 730-bar earlier resident must add 730 to the local index."
+            Expect.equal replacement[rebased.StartIndex] captured[desired.StartIndex] "The requested first time survives the intervening reply."
+            Expect.equal replacement[rebased.StartIndex+rebased.Count-1] captured[desired.StartIndex+desired.Count-1] "The requested last time and width survive."
+            Expect.equal (RendererModel.tryRebaseMainPlotWindow captured captured desired) (Some desired) "An unchanged resident preserves the original index."
+            Expect.equal (RendererModel.tryRebaseMainPlotWindow replacement captured rebased) (Some desired) "Reverse dragging uses the same time mapping."
+
+        testCase "00014 pending main-plot selection cannot clamp to an unrelated resident edge" <| fun _ ->
+            let origin = DateTimeOffset(2026,11,3,0,0,0,TimeSpan.Zero)
+            let captured = Array.init 4500 (fun i -> origin.AddMinutes(float i).ToString("O"))
+            let earlier = Array.init 4500 (fun i -> origin.AddMinutes(float(i-730)).ToString("O"))
+            Expect.isNone (RendererModel.tryRebaseMainPlotWindow captured earlier {StartIndex=2800;Count=1500}) "The full requested tail is not resident; do not silently move it left."
+            Expect.isNone (RendererModel.tryRebaseMainPlotWindow captured earlier {StartIndex=0;Count=0}) "Empty selections cannot become a new viewport."
+            Expect.isNone (RendererModel.tryRebaseMainPlotWindow captured earlier {StartIndex= -1;Count=80}) "Invalid captured indices do not acquire a nearest time."
+            Expect.isNone (RendererModel.tryMainPlotWindowAtEventTime [||] captured[0] 80) "No data means no local preview."
+            let alternateFormat = origin.AddMinutes(20.0).ToString("yyyy-MM-ddTHH:mm:ssZ")
+            Expect.equal (RendererModel.tryMainPlotWindowAtEventTime captured alternateFormat 80) (Some {StartIndex=20;Count=80}) "Equivalent UTC representations resolve the same exact observation."
+
+        testCase "00014 narrow boundary pan settles inside the full resident instead of local zero" <| fun _ ->
+            let projection : TaLoadedCoverageProjection =
+                { CoverageIdentity="csv-es-1k";CoverageRevision=7L;QueryGeneration=5L;Completeness=TaCoverageCompleteness.Complete
+                  TotalObservationCount=Some 78846L;OverviewAxisRef="overview.1k";OverviewAnchors=[||]
+                  Segments=[|{SegmentId="resident";StartEventTimeUtc="2026-11-03T15:59:00Z";EndEventTimeExclusiveUtc="2026-11-06T22:01:00Z"
+                              StartObservationOrdinal=74346L;ObservationCount=4500L}|]
+                  ActiveDetail={BaseAxisRef="detail.1k";StartObservationOrdinal=77546L;ObservationCount=48}
+                  GlobalOverview=Some{AxisRef="global.1k";TotalObservationCount=78846L;Anchors=[||];ResidentStartObservationOrdinal=74346L;ResidentObservationCount=4500} }
+            Expect.equal
+                (RendererModel.coverageIntentProjectionSettlement 1 1500 4500 77546L 48 5L false projection)
+                (TaCoverageIntentProjectionSettlement.Reanchor {StartIndex=3200;Count=48})
+                "The accepted 48-bar target begins 3200 bars into the returned 4500-bar resident."
+            let sameAxis = {projection with GlobalOverview=Some{projection.GlobalOverview.Value with AxisRef="detail.1k"}}
+            Expect.equal (RendererModel.tryCoverageIntentReanchorWindow 1 1500 4500 77546L 48 sameAxis) (Some {StartIndex=3200;Count=48}) "Axis aliases do not change the active segment's origin."
+            let pendingLocal = {StartIndex=3100;Count=48}
+            let intent = RendererModel.tryMainPlotPanCoverageIntent 1500 4500 pendingLocal -16 projection |> Option.get
+            Expect.equal intent.StartObservationOrdinal (Some 77430L) "A newer local viewport starts 100 bars before the last accepted active window, then moves another 16."
+            let unknownOrigin = {projection with Segments=[||]}
+            Expect.isNone (RendererModel.tryCoverageIntentReanchorWindow 1 1500 4500 77546L 48 unknownOrigin) "Different-axis GLOBAL ordinals cannot invent the full base resident's origin."
+
         testCase "global navigator authority survives an unknown loaded total" <| fun _ ->
             let globalOverview =
                 { TotalObservationCount = 2_996_994L

@@ -3356,6 +3356,7 @@ module TaWorkspaceRenderer =
             viewportIntentGeneration <- viewportIntentGeneration + 1
             onLocalViewportIntent ()
         let mutable pendingEventRangeSettlement: TaPendingEventRangeSettlement option = None
+        let mutable retainedMainPlotCoverage: RuntimeState option = None
         let mutable pendingQueryViewportSettlement: TaPendingQueryViewportSettlement option = None
         let mutable queryViewportSettlementDiagnostics =
             { Pending = false
@@ -3441,6 +3442,11 @@ module TaWorkspaceRenderer =
                     && committed.CoverageIdentity = current.CoverageIdentity
                     && committed.CoverageRevision = current.CoverageRevision
                     && committed.QueryGeneration = current.QueryGeneration))
+        let viewportDispatchReady () =
+            committedCoverageReady ()
+            || (pendingEventRangeSettlement.IsNone
+                && (retainedMainPlotCoverage
+                    |> Option.exists (fun prepared -> ProjectionCommitGate.sameProjectionState prepared runtimeState.Value)))
         let publishViewportDispatchDiagnostics (root: Element) =
             if not (isNull root) then
                 root.SetAttribute("data-viewport-dispatch-kind", lastViewportDispatchKind)
@@ -3450,6 +3456,7 @@ module TaWorkspaceRenderer =
                 root.SetAttribute("data-viewport-dispatch-pending-action", uiState.Value.PendingActionId |> Option.defaultValue "")
                 root.SetAttribute("data-viewport-dispatch-pending-boundary", pendingBoundaryPan |> Option.bind _.TargetStartObservationOrdinal |> Option.map string |> Option.defaultValue "")
                 root.SetAttribute("data-viewport-dispatch-committed-ready", string (committedCoverageReady ()))
+                root.SetAttribute("data-viewport-dispatch-ready", string (viewportDispatchReady ()))
                 root.SetAttribute("data-viewport-dispatch-poll", pollText runtimeState.Value.Poll)
         let recordViewportDispatch kind target count deltaRatio =
             lastViewportDispatchKind <- kind
@@ -3550,11 +3557,17 @@ module TaWorkspaceRenderer =
                     if actionIntentGeneration = viewportIntentGeneration && pendingBoundaryPan.IsNone then
                         settleVisibleRangeDraft ())
         let sendOrQueueVisibleRangeAction action =
-            if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
-                let identity = coverageProjection runtimeState.Value |> Option.map _.CoverageIdentity
-                queuedViewportIntent <- Some(TaQueuedViewportIntent.LocalRange(action, identity))
-            else
-                startVisibleRangeAction action
+            let projection = coverageProjection runtimeState.Value
+            let identity = projection |> Option.map _.CoverageIdentity
+            // A reply can replace coverage between pointerdown and pointerup even
+            // when there is no longer an in-flight request at dispatch time.
+            match RendererModel.tryRefreshQueuedEventRangeAction identity projection action with
+            | Some refreshed ->
+                if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (viewportDispatchReady ()) || remoteDisabled runtimeState.Value.Poll then
+                    queuedViewportIntent <- Some(TaQueuedViewportIntent.LocalRange(refreshed, identity))
+                else
+                    startVisibleRangeAction refreshed
+            | None -> rejectNavigatorDraft "Captured event-range authority is unavailable."
         let sendOrQueuePreparedCoverageAction action pending successText =
             if uiState.Value.PendingActionId.IsSome || pendingBoundaryPan.IsSome || not (committedCoverageReady ()) || remoteDisabled runtimeState.Value.Poll then
                 let identity = coverageProjection runtimeState.Value |> Option.map _.CoverageIdentity
@@ -3575,7 +3588,7 @@ module TaWorkspaceRenderer =
             dispatchNavigatorAdjacentCoverage direction delta observationCount successText
         flushQueuedViewportIntent <- fun () ->
             match queuedViewportIntent with
-            | Some intent when uiState.Value.PendingActionId.IsNone && pendingBoundaryPan.IsNone && committedCoverageReady () && not (remoteDisabled runtimeState.Value.Poll) ->
+            | Some intent when uiState.Value.PendingActionId.IsNone && pendingBoundaryPan.IsNone && viewportDispatchReady () && not (remoteDisabled runtimeState.Value.Poll) ->
                 queuedViewportIntent <- None
                 match intent with
                 | TaQueuedViewportIntent.PreparedCoverage(action, pending, capturedIdentity, successText) ->
@@ -3605,6 +3618,7 @@ module TaWorkspaceRenderer =
             runtimeState.View
             uiState.View
         |> View.Sink (fun _ ->
+            publishViewportDispatchDiagnostics chartStackElement
             flushViewportIntentNowAndAfterFrame
                 flushQueuedViewportIntent
                 scheduleNextFrame)
@@ -3829,6 +3843,28 @@ module TaWorkspaceRenderer =
 
         let acceptPreparedDataCore refreshRows (next: RuntimeState) nextPreparedData =
             let committedState, _ = chartCommittedFrame.Value
+            let queuedMainPlotRange =
+                match queuedViewportIntent with
+                | Some(TaQueuedViewportIntent.LocalRange(action, _)) ->
+                    pendingEventRangeForAction (coverageProjection next) uiState.Value.Window.Count viewportIntentGeneration action
+                | _ -> None
+                |> Option.filter (fun pending ->
+                    pending.Purpose = TaCoverageWindowPurpose.MainPlotPan
+                    && pending.ViewportIntentGeneration = viewportIntentGeneration)
+            let latestMainPlotRange =
+                queuedMainPlotRange
+                |> Option.orElseWith (fun () ->
+                    pendingEventRangeSettlement
+                    |> Option.filter (fun pending ->
+                        pending.Purpose = TaCoverageWindowPurpose.MainPlotPan
+                        && pending.ViewportIntentGeneration = viewportIntentGeneration))
+            let latestMainPlotWindow =
+                match latestMainPlotRange, next.Document with
+                | Some pending, Some document when document.BaseRowId = Some pending.BaseRowId ->
+                    RendererModel.tryMainPlotWindowAtEventTime
+                        (RendererModel.referenceTimelineForDocumentPrepared document nextPreparedData)
+                        pending.StartEventTimeUtc pending.ObservationCount
+                | _ -> None
             let nextChartTopology = chartTopologySignaturePrepared next nextPreparedData
             let viewportScopeChanged =
                 next.Document
@@ -3838,12 +3874,24 @@ module TaWorkspaceRenderer =
                 next.Document |> Option.exists pendingEventRangeMatchesDocument
             let pendingNavigationMatches =
                 next.Document |> Option.exists (pendingNavigationMatchesNextDocument next)
+            let retainMainPlotFrame =
+                latestMainPlotWindow.IsNone
+                && (pendingNavigationMatches || pendingEventRangeMatchesNextDocument)
+                && (latestMainPlotRange |> Option.exists (fun pending ->
+                    queuedMainPlotRange.IsSome
+                    || (retainedMainPlotCoverage.IsSome
+                        && (coverageProjection next |> Option.exists (fun projection -> projection.QueryGeneration < pending.QueryGeneration)))))
             let eventRangeSettlementConsumed =
                 if viewportScopeChanged && not pendingEventRangeMatchesNextDocument then
                     pendingEventRangeSettlement <- None
                     false
                 else
                     settlePendingEventRangeProjectionFor next nextPreparedData
+            // A superseded reply may still provide useful resident data. Its local
+            // indices cannot replace the newer gesture's absolute time interval.
+            latestMainPlotWindow |> Option.iter (fun window ->
+                let total = next.Document |> Option.map (fun document -> RendererModel.referenceTimelineForDocumentPrepared document nextPreparedData |> Array.length) |> Option.defaultValue 0
+                setUiState (applyResolvedViewportWindow total window uiState.Value))
             let eventRangeSettlementOwnsViewportScope =
                 RendererModel.eventRangeSettlementOwnsViewportScope
                     viewportScopeChanged
@@ -3858,7 +3906,15 @@ module TaWorkspaceRenderer =
                 next.Identity <> committedState.Identity
                 || not (sameDocumentPresentation committedState next)
                 || nextChartTopology <> observedChartTopology
-            if topologyChanged then
+            retainedMainPlotCoverage <- if retainMainPlotFrame then Some next else None
+            if not (isNull chartStackElement) then
+                chartStackElement.SetAttribute("data-main-plot-retained-frame", if retainMainPlotFrame then "true" else "false")
+            if retainMainPlotFrame then
+                // The reply is valid transport progress, but it cannot render the
+                // newer queued interval. Release dispatch without publishing an
+                // unrelated resident; the currently displayed bars remain valid.
+                ()
+            elif topologyChanged then
                 beginProjection next |> ignore
                 chartRenderReason <-
                     if next.Identity <> committedState.Identity then "identity"
@@ -3980,8 +4036,12 @@ module TaWorkspaceRenderer =
                 let projectionCandidateGeneration = beginProjection next
                 shellPreparedFrame.Value <- next, nextPreparedData
                 scheduleRowDataRefresh projectionCandidateGeneration next nextPreparedData
-            latestPreparedData <- nextPreparedData
+            if not retainMainPlotFrame then latestPreparedData <- nextPreparedData
             observedDataState <- next
+            if retainMainPlotFrame then
+                // No visual commit will occur for this superseded resident.
+                // Wake the queued request after its valid transport preparation.
+                scheduleNextFrame flushQueuedViewportIntent
             settlePendingQueryViewportFor next nextPreparedData
             |> publishPendingQueryViewportFeedback
 
@@ -4102,7 +4162,7 @@ module TaWorkspaceRenderer =
                         // metadata can advance without attaching stale decoded data.
                         let accepted = acceptPreparedData true current prepared
                         if coverageChanged then
-                            if accepted then
+                            if accepted && retainedMainPlotCoverage.IsNone then
                                 chartCommittedFrame.Value <- current, prepared
                             viewportDataReady.Value <- true
                             preparationPending.Value <- false
@@ -4181,6 +4241,7 @@ module TaWorkspaceRenderer =
                 globalResidentDraft.Value <- None
                 pendingBoundaryPan <- None
                 pendingEventRangeSettlement <- None
+                retainedMainPlotCoverage <- None
                 pendingQueryViewportSettlement <- None
                 setQueryViewportSettlementDiagnostics
                     { queryViewportSettlementDiagnostics with
@@ -4219,7 +4280,13 @@ module TaWorkspaceRenderer =
                     else
                         scheduleIncrementalPreparation next
                 else
-                    acceptPreparedData false next latestPreparedData |> ignore
+                    match retainedMainPlotCoverage with
+                    | Some retained when ProjectionCommitGate.sameProjectionState retained next ->
+                        // Metadata does not provide a replacement for retained
+                        // visible bars. Do not pair its envelope with old data.
+                        retainedMainPlotCoverage <- Some next
+                        observedDataState <- next
+                    | _ -> acceptPreparedData false next latestPreparedData |> ignore
             flushQueuedViewportIntent ())
         scheduleFullPreparation ()
         let chartCommittedFrameView: View<RuntimeState * TaPreparedRendererData> = chartCommittedFrame.View
@@ -4341,7 +4408,7 @@ module TaWorkspaceRenderer =
         let setWindowFromPreparedRange
             (expectedDocument: TaWorkspaceDocument)
             prepared
-            coverageIntent
+            (coverageIntent: TaCoverageWindowIntent option)
             followLatest
             window
             (rangeFor: TaWorkspaceDocument -> TaPreparedRendererData -> TaVisibleWindow -> TaVisibleEventRange option) =
@@ -4351,7 +4418,23 @@ module TaWorkspaceRenderer =
                     when document.WorkspaceId = expectedDocument.WorkspaceId
                          && document.RowsRef = expectedDocument.RowsRef
                          && document.BaseRowId = expectedDocument.BaseRowId ->
-                    let changed, bounded = commitLocalWindow followLatest window
+                    let capturedTimeline = RendererModel.referenceTimelineForDocumentPrepared expectedDocument prepared
+                    let bounded = RendererModel.resolveWindow options.MinimumVisibleBars (maximumVisibleBarsFor expectedDocument) capturedTimeline.Length followLatest window
+                    let capturedMainPlot =
+                        coverageIntent |> Option.forall (fun intent -> intent.Purpose = TaCoverageWindowPurpose.MainPlotPan)
+                    let localWindow =
+                        if capturedMainPlot && not (obj.ReferenceEquals(prepared, latestPreparedData)) then
+                            RendererModel.tryRebaseMainPlotWindow capturedTimeline
+                                (RendererModel.referenceTimelineForDocumentPrepared document latestPreparedData) bounded
+                        else Some bounded
+                    let changed =
+                        match localWindow with
+                        | Some local ->
+                            let localFollowLatest =
+                                if capturedMainPlot then local.StartIndex = RendererModel.viewportMaximumStart (referenceLength ()) local
+                                else followLatest
+                            commitLocalWindow localFollowLatest local |> fst
+                        | None -> true
                     if changed then
                         beginLocalViewportIntent ()
                     if changed && actionAllowed "visible-range-changed" then
@@ -4635,7 +4718,7 @@ module TaWorkspaceRenderer =
         let commitMainPlotPan delta document prepared committed projection =
             let timeline = RendererModel.referenceTimelineForDocumentPrepared document prepared
             match RendererModel.tryMainPlotPanWindow timeline.Length committed delta with
-            | Some next when preparedRowsReady.Value && not (viewportCommandsDisabledNow ()) ->
+            | Some next ->
                 let followLatest = next.StartIndex = RendererModel.viewportMaximumStart timeline.Length next
                 match RendererModel.tryMainPlotEventRangeIntent projection next with
                 | Some intent -> setWindowFromPrepared document prepared (Some intent) followLatest next
