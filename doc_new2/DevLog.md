@@ -19,3 +19,7 @@
 - 正常 18882 launcher 預設更新到本次驗收候選；18883／18884 的 launcher、process、artifact 不變。套件在 source checkpoint 後才發布，發布結果另追加。
 
 Git inventory 發現 15 個舊 Research/temp 追蹤紀錄已由外部流程刪除，保留該清理並納管，不復原或刪除其他檔案。這些是舊 bump 工具產生的 op_log／版本測試紀錄，非目前 runtime 或策略來源。
+
+## 2026-11-10 Client 獨立 bundle 更正
+
+Client 0.3.55 在最後一次 Renderer 預覽狀態修正前已產生獨立 bundle；Research 自行編譯的 bundle 已含修正並完成 native 驗收，但獨立 Client 資產仍舊。0.3.55 已發布，保留其公開內容；以官方 bumpVersion 精確升 Client 0.3.56、Extension 0.1.36、Research 0.1.90，重新產生 bundle，Renderer 保持 0.3.55、FSharp.Core 保持 10.1.402。此為 source checkpoint，最終建置、發布及部署另留證據。
