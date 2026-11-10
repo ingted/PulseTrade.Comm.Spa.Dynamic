@@ -83,6 +83,11 @@ type TaRendererDisplayTime =
 
 [<JavaScript>]
 module TaWorkspaceRenderer =
+    // Preparation is bounded computation, not paint. Use the same posted-work
+    // primitive as the frame pump so an occluded display cannot stall each batch.
+    [<Inline """(function(work){var c=new MessageChannel();c.port1.onmessage=function(){c.port1.close();c.port2.close();work();};c.port2.postMessage(null);})($work)""">]
+    let requestBrowserWorkTurn (work: unit -> unit) : unit = X<unit>
+
     let pendingEventRangeForAction (projection: TaLoadedCoverageProjection option) visibleCount generation action =
         match action with
         | SduiAction.VisibleRangeChanged(_, change) ->
@@ -884,26 +889,39 @@ module TaWorkspaceRenderer =
     let residentTimeAxisWithPalette palette displayTime timestamps =
         residentTimeAxisForScaleWithPalette palette displayTime (RendererModel.residentCalendarScale timestamps) timestamps
 
-    let boundaryTimeLabelsWithApproximation palette (displayTime: TaRendererDisplayTime) testId rowId captions boundsView =
-        View.Map2 (fun bounds zone ->
+    let boundaryTimeLabelsWithPreview palette (displayTime: TaRendererDisplayTime) testId rowId captions boundsView (previewView: View<(string * string * string) option>) =
+        View.Map3 (fun bounds zone preview ->
             let first, last, approximate = bounds |> Option.defaultValue ("", "", false)
             let label prefix value = (if approximate then "約 " else "") + prefix + (if value = "" then "—" else TaDisplayTimeFormatter.fullOrOriginal zone value)
             let firstText, lastText = label (fst captions) first, label (snd captions) last
+            let activePreview = preview |> Option.filter (fun (previewRow, _, _) -> previewRow = rowId)
+            let previewStart, previewEnd, startText, endText =
+                match activePreview with
+                | Some(_, startTime, endTime) ->
+                    startTime, endTime,
+                    "選取起 " + TaDisplayTimeFormatter.fullOrOriginal zone startTime,
+                    "選取迄 " + TaDisplayTimeFormatter.fullOrOriginal zone endTime
+                | None -> "", "", firstText, lastText
             div [
                 Attr.Create "data-testid" testId
                 Attr.Create "data-ta-main-boundary-row" rowId
                 Attr.Create "data-canonical-start" first
                 Attr.Create "data-canonical-end" last
-                Attr.Create "data-preview" "false"
+                Attr.Create "data-preview" (if activePreview.IsSome then "true" else "false")
+                Attr.Create "data-preview-start" previewStart
+                Attr.Create "data-preview-end" previewEnd
                 Attr.Create "data-time-approximate" (if approximate then "true" else "false")
                 Attr.Create "data-default-start-text" firstText
                 Attr.Create "data-default-end-text" lastText
                 attr.style ("display:flex; flex:1 1 460px; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:2px 12px; min-width:0; min-height:18px; padding:0 4px; font-family:Consolas,monospace; font-size:10px; color:" + palette.AxisText + "; background:" + palette.AxisSurface + ";")
             ] [
-                span [Attr.Create "data-time-boundary-start" "true"; attr.style "white-space:nowrap;"] [text firstText]
-                span [Attr.Create "data-time-boundary-end" "true"; attr.style "white-space:nowrap;"] [text lastText]
-            ] :> Doc) boundsView displayTime.Zone
+                span [Attr.Create "data-time-boundary-start" "true"; attr.style "white-space:nowrap;"] [text startText]
+                span [Attr.Create "data-time-boundary-end" "true"; attr.style "white-space:nowrap;"] [text endText]
+            ] :> Doc) boundsView displayTime.Zone previewView
         |> Doc.EmbedView
+
+    let boundaryTimeLabelsWithApproximation palette displayTime testId rowId captions boundsView =
+        boundaryTimeLabelsWithPreview palette displayTime testId rowId captions boundsView (View.Const None)
 
     let boundaryTimeLabels palette displayTime testId rowId boundsView =
         boundaryTimeLabelsWithApproximation palette displayTime testId rowId ("首根 ","末根 ")
@@ -2649,7 +2667,7 @@ module TaWorkspaceRenderer =
         let cursor = Var.Create cursorIndex
         compositeSvgReactive rowId traces data referenceTimestamps cursor.View setCursorIndex commitCursorIndex
 
-    let renderRowReactivePreparedLiveWithGuides (guideTool: Var<TaChartGuideTool option>) (guides: Var<TaChartGuide list>) palette (displayTime: TaRendererDisplayTime) (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated (row: TaRowSpec) =
+    let renderRowReactivePreparedLiveWithGuidesAndPreview boundaryPreview (guideTool: Var<TaChartGuideTool option>) (guides: Var<TaChartGuide list>) palette (displayTime: TaRendererDisplayTime) (state: RuntimeState) (ui: TaRendererUiState) preparedData (dataView: View<TaPreparedRendererData>) visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow (rowHeight: Var<int>) scheduleValueRefresh registerLegendElement mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated (row: TaRowSpec) =
         let traces =
             RendererModel.effectiveTraces row
             |> Array.filter (fun trace ->
@@ -2823,8 +2841,9 @@ module TaWorkspaceRenderer =
                 Attr.Create "data-testid" ("ta-guide-tools-" + row.RowId)
                 attr.style ("display:flex; justify-content:flex-end; flex-wrap:wrap; gap:4px; padding:3px 8px; background:" + palette.AxisSurface + ";")
             ] [
-                yield boundaryTimeLabels palette displayTime ("ta-main-boundary-times-" + row.RowId) row.RowId
-                    (View.Const(RendererModel.visibleBoundaryTimes visibleTimestamps {StartIndex=0;Count=visibleTimestamps.Length}))
+                yield boundaryTimeLabelsWithPreview palette displayTime ("ta-main-boundary-times-" + row.RowId) row.RowId ("首根 ","末根 ")
+                    (View.Const(RendererModel.visibleBoundaryTimes visibleTimestamps {StartIndex=0;Count=visibleTimestamps.Length} |> Option.map (fun (first,last) -> first,last,false)))
+                    boundaryPreview
                 for tool, label in [ TaChartGuideTool.Vertical,"垂直線"; TaChartGuideTool.Horizontal,"水平線"; TaChartGuideTool.Cross,"十字線" ] do
                     yield button [
                         attr.``type`` "button"
@@ -2844,6 +2863,9 @@ module TaWorkspaceRenderer =
             ]
             rowResizeHandle row.RowId heightBounds rowHeight
         ], cursorReaders, legendReaders, latestLegendReaders, markerCursorReader
+
+    let renderRowReactivePreparedLiveWithGuides guideTool guides palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated row =
+        renderRowReactivePreparedLiveWithGuidesAndPreview (View.Const None) guideTool guides palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated row
 
     let renderRowReactivePreparedLiveWithHeightPaletteAndActivation palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated row =
         renderRowReactivePreparedLiveWithGuides (Var.Create None) (Var.Create []) palette displayTime state ui preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex showSharedTimeAxis isBaseRow rowHeight scheduleValueRefresh registerLegendElement mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated row
@@ -3095,6 +3117,8 @@ module TaWorkspaceRenderer =
         let mutable chartRenderReason = "initial"
         let cursorIndex = Var.Create<int option> None
         let mainPlotInteractionMode = Var.Create TaMainPlotInteractionMode.Cursor
+        // Pointer intent outlives row DOM replacement while an earlier reply is applied.
+        let mainPlotBoundaryPreview = Var.Create<(string * string * string) option> None
         let guideTool = Var.Create<TaChartGuideTool option> None
         let guides = Var.Create<TaChartGuide list> []
         let mutable chartStackElement: Element = null
@@ -3234,10 +3258,17 @@ module TaWorkspaceRenderer =
             dataWorkGeneration <- dataWorkGeneration + 1
             let generation = dataWorkGeneration
             let targets = activeRowDataStates
+            let scheduleRowWork =
+                RendererModel.createBudgetedWorkScheduler
+                    RendererModel.ScheduledWorkBudgetMilliseconds
+                    RendererModel.ScheduledWorkMaximumCount
+                    requestBrowserWorkTurn
+                    (fun () -> float (Date.Now()))
+                    ignore
             let rec update index =
                 if generation = dataWorkGeneration then
                     if index < targets.Length then
-                        scheduleNextFrame (fun () ->
+                        scheduleRowWork (fun () ->
                             if generation = dataWorkGeneration then
                                 targets[index].Value <- prepared
                                 update (index + 1))
@@ -3687,7 +3718,7 @@ module TaWorkspaceRenderer =
                 RendererModel.createBudgetedWorkScheduler
                     workBudget
                     RendererModel.ScheduledWorkMaximumCount
-                    scheduleNextFrame
+                    requestBrowserWorkTurn
                     (fun () -> float (Date.Now()))
                     publish
             fun work -> schedule (fun () -> if generation = preparationGeneration then work ())
@@ -4780,27 +4811,8 @@ module TaWorkspaceRenderer =
                         |> Option.map (fun document -> RendererModel.referenceTimelineForDocumentPrepared document pointerPreparedData)
                         |> Option.defaultValue [||]
                     let publishBoundaryTimes preview =
-                        if not (isNull chartStackElement) then
-                            let rowId = plotRoot.GetAttribute("data-ptcs-ta-point-row-id")
-                            let labels = chartStackElement.QuerySelectorAll("[data-ta-main-boundary-row]")
-                            for index in 0 .. labels.Length - 1 do
-                                let label = labels[index] |> As<Element>
-                                if label.GetAttribute("data-ta-main-boundary-row") = rowId then
-                                    let first = label.QuerySelector("[data-time-boundary-start]")
-                                    let last = label.QuerySelector("[data-time-boundary-end]")
-                                    let firstText, lastText =
-                                        match preview with
-                                        | Some(startTime, endTime) ->
-                                            label.SetAttribute("data-preview", "true")
-                                            label.SetAttribute("data-preview-start", startTime)
-                                            label.SetAttribute("data-preview-end", endTime)
-                                            "選取起 " + TaDisplayTimeFormatter.fullOrOriginal (displayTime.Current()) startTime,
-                                            "選取迄 " + TaDisplayTimeFormatter.fullOrOriginal (displayTime.Current()) endTime
-                                        | None ->
-                                            label.SetAttribute("data-preview", "false")
-                                            label.GetAttribute("data-default-start-text"), label.GetAttribute("data-default-end-text")
-                                    if not (isNull first) then first.TextContent <- firstText
-                                    if not (isNull last) then last.TextContent <- lastText
+                        let rowId = plotRoot.GetAttribute("data-ptcs-ta-point-row-id")
+                        mainPlotBoundaryPreview.Value <- preview |> Option.map (fun (first,last) -> rowId,first,last)
 
                     let hideRangePreview () =
                         publishBoundaryTimes None
@@ -6878,7 +6890,8 @@ module TaWorkspaceRenderer =
                                         let rowStarted = Date.Now()
                                         let prepared = rowDataStates[index].Value
                                         let rowDoc, cursorReaders, legendReaders, latestLegendReadersForRow, markerCursorReader =
-                                            renderRowReactivePreparedLiveWithGuides
+                                            renderRowReactivePreparedLiveWithGuidesAndPreview
+                                                mainPlotBoundaryPreview.View
                                                 guideTool
                                                 guides
                                                 currentPlotPalette
