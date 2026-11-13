@@ -26,6 +26,32 @@
           "timeoutSeconds": 240
         }
       ]
+    },
+    {
+      "project": "src/PulseTrade.Comm.Spa.Dynamic.Interactive.Client/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.fsproj",
+      "tests": [
+        {
+          "name": "Interactive Client regression",
+          "runner": "dotnet-run",
+          "target": "tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests.fsproj",
+          "configuration": "Release",
+          "arguments": [],
+          "timeoutSeconds": 240
+        }
+      ]
+    },
+    {
+      "project": "tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests.fsproj",
+      "tests": [
+        {
+          "name": "Interactive Client regression",
+          "runner": "dotnet-run",
+          "target": "tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests/PulseTrade.Comm.Spa.Dynamic.Interactive.Client.Tests.fsproj",
+          "configuration": "Release",
+          "arguments": [],
+          "timeoutSeconds": 240
+        }
+      ]
     }
   ]
 }
