@@ -4605,7 +4605,42 @@ module RendererModel =
         let guides =
             if hourStep > 4 then [||]
             else hourTicks |> Array.filter (fun tick -> hourOf tick |> Option.exists (fun hour -> hour % 4 = 0))
-        if ticks |> Array.exists (fun tick -> not tick.IsMajor && tick.Label <> "") then hourStep, ticks, guides
+        let labelled = ticks |> Array.filter (fun tick -> not tick.IsMajor && tick.Label<>"")
+        if hourStep=1 && labelled.Length<3 && timestamps.Length>1 && width>=104.0 then
+            let observed =
+                timestamps |> Array.mapi (fun index timestamp ->
+                    let canonical = overviewCanonicalUtc timestamp
+                    TaDisplayTimeFormatter.tryFormat zone canonical
+                    |> Option.bind (fun local ->
+                        let clock = local.ClockText
+                        match Int32.TryParse(clock.Substring(0,2)), Int32.TryParse(clock.Substring(3,2)) with
+                        | (true,hour),(true,minute) when clock.Substring(6,2)="00" ->
+                            Some(hour*60+minute,
+                                 { Position=(float index+0.5)/float timestamps.Length; CanonicalUtc=canonical
+                                   Label=clock.Substring(0,5); IsMajor=false; IsSessionStart=false })
+                        | _ -> None))
+                |> Array.choose id
+            let fitting =
+                [|1;2;5;10;15;30|] |> Array.tryPick (fun minutes ->
+                    let candidates = observed |> Array.choose (fun (minute,tick) -> if minute % minutes=0 then Some tick else None)
+                    if candidates.Length>=2 && (candidates |> Array.pairwise |> Array.forall (fun (a,b) -> (b.Position-a.Position)*width>=52.0)) then Some candidates
+                    else None)
+            let minuteTicks =
+                fitting |> Option.defaultWith (fun () ->
+                    // Sparse observations need no manufactured minute boundary.
+                    let selected = ResizeArray<TradingSessionAxisTick>()
+                    for _,tick in observed do
+                        if selected.Count=0 || (tick.Position-selected[selected.Count-1].Position)*width>=52.0 then selected.Add tick
+                    selected.ToArray())
+            let minuteByTime = minuteTicks |> Array.map (fun tick -> tick.CanonicalUtc,tick) |> Map.ofArray
+            let existing = ticks |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.CanonicalUtc |> Set.ofArray
+            let retained =
+                ticks |> Array.map (fun tick ->
+                    if tick.IsMajor || tick.IsSessionStart then tick
+                    else Map.tryFind tick.CanonicalUtc minuteByTime |> Option.defaultValue {tick with Label=""})
+            let additional = minuteTicks |> Array.filter (fun tick -> not(Set.contains tick.CanonicalUtc existing))
+            hourStep, (Array.append retained additional |> Array.sortBy _.Position), guides
+        elif labelled.Length>0 then hourStep, ticks, guides
         else
             // A very narrow view can contain no whole hour (for example 01:31–01:45).
             // Label an observed timestamp; do not invent a boundary or market point.

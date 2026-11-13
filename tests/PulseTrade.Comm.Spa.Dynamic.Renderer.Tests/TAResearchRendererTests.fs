@@ -900,13 +900,27 @@ let tests =
             let resident = RendererModel.tradingSessionAxisGrid false 30.0 SduiDisplayTimeZone.Utc times (Array.create 24 (Some "20261020"))
             Expect.equal (resident |> Array.filter (fun tick -> not tick.IsMajor) |> Array.map _.Label) [| "22" |] "30K overview still labels only the opening hour."
 
+        testCase "DYN-T-1113-01 an 87 minute main viewport has multiple observed minute labels" <| fun _ ->
+            let start = DateTime(2026,1,5,13,22,0,DateTimeKind.Utc)
+            let times = Array.init 88 (fun index -> start.AddMinutes(float index).ToString("yyyy-MM-ddTHH:mm:ssZ"))
+            let _, ticks, _ = RendererModel.mainTradingTimeAxisGrid 1200.0 5.0 SduiDisplayTimeZone.Utc times (Array.create times.Length (Some "20260105"))
+            let labels = ticks |> Array.filter (fun tick -> not tick.IsMajor && tick.Label<>"")
+            Expect.isGreaterThanOrEqual labels.Length 3 "A wide plot must not show only the whole-hour label 14."
+            Expect.isTrue (labels |> Array.exists (fun tick -> tick.Label.Contains ":")) "Sub-hour candidates carry readable minutes."
+            Expect.isTrue (labels |> Array.forall (fun tick -> Array.contains tick.CanonicalUtc times)) "Ticks refer to actual observations."
+
+        testCase "DYN-T-1113-02 sparse sub-hour data keeps both observed endpoints" <| fun _ ->
+            let times = [|"2026-10-19T01:31:00Z";"2026-10-19T01:45:00Z"|]
+            let _, ticks, _ = RendererModel.mainTradingTimeAxisGrid 1200.0 1.0 SduiDisplayTimeZone.Utc times [||]
+            Expect.equal (ticks |> Array.map _.CanonicalUtc |> Set.ofArray) (Set.ofArray times) "Two observations can both be labelled without inventing a third."
+
         testCase "DYN-T-769 adaptive main axis handles empty invalid and sub-hour windows" <| fun _ ->
             for times in [ [||]; [| "not-a-time" |] ] do
                 let _, ticks, guides = RendererModel.mainTradingTimeAxisGrid Double.NaN 30.0 SduiDisplayTimeZone.Utc times [||]
                 Expect.isEmpty ticks "No invented observations or invalid coordinates."
                 Expect.isEmpty guides "Invalid input has no guides."
             let _, ticks, guides = RendererModel.mainTradingTimeAxisGrid 1200.0 1.0 SduiDisplayTimeZone.Utc [| "2026-10-19T01:31:00Z"; "2026-10-19T01:45:00Z" |] [||]
-            Expect.equal (ticks |> Array.map _.Label) [| "01:31" |] "A narrow view without whole hours still displays an observed timestamp."
+            Expect.equal (ticks |> Array.map _.Label) [| "01:31"; "01:45" |] "A narrow view labels its available observations without manufacturing boundaries."
             Expect.isFalse ticks[0].IsSessionStart "Missing trading dates do not become an opening."
             Expect.floatClose Accuracy.high ticks[0].Position 0.25 "Fallback remains aligned with the observed slot centre."
             Expect.isEmpty guides "Fallback is not a four-hour boundary."

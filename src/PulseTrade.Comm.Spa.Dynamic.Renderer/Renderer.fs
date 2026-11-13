@@ -792,67 +792,72 @@ module TaWorkspaceRenderer =
             let mutable lastDateX = -1000.0
             // Select opening labels before ordinary hours so a nearby white label cannot
             // hide the session hour. Keep all tick marks even where text cannot fit.
-            let selectedHours = ResizeArray<float * string>()
+            let selectedHours = ResizeArray<float * string * float>()
             for opening in [ true; false ] do
                 for tick in ticks do
                     if not tick.IsMajor && tick.Label <> "" && tick.IsSessionStart = opening then
                         let x = tick.Position * width
-                        if selectedHours |> Seq.forall (fun (other, _) -> abs (x - other) >= 24.0) then
-                            selectedHours.Add(x, tick.CanonicalUtc)
-            let hourLabels = selectedHours |> Seq.map snd |> Set.ofSeq
-            div [
-                Attr.Create "data-testid" testId
-                Attr.Create "data-time-axis-row-id" rowId
-                Attr.Create "data-time-axis-kind" (if isMainPlot then "plot-trading-day" elif monthly then "resident-monthly" else "resident-daily")
-                Attr.Create "data-day-boundary-kind" boundaryKind
-                Attr.Create "data-display-time-zone" (SduiDisplayTimeZone.id zone)
-                Attr.Create "data-hour-step" (string hourStep)
-                attr.style ("position:relative;height:37px;min-height:37px;flex:0 0 37px;overflow:visible;pointer-events:none;"
-                            + (if isMainPlot then "margin:0 68px;" else "")
-                            + "background:" + palette.AxisSurface + ";color:" + palette.AxisText + ";font:10px Consolas,monospace;")
-            ] [
-                for tick in guides do
-                    yield span [
-                        Attr.Create "data-testid" "ta-plot-four-hour-gridline"
-                        Attr.Create "data-canonical-event-time" tick.CanonicalUtc
-                        Attr.Create "data-tick-label" tick.Label
-                        attr.style ("position:absolute;top:-" + string height + "px;height:" + string height + "px;left:" + fixedText (tick.Position*100.0)
-                                    + "%;z-index:1;border-left:1px dashed " + palette.AxisText + ";opacity:0.22;")
-                    ] []
-                for tick in ticks do
-                    let ratio = tick.Position
-                    let left = fixedText (ratio*100.0) + "%"
-                    let x = ratio * width
-                    let transform = if x<40.0 then "none" elif x>width-40.0 then "translateX(-100%)" else "translateX(-50%)"
-                    let color = if tick.IsSessionStart && not tick.IsMajor then "#facc15" elif not tick.IsMajor && not monthly then "#ffffff" else palette.AxisText
-                    if not tick.IsMajor then
+                        let spacing = if tick.Label.Contains ":" then 52.0 else 24.0
+                        if selectedHours |> Seq.forall (fun (other, _, otherSpacing) -> abs (x - other) >= max spacing otherSpacing) then
+                            selectedHours.Add(x, tick.CanonicalUtc, spacing)
+            let hourLabels = selectedHours |> Seq.map (fun (_,time,_) -> time) |> Set.ofSeq
+            let axis =
+                div [
+                    Attr.Create "data-testid" testId
+                    Attr.Create "data-time-axis-row-id" rowId
+                    Attr.Create "data-time-axis-kind" (if isMainPlot then "plot-trading-day" elif monthly then "resident-monthly" else "resident-daily")
+                    Attr.Create "data-day-boundary-kind" boundaryKind
+                    Attr.Create "data-display-time-zone" (SduiDisplayTimeZone.id zone)
+                    Attr.Create "data-hour-step" (string hourStep)
+                    attr.style ("position:relative;height:37px;min-height:37px;flex:0 0 37px;overflow:visible;pointer-events:none;"
+                                + (if isMainPlot then "margin:0 68px;" else "")
+                                + "background:" + palette.AxisSurface + ";color:" + palette.AxisText + ";font:10px Consolas,monospace;")
+                ] [
+                    for tick in guides do
                         yield span [
-                            Attr.Create "data-time-axis-tick" (if monthly then "week" else "hour")
+                            Attr.Create "data-testid" "ta-plot-four-hour-gridline"
                             Attr.Create "data-canonical-event-time" tick.CanonicalUtc
                             Attr.Create "data-tick-label" tick.Label
-                            Attr.Create "data-session-start" (if tick.IsSessionStart then "true" else "false")
-                            attr.style ("position:absolute;top:0;left:" + left + ";height:5px;border-left:1px solid " + color + ";")
+                            attr.style ("position:absolute;top:-" + string height + "px;height:" + string height + "px;left:" + fixedText (tick.Position*100.0)
+                                        + "%;z-index:1;border-left:1px dashed " + palette.AxisText + ";opacity:0.22;")
                         ] []
-                    if tick.IsMajor then
-                        yield span [
-                            Attr.Create "data-testid" (if isMainPlot then "ta-plot-calendar-gridline" else "ta-resident-calendar-gridline")
-                            Attr.Create "data-time-axis-tick" (if monthly then "month" else "day")
-                            Attr.Create "data-canonical-event-time" tick.CanonicalUtc
-                            Attr.Create "data-tick-label" tick.Label
-                            attr.style ("position:absolute;top:-" + string height + "px;height:" + string height + "px;left:" + left + ";z-index:1;border-left:1px "
-                                        + (if isMainPlot then "dashed " else "solid ") + palette.AxisText + ";opacity:0.35;")
-                        ] []
-                    if tick.IsMajor && x-lastDateX >= 70.0 then
-                        lastDateX <- x
-                        yield span [ Attr.Create "data-time-axis-lane" "date"; attr.style ("position:absolute;top:6px;left:" + left + ";transform:" + transform + ";white-space:nowrap;") ] [ text tick.Label ]
-                    elif not tick.IsMajor && Set.contains tick.CanonicalUtc hourLabels then
-                        yield span [
-                            Attr.Create "data-time-axis-lane" (if monthly then "week" else "hour")
-                            Attr.Create "data-session-start" (if tick.IsSessionStart then "true" else "false")
-                            Attr.Create "data-canonical-event-time" tick.CanonicalUtc
-                            attr.style ("position:absolute;top:21px;left:" + left + ";transform:" + transform + ";color:" + color + ";")
-                        ] [ text tick.Label ]
-            ] :> Doc) viewport plotHeight
+                    for tick in ticks do
+                        let ratio = tick.Position
+                        let left = fixedText (ratio*100.0) + "%"
+                        let x = ratio * width
+                        let transform = if x<40.0 then "none" elif x>width-40.0 then "translateX(-100%)" else "translateX(-50%)"
+                        let color = if tick.IsSessionStart && not tick.IsMajor then "#facc15" elif not tick.IsMajor && not monthly then "#ffffff" else palette.AxisText
+                        if not tick.IsMajor then
+                            yield span [
+                                Attr.Create "data-time-axis-tick" (if monthly then "week" else "hour")
+                                Attr.Create "data-canonical-event-time" tick.CanonicalUtc
+                                Attr.Create "data-tick-label" tick.Label
+                                Attr.Create "data-session-start" (if tick.IsSessionStart then "true" else "false")
+                                attr.style ("position:absolute;top:0;left:" + left + ";height:5px;border-left:1px solid " + color + ";")
+                            ] []
+                        if tick.IsMajor then
+                            yield span [
+                                Attr.Create "data-testid" (if isMainPlot then "ta-plot-calendar-gridline" else "ta-resident-calendar-gridline")
+                                Attr.Create "data-time-axis-tick" (if monthly then "month" else "day")
+                                Attr.Create "data-canonical-event-time" tick.CanonicalUtc
+                                Attr.Create "data-tick-label" tick.Label
+                                attr.style ("position:absolute;top:-" + string height + "px;height:" + string height + "px;left:" + left + ";z-index:1;border-left:1px "
+                                            + (if isMainPlot then "dashed " else "solid ") + palette.AxisText + ";opacity:0.35;")
+                            ] []
+                        if tick.IsMajor && x-lastDateX >= 70.0 then
+                            lastDateX <- x
+                            yield span [ Attr.Create "data-time-axis-lane" "date"; attr.style ("position:absolute;top:6px;left:" + left + ";transform:" + transform + ";white-space:nowrap;") ] [ text tick.Label ]
+                        elif not tick.IsMajor && Set.contains tick.CanonicalUtc hourLabels then
+                            yield span [
+                                Attr.Create "data-time-axis-lane" (if monthly then "week" else "hour")
+                                Attr.Create "data-session-start" (if tick.IsSessionStart then "true" else "false")
+                                Attr.Create "data-canonical-event-time" tick.CanonicalUtc
+                                attr.style ("position:absolute;top:21px;left:" + left + ";transform:" + transform + ";color:" + color + ";")
+                            ] [ text tick.Label ]
+                ]
+            if isMainPlot then
+                div [attr.style ("flex:0 0 37px;min-height:37px;background:"+palette.AxisSurface+";")] [axis] :> Doc
+            else axis :> Doc) viewport plotHeight
         |> Doc.EmbedView
 
     let renderResidentTimeAxisWithPalette palette displayTime scaleMinutes boundaryKind makeTicks =
