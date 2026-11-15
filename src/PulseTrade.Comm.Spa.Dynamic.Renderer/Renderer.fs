@@ -1529,7 +1529,7 @@ module TaWorkspaceRenderer =
             | None -> ()
         ]
 
-    let compositeSvgReactivePreparedLiveWithGuides (guideTool: Var<TaChartGuideTool option>) (guides: Var<TaChartGuide list>) priceTickSize yBounds palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh (mainPlotInteractionMode: View<TaMainPlotInteractionMode>) currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
+    let compositeSvgReactivePreparedLiveWithGuides (guideTool: Var<TaChartGuideTool option>) (guides: Var<TaChartGuide list>) priceTickSize yBounds palette (displayTime: TaRendererDisplayTime) rowId isBaseRow (traces: TaTraceSpec array) preparedData (dataView: View<TaPreparedRendererData>) (fullTimeline: string array) (referenceTimestamps: string array) (cursorIndex: View<int option>) setCursorIndex commitCursorIndex (chartPixelHeight: Var<int>) scheduleValueRefresh (mainPlotInteractionMode: View<TaMainPlotInteractionMode>) currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
         let width = 1000.0
         let hasCandles = traces |> Array.exists (fun trace -> trace.Kind = TaTraceKind.Candlestick)
         let height = if hasCandles then 250.0 else 112.0
@@ -1545,6 +1545,8 @@ module TaWorkspaceRenderer =
 
         let maximumVisualPoints = 1000
         let referenceSlots = RendererModel.referenceSlotsByTimestamp referenceTimestamps
+        let hasCandleOption key (trace: TaTraceSpec) = Map.tryFind key trace.Options = Some(SduiValue.Bool true)
+        let usesCandleSpan trace = hasCandleOption "pairedFormingCandle" trace || hasCandleOption "nativeCandleEnvelope" trace
 
         let compactLinePoints (values: (int * TaLinePoint) array) =
             RendererModel.compactProjectedLinePoints maximumVisualPoints referenceTimestamps.Length values
@@ -1586,11 +1588,11 @@ module TaWorkspaceRenderer =
                 if trace.Kind = TaTraceKind.Candlestick then
                     candleTargets[trace.TraceId] <- RendererModel.candlePointsByTimestamp candles
 
-            let candleSeries =
+            let ordinaryCandleSeries =
                 if referenceTimestamps.Length <= maximumVisualPoints then
                     let projected = ResizeArray<int * TaTraceSpec * int * int * TaCandlePoint>()
                     for traceIndex, trace, candles, _ in preparedTraces do
-                        if trace.Kind = TaTraceKind.Candlestick then
+                        if trace.Kind = TaTraceKind.Candlestick && not (usesCandleSpan trace) then
                             for point in candles do
                                 match RendererModel.candleSlotRange referenceTimestamps point with
                                 | Some(first, lastExclusive) ->
@@ -1619,7 +1621,7 @@ module TaWorkspaceRenderer =
                         ((traceIndex * projectionKinds + projected) * bucketCount) + bucketIndex
 
                     for traceIndex, trace, candles, _ in preparedTraces do
-                        if trace.Kind = TaTraceKind.Candlestick then
+                        if trace.Kind = TaTraceKind.Candlestick && not (usesCandleSpan trace) then
                             for point in candles do
                                 match RendererModel.candleSlotRange referenceTimestamps point with
                                 | Some(first, lastExclusive) ->
@@ -1665,6 +1667,17 @@ module TaWorkspaceRenderer =
                                            sourceSpans[index],
                                            aggregate
                                    | None -> () |]
+
+            let candleSeries =
+                let paired =
+                    [| for traceIndex, trace, candles, _ in preparedTraces do
+                           if trace.Kind = TaTraceKind.Candlestick && usesCandleSpan trace then
+                               for point in candles do
+                                   match RendererModel.candleSpanInVisibleWindow fullTimeline referenceTimestamps point with
+                                   | Some(first, lastExclusive) ->
+                                       yield traceIndex, trace, first, lastExclusive - first, point
+                                   | None -> () |]
+                Array.append ordinaryCandleSeries paired
 
             let projectedLinePoints =
                 preparedTraces
@@ -1854,13 +1867,18 @@ module TaWorkspaceRenderer =
 
         let candlePaths traceIndex (_, currentCandles, _, _, _, _, _, _, low, high) =
             let buckets = Array.init 8 (fun _ -> ResizeArray<string>())
-            for currentTraceIndex, _, slotIndex, sourceSpanCount, (point: TaCandlePoint) in currentCandles do
+            for currentTraceIndex, trace, slotIndex, sourceSpanCount, (point: TaCandlePoint) in currentCandles do
                 if currentTraceIndex = traceIndex then
                     let projectedOffset = if sourceSpanCount > 1 then 4 else 0
                     let directionOffset = if point.Close >= point.Open then 0 else 2
                     let wickIndex = projectedOffset + directionOffset
-                    let center = xAt slotIndex
-                    let bodyWidth = max 2.0 (slot * 0.64)
+                    let center =
+                        if usesCandleSpan trace then slot * (float slotIndex + float sourceSpanCount / 2.0)
+                        else xAt slotIndex
+                    let bodyWidth =
+                        let span = if usesCandleSpan trace then float sourceSpanCount else 1.0
+                        let proportion = if hasCandleOption "nativeCandleEnvelope" trace then 0.90 else 0.64
+                        max 2.0 (slot * span * proportion)
                     let highY = RendererModel.normalize low high top plotHeight point.High
                     let lowY = RendererModel.normalize low high top plotHeight point.Low
                     let openY = RendererModel.normalize low high top plotHeight point.Open
@@ -2383,14 +2401,23 @@ module TaWorkspaceRenderer =
                 let traceTestId = "ta-candle-" + rowId + "-" + trace.TraceId
                 let projectedColor = color traceIndex trace
                 let styles =
-                    [| "normal-up-wick", "none", "#0f8a78", "1.2", "1"
-                       "normal-up-body", "#0f8a78", "none", "0", "1"
-                       "normal-down-wick", "none", "#c2414b", "1.2", "1"
-                       "normal-down-body", "#c2414b", "none", "0", "1"
-                       "projected-up-wick", "none", projectedColor, "1.2", "1"
-                       "projected-up-body", "#0f8a78", projectedColor, "1", "0.48"
-                       "projected-down-wick", "none", projectedColor, "1.2", "1"
-                       "projected-down-body", "#c2414b", projectedColor, "1", "0.48" |]
+                    if usesCandleSpan trace then
+                        let envelope = hasCandleOption "nativeCandleEnvelope" trace
+                        let up, down = if envelope then "#00ff00", "#ff0000" else "#08604e", "#7e2732"
+                        [| for prefix in ["normal"; "projected"] do
+                               yield prefix + "-up-wick", "none", up, "1.2", "1"
+                               yield prefix + "-up-body", (if envelope then "none" else up), up, "1.2", "1"
+                               yield prefix + "-down-wick", "none", down, "1.2", "1"
+                               yield prefix + "-down-body", (if envelope then "none" else down), down, "1.2", "1" |]
+                    else
+                        [| "normal-up-wick", "none", "#0f8a78", "1.2", "1"
+                           "normal-up-body", "#0f8a78", "none", "0", "1"
+                           "normal-down-wick", "none", "#c2414b", "1.2", "1"
+                           "normal-down-body", "#c2414b", "none", "0", "1"
+                           "projected-up-wick", "none", projectedColor, "1.2", "1"
+                           "projected-up-body", "#0f8a78", projectedColor, "1", "0.48"
+                           "projected-down-wick", "none", projectedColor, "1.2", "1"
+                           "projected-down-body", "#c2414b", projectedColor, "1", "0.48" |]
                 for index in 0 .. styles.Length - 1 do
                     let part, fill, stroke, strokeWidth, fillOpacity = styles[index]
                     yield
@@ -2398,6 +2425,7 @@ module TaWorkspaceRenderer =
                             Attr.Create "data-testid" traceTestId
                             Attr.Create TaPointActivation.TraceAttribute trace.TraceId
                             Attr.Create "data-candle-part" part
+                            Attr.Create "data-candle-role" (if hasCandleOption "nativeCandleEnvelope" trace then "native-envelope" elif hasCandleOption "pairedFormingCandle" trace then "forming" else "ordinary")
                             Attr.Create "data-candle-batched" "true"
                             Attr.Dynamic "d" pathStates[index].View
                             svgAttr "fill" fill
@@ -2635,7 +2663,7 @@ module TaWorkspaceRenderer =
                 stripes)
 
     let compositeSvgReactivePreparedLiveWithYAxisTicks priceTickSize yBounds palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
-        compositeSvgReactivePreparedLiveWithGuides (Var.Create None) (Var.Create []) priceTickSize yBounds palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
+        compositeSvgReactivePreparedLiveWithGuides (Var.Create None) (Var.Create []) priceTickSize yBounds palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
 
     let compositeSvgReactivePreparedLiveWithYAxis yBounds palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated =
         compositeSvgReactivePreparedLiveWithYAxisTicks None yBounds palette displayTime rowId isBaseRow traces preparedData dataView referenceTimestamps cursorIndex setCursorIndex commitCursorIndex chartPixelHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
@@ -2684,7 +2712,11 @@ module TaWorkspaceRenderer =
         let yBounds = RendererModel.rowYAxisBounds row
         let instrument = state.Document |> Option.map (fun document -> (RendererModel.queryDraft document.DefaultView).Instrument) |> Option.defaultValue ""
         let priceTickSize = RendererModel.priceYAxisTickSize instrument yBounds traces
-        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithGuides guideTool guides priceTickSize yBounds palette displayTime row.RowId isBaseRow traces preparedData dataView visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
+        let fullTimeline =
+            if traces |> Array.exists (fun trace -> Map.tryFind "nativeCandleEnvelope" trace.Options = Some(SduiValue.Bool true)) then
+                state.Document |> Option.map (fun document -> RendererModel.referenceTimelineForDocumentPrepared document preparedData) |> Option.defaultValue visibleTimestamps
+            else visibleTimestamps
+        let chart, timestamps, cursorReaders, legendReaders, latestLegendReaders, markerCursorReader = compositeSvgReactivePreparedLiveWithGuides guideTool guides priceTickSize yBounds palette displayTime row.RowId isBaseRow traces preparedData dataView fullTimeline visibleTimestamps cursorIndex setCursorIndex commitCursorIndex rowHeight scheduleValueRefresh mainPlotInteractionMode currentMainPlotInteractionMode onMainPlotPointerDown onMainPlotContextMenu consumeMainPlotClickSuppression onPointActivated
         let title = rowTitle row traces
         let heightBounds = RendererModel.rowHeightBounds row traces
         let cursorTag =

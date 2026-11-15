@@ -156,6 +156,23 @@ let editorCompletionFixture () =
 
 let tests =
     testList "TA renderer model" [
+        testCase "DYN-T-798 native candle envelopes retain original geometry while clipping" <| fun _ ->
+            let timeline = [| for minute in [0;1;3;4;5;6;7;8;9] -> sprintf "2026-11-06T13:%02d:00Z" minute |]
+            let original =
+                temporalPoint "fixture-native" "5K" timeline[0] timeline[4] timeline[4] (Some timeline[4])
+                    PointFinality.Final TemporalProjection.CandleSpan (Some "test-fixture")
+                    (Some(candle timeline[0] 100.0 110.0 90.0 105.0 50.0))
+                |> fun value -> RendererModel.candleSeries "native" (Map ["native",SduiValue.Array [|value|]])
+                |> Array.exactlyOne
+            Expect.equal (RendererModel.candleSpanInVisibleWindow timeline timeline[2..3] original) (Some(-2,2))
+                "Clipping preserves the original center and four actual sample positions, including a missing minute."
+            Expect.equal (RendererModel.candleSpanInVisibleWindow timeline timeline[0..1] original) (Some(0,4))
+                "The right-clipped body keeps its complete width."
+            Expect.isNone (RendererModel.candleSpanInVisibleWindow timeline timeline[4..] original) "A nonintersecting native bar is not rendered."
+            Expect.isNone (RendererModel.candleSpanInVisibleWindow timeline [||] original) "An empty window has no geometry."
+            Expect.isNone (RendererModel.candleSpanInVisibleWindow [||] timeline original) "Missing source geometry is not invented."
+            Expect.equal original.Open 100.0 "Clipping cannot replace the native open with a forming sample."
+
         testCase "DYN-T-797 navigator preview survives drop and late frames until its pending work settles" <| fun _ ->
             Expect.isFalse (RendererModel.navigatorPreviewCanClear false true false false false) "a held gesture owns its frozen mask and time labels"
             Expect.isFalse (RendererModel.navigatorPreviewCanClear false false false true false) "independent overview has no active draft but still awaits event-range data"

@@ -2658,6 +2658,18 @@ module RendererModel =
     let candleSlotRange (referenceTimestamps: string array) (point: TaCandlePoint) =
         matchingReferenceRange referenceTimestamps point.Timestamp point.Temporal
 
+    let candleSpanInVisibleWindow (fullTimeline: string array) (visibleTimeline: string array) (point: TaCandlePoint) =
+        if visibleTimeline.Length = 0 then None
+        else
+            let offset = lowerTimestampBound fullTimeline visibleTimeline[0]
+            if offset >= fullTimeline.Length || fullTimeline[offset] <> visibleTimeline[0] then None
+            else
+                candleSlotRange fullTimeline point
+                |> Option.bind (fun (first, lastExclusive) ->
+                    let firstVisible, lastVisible = first - offset, lastExclusive - offset
+                    if lastVisible <= 0 || firstVisible >= visibleTimeline.Length then None
+                    else Some(firstVisible, lastVisible))
+
     let projectedCandleSlots (referenceTimestamps: string array) (point: TaCandlePoint) =
         let matchingSlots = matchingReferenceIndexes referenceTimestamps point.Timestamp point.Temporal
         let sourceSpanCount = matchingSlots.Length
