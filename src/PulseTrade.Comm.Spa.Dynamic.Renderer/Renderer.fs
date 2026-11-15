@@ -1877,7 +1877,7 @@ module TaWorkspaceRenderer =
                         else xAt slotIndex
                     let bodyWidth =
                         let span = if usesCandleSpan trace then float sourceSpanCount else 1.0
-                        let proportion = if hasCandleOption "nativeCandleEnvelope" trace then 0.90 else 0.64
+                        let proportion = if hasCandleOption "nativeCandleEnvelope" trace && sourceSpanCount > 1 then 0.90 else 0.64
                         max 2.0 (slot * span * proportion)
                     let highY = RendererModel.normalize low high top plotHeight point.High
                     let lowY = RendererModel.normalize low high top plotHeight point.Low
@@ -2402,13 +2402,17 @@ module TaWorkspaceRenderer =
                 let projectedColor = color traceIndex trace
                 let styles =
                     if usesCandleSpan trace then
-                        let envelope = hasCandleOption "nativeCandleEnvelope" trace
-                        let up, down = if envelope then "#00ff00", "#ff0000" else "#08604e", "#7e2732"
+                        let native = hasCandleOption "nativeCandleEnvelope" trace
                         [| for prefix in ["normal"; "projected"] do
+                               let envelope = native && prefix = "projected"
+                               let ordinary = native && prefix = "normal"
+                               let up, down = if ordinary then "#0f8a78", "#c2414b" elif envelope then "#00ff00", "#ff0000" else "#08604e", "#7e2732"
+                               let bodyStroke color = if ordinary then "none" else color
+                               let bodyStrokeWidth = if ordinary then "0" else "1.2"
                                yield prefix + "-up-wick", "none", up, "1.2", "1"
-                               yield prefix + "-up-body", (if envelope then "none" else up), up, "1.2", "1"
+                               yield prefix + "-up-body", (if envelope then "none" else up), bodyStroke up, bodyStrokeWidth, "1"
                                yield prefix + "-down-wick", "none", down, "1.2", "1"
-                               yield prefix + "-down-body", (if envelope then "none" else down), down, "1.2", "1" |]
+                               yield prefix + "-down-body", (if envelope then "none" else down), bodyStroke down, bodyStrokeWidth, "1" |]
                     else
                         [| "normal-up-wick", "none", "#0f8a78", "1.2", "1"
                            "normal-up-body", "#0f8a78", "none", "0", "1"

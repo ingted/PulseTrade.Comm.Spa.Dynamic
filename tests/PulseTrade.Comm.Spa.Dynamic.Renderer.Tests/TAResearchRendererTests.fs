@@ -171,6 +171,9 @@ let tests =
             Expect.isNone (RendererModel.candleSpanInVisibleWindow timeline timeline[4..] original) "A nonintersecting native bar is not rendered."
             Expect.isNone (RendererModel.candleSpanInVisibleWindow timeline [||] original) "An empty window has no geometry."
             Expect.isNone (RendererModel.candleSpanInVisibleWindow [||] timeline original) "Missing source geometry is not invented."
+            let nativeOnly = [|timeline[0];timeline[4]|]
+            Expect.equal (RendererModel.candleSpanInVisibleWindow nativeOnly nativeOnly original) (Some(0,1))
+                "An axis containing only original native bars has one position per bar, with no invented forming subdivisions."
             Expect.equal original.Open 100.0 "Clipping cannot replace the native open with a forming sample."
 
         testCase "DYN-T-797 navigator preview survives drop and late frames until its pending work settles" <| fun _ ->
