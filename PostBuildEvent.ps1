@@ -24,6 +24,20 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $nuGetSourceUrl = 'https://api.nuget.org/v3/index.json'
 
+function Get-Sha256 {
+    param([string]$Path)
+
+    $stream = [System.IO.File]::OpenRead($Path)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return [System.BitConverter]::ToString($sha256.ComputeHash($stream)).Replace('-', '')
+    }
+    finally {
+        $sha256.Dispose()
+        $stream.Dispose()
+    }
+}
+
 function Get-NuGetApiKey {
     $keyPaths = @(
         '/Nuget/apikey.txt',
@@ -244,6 +258,12 @@ $destinationPath = Join-Path $resolvedLibPacksDirectory $package.Name
 Write-Host "POST_BUILD_EVENT_BEGIN package=$($package.Name) packageId=$PackageId packageVersion=$PackageVersion configuration=$Configuration pushRelease=$($PushRelease.IsPresent)"
 Write-Host "LIBRARY_PACK_COPY_BEGIN package=$($package.Name) source=$($package.FullName) destination=$destinationPath configuration=$Configuration"
 Copy-Item -LiteralPath $package.FullName -Destination $destinationPath -Force
+$sourceHash = Get-Sha256 -Path $package.FullName
+$destinationHash = Get-Sha256 -Path $destinationPath
+if ($sourceHash -ne $destinationHash) {
+    throw "library-packs copy hash mismatch. package=$($package.Name) destination=$destinationPath"
+}
+Write-Host "LIBRARY_PACK_HASH_OK package=$($package.Name) sha256=$sourceHash"
 Write-Host "LIBRARY_PACK_COPY_OK package=$($package.Name) source=$($package.FullName) destination=$destinationPath bytes=$($package.Length) configuration=$Configuration"
 
 if ($Configuration -eq 'Release' -and $PushRelease.IsPresent) {
