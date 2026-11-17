@@ -1063,6 +1063,33 @@ module TaWorkspaceRenderer =
             JS.Window.AddEventListener("resize", resizeHandler)
             schedule ()
 
+    let selectionBoundaryTimeLabels palette (displayTime:TaRendererDisplayTime) selectionWindow boundsView =
+        View.Map3 (fun (left,right) bounds zone ->
+            match bounds with
+            | None -> Doc.Empty
+            | Some(first,last) ->
+                let anchor ratio = fixedText (100.0*max 0.0 (min 1.0 ratio))+"%"
+                let label testId ratio top caption value =
+                    let position=anchor ratio
+                    let formatted=caption+TaDisplayTimeFormatter.fullOrOriginal zone value
+                    span [
+                        Attr.Create "data-testid" testId
+                        Attr.Create "data-canonical-time" value
+                        Attr.Create "data-anchor-ratio" (fixedText ratio)
+                        attr.title formatted
+                        attr.style ("position:absolute; top:"+top+"px; left:clamp(0px,calc("+position+" - 97px),max(0px,calc(100% - 194px))); width:194px; max-width:100%; box-sizing:border-box; padding:0 3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; border:1px solid "+palette.OverviewBoundary+"; border-radius:2px; color:"+palette.TooltipText+"; background:"+palette.TooltipSurface+";")
+                    ] [text formatted]
+                div [
+                    Attr.Create "data-testid" "ta-resident-visible-boundary-times"
+                    attr.style ("position:relative; height:38px; min-width:0; pointer-events:none; font-family:Consolas,monospace; font-size:10px; line-height:16px; background:"+palette.AxisSurface+";")
+                ] [
+                    span [Attr.Create "data-testid" "ta-resident-visible-start-anchor"; attr.style ("position:absolute; top:0; height:18px; left:"+anchor left+"; border-left:1px solid "+palette.OverviewBoundary+";")] []
+                    span [Attr.Create "data-testid" "ta-resident-visible-end-anchor"; attr.style ("position:absolute; top:18px; height:18px; left:"+anchor right+"; border-left:1px solid "+palette.OverviewBoundary+";")] []
+                    label "ta-resident-visible-start" left "0" "可視起 " first
+                    label "ta-resident-visible-end" right "18" "可視迄 " last
+                ] :> Doc) selectionWindow boundsView displayTime.Zone
+        |> Doc.EmbedView
+
     let overviewSvgWithPaletteAndEventTime palette (formatEventTime: View<string -> string>) (points: TaOverviewCandlePoint array) (stripeVisuals: TaOverviewStripeVisual array) referenceLength selectionWindow onReady onPointerDown onDragEnd =
         let width = 1000.0
         let height = 82.0
@@ -7203,10 +7230,14 @@ module TaWorkspaceRenderer =
                                                     // Keep the axis next to its SVG: the boundary labels may wrap.
                                                     residentTimeAxisForCoverageWithPalette
                                                         currentPlotPalette displayTime currentDocument currentPreparedData currentCoverageProjection
-                                                    boundaryTimeLabels currentPlotPalette displayTime "ta-resident-boundary-times" ""
+                                                    selectionBoundaryTimeLabels currentPlotPalette displayTime selectionWindow
                                                         (View.Map2 (fun frozen current -> frozen |> Option.orElse current)
                                                             navigatorBoundaryTimesOverride.View
                                                             (selectionWindow |> View.Map (RendererModel.selectionBoundaryTimes overviewDisplayTimeline)))
+                                                    boundaryTimeLabelsWithApproximation currentPlotPalette displayTime "ta-resident-boundary-times" ""
+                                                        ("載入首根 ","載入末根 ")
+                                                        (View.Const(RendererModel.visibleBoundaryTimes overviewDisplayTimeline {StartIndex=0;Count=overviewDisplayTimeline.Length}
+                                                            |> Option.map(fun (first,last) -> first,last,false)))
                                                 ]
                                             let residentOverview =
                                                 div [
