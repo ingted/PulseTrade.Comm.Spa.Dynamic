@@ -23,3 +23,9 @@ Git inventory 發現 15 個舊 Research/temp 追蹤紀錄已由外部流程刪�
 ## 2026-11-10 Client 獨立 bundle 更正
 
 Client 0.3.55 在最後一次 Renderer 預覽狀態修正前已產生獨立 bundle；Research 自行編譯的 bundle 已含修正並完成 native 驗收，但獨立 Client 資產仍舊。0.3.55 已發布，保留其公開內容；以官方 bumpVersion 精確升 Client 0.3.56、Extension 0.1.36、Research 0.1.90，重新產生 bundle，Renderer 保持 0.3.55、FSharp.Core 保持 10.1.402。此為 source checkpoint，最終建置、發布及部署另留證據。
+
+## 2026-11-17 daedilus：resident完整區間與可視時間分離
+
+Renderer045d5f9／0.3.59、Client0f21e33／0.3.60：resident固定footer顯示完整loaded端點，另加兩行隨selection／frozen gesture移動的可視起訖；窄框以clamp及分行避開互蓋。GLOBAL與drag模型未變。SDK解析10.0.403，lib-packs維持單一路徑；最初誤追加第二行造成既有入口IsPathRooted失敗，已修正3618125並重新經正式pack成功；FSharp.Core仍10.1.402。正式copy/hash/push receipt通過。Renderer來源與exact nupkg349/349、Client exact0.3.60 consumer59/59 PASS。
+
+Research0.1.92 c714c368在18882以真四日SQL/demo18原生驗證整段held-drag、左右handle held-resize、約120根窄框、左緣clamp及UTC+8，時間隨邊界更新並與TA可視首末一致，完整loaded端點固定；釋放後3.5秒穩定。anchor geometry誤差小於1.1px，截圖已檢查；console0errors/0warnings。證據在R1 daedilus-resident-labels-20261117，詳細在symbolics既有DevLog。18883／18884／9222及DB未變。
