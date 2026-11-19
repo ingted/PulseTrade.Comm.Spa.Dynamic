@@ -6467,23 +6467,46 @@ module TaWorkspaceRenderer =
                     let binding =
                         { TemplateKey = schema.TemplateKey
                           Values = Array.copy editorValues.Value }
-                    let pending =
-                        runtimeState.Value.Identity,
-                        runtimeState.Value.DocumentRevision,
-                        editingRowId,
-                        currentRows |> Array.map _.RowId |> Set.ofArray,
-                        binding
-                    pendingEditorMutation <- Some pending
-                    startActionWithFeedback
-                        (SduiAction.ApplyTemplate(currentCanvasId (), editingRowId, schema.TemplateKey, editorValues.Value))
-                        (schema.DisplayName + " accepted; awaiting authoritative document.")
-                        (fun () ->
-                            let current = runtimeState.Value
-                            current.Document
-                            |> Option.bind (fun document ->
-                                EditorMutationGate.completedFeedback pending current.Identity document current.DocumentRevision))
-                        (fun () -> pendingEditorMutation <- None)
-                        ignore
+                    let action =
+                        match editingRowId with
+                        | Some _ -> Ok(SduiAction.ApplyTemplate(currentCanvasId (), editingRowId, schema.TemplateKey, editorValues.Value))
+                        | None ->
+                            match Int32.TryParse intervalDraft with
+                            | false,_ -> Result.Error "Choose a valid indicator interval."
+                            | true,minutes when minutes<=0 -> Result.Error "Choose a positive indicator interval."
+                            | true,minutes ->
+                                let rec nextRowId () =
+                                    addRowSequence<-addRowSequence+1
+                                    let id="row-"+schema.TemplateKey.ToLower()+"-"+string addRowSequence
+                                    if currentRows |> Array.exists(fun row -> row.RowId=id) then nextRowId () else id
+                                let rowId=nextRowId ()
+                                let kind=match schema.TemplateKey with "SMA_SET" -> TaRowKind.Sma | "MACD" -> TaRowKind.Macd | "DMI_ADX" -> TaRowKind.Adx | _ -> TaRowKind.HeikinAshi
+                                let row:TaRowSpec =
+                                    { RowId=rowId; Kind=kind; DataRef="series."+rowId; HeightWeight=1.0; Visible=true
+                                      Options=Map.ofList ["scaleMinutes",SduiValue.Number(float minutes)]; Traces=[||] }
+                                TaRowEditorBinding.attach binding row
+                                |> Result.mapError(fun issues -> issues |> List.map _.Message |> String.concat "; ")
+                                |> Result.map(fun row -> SduiAction.AddTaRow(currentCanvasId (),row))
+                    match action with
+                    | Error message -> setUiState {uiState.Value with Feedback=message}
+                    | Ok action ->
+                        let pending =
+                            runtimeState.Value.Identity,
+                            runtimeState.Value.DocumentRevision,
+                            editingRowId,
+                            currentRows |> Array.map _.RowId |> Set.ofArray,
+                            binding
+                        pendingEditorMutation <- Some pending
+                        startActionWithFeedback
+                            action
+                            (schema.DisplayName + " accepted; awaiting authoritative document.")
+                            (fun () ->
+                                let current = runtimeState.Value
+                                current.Document
+                                |> Option.bind (fun document ->
+                                    EditorMutationGate.completedFeedback pending current.Identity document current.DocumentRevision))
+                            (fun () -> pendingEditorMutation <- None)
+                            ignore
 
         let viewportControls (document: TaWorkspaceDocument) =
             let currentViewport =
@@ -6636,16 +6659,17 @@ module TaWorkspaceRenderer =
                         ] :> Doc)
                     |> Doc.EmbedView
                     div [ Attr.Create "data-testid" "ta-query-toolbar"; attr.style "display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:6px; align-items:end;" ] [
-                        label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Instrument"; inputText "ta-instrument" "Instrument" instrumentDraft (fun value -> instrumentDraft <- value) ]
-                        label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Interval"; selectInput "ta-interval" intervalDraft [ "1", "1m"; "5", "5m"; "30", "30m"; "60", "60m"; "930", "Session" ] (fun value -> intervalDraft <- value) ]
-                        label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "From"; inputText "ta-from" "YYYY-MM-DD" fromDateDraft (fun value -> fromDateDraft <- value) ]
-                        label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "To"; inputText "ta-to" "YYYY-MM-DD" toDateDraft (fun value -> toDateDraft <- value) ]
-                        primaryButtonView
-                            "ta-apply-query"
-                            "Load / Apply"
-                            commandsDisabledView
-                            commandsDisabledNow
-                            applyQuery
+                        let owned=runtimeState.Value.Document |> Option.exists(fun document -> Map.tryFind "query.rangeOwnedBySource" document.DefaultView=Some(SduiValue.Bool true))
+                        yield label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [
+                            yield text "Instrument"
+                            if owned then yield span [Attr.Create "data-testid" "ta-source-instrument";attr.style "padding:7px 0; color:#27415f;"] [text instrumentDraft]
+                            else yield inputText "ta-instrument" "Instrument" instrumentDraft (fun value -> instrumentDraft <- value)
+                        ]
+                        yield label [ attr.title "K interval for the new indicator"; attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "Interval"; selectInput "ta-interval" intervalDraft [ "1", "1m"; "5", "5m"; "30", "30m"; "60", "60m"; "930", "Session"; "1380", "Daily" ] (fun value -> intervalDraft <- value) ]
+                        if not owned then
+                            yield label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "From"; inputText "ta-from" "YYYY-MM-DD" fromDateDraft (fun value -> fromDateDraft <- value) ]
+                            yield label [ attr.style "display:flex; flex-direction:column; gap:2px; min-width:0; font-size:10px; color:#60738b;" ] [ text "To"; inputText "ta-to" "YYYY-MM-DD" toDateDraft (fun value -> toDateDraft <- value) ]
+                            yield primaryButtonView "ta-apply-query" "Load / Apply" commandsDisabledView commandsDisabledNow applyQuery
                     ]
                     div [ Attr.Create "data-testid" "ta-local-toolbar"; attr.style "display:flex; align-items:center; gap:5px; flex-wrap:wrap;" ]
                         ([ compactRemoteButton "ta-pan-left" "←" "Pan earlier" viewportCommandsDisabledView viewportCommandsDisabledNow (fun () ->
